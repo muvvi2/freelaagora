@@ -30,8 +30,13 @@ export function AdminView() {
   const [vipTarget, setVipTarget] = useState<User | null>(null);
   const [banTarget, setBanTarget] = useState<User | null>(null);
   const [refundTarget, setRefundTarget] = useState<Contract | null>(null);
+  
+  // Estados para cupons com limite e validade
   const [newCouponCode, setNewCouponCode] = useState('');
   const [newCouponPct, setNewCouponPct] = useState('');
+  const [newCouponMaxUses, setNewCouponMaxUses] = useState('');
+  const [newCouponExpiresAt, setNewCouponExpiresAt] = useState('');
+
   const [search, setSearch] = useState('');
   const [showAddUser, setShowAddUser] = useState(false);
   const [showBroadcast, setShowBroadcast] = useState(false);
@@ -303,18 +308,45 @@ export function AdminView() {
         <div className="space-y-4">
           <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
             <h3 className="mb-4 flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white"><Ticket className="h-5 w-5 text-primary-500" /> Gerenciar Cupons de Desconto</h3>
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="flex-1"><Input label="Código do cupom" value={newCouponCode} onChange={(e) => setNewCouponCode(e.target.value.toUpperCase())} placeholder="PROMO25" /></div>
-              <div className="w-28"><Input label="Desconto (%)" type="number" value={newCouponPct} onChange={(e) => setNewCouponPct(e.target.value)} placeholder="25" /></div>
-              <Button onClick={() => { if (!newCouponCode.trim() || !newCouponPct) { notify('Preencha código e desconto', 'warning'); return; } addCoupon({ code: newCouponCode.trim(), discountPercentage: Math.min(100, Math.max(1, Number(newCouponPct) || 0)), isActive: true }); setNewCouponCode(''); setNewCouponPct(''); notify('Cupom criado!'); }}><Plus className="h-4 w-4" /> Criar</Button>
+            <div className="grid gap-3 sm:grid-cols-4">
+              <Input label="Código do cupom" value={newCouponCode} onChange={(e) => setNewCouponCode(e.target.value.toUpperCase())} placeholder="PROMO25" />
+              <Input label="Desconto (%)" type="number" value={newCouponPct} onChange={(e) => setNewCouponPct(e.target.value)} placeholder="25" />
+              <Input label="Limite de usos (vazio = ilimitado)" type="number" value={newCouponMaxUses} onChange={(e) => setNewCouponMaxUses(e.target.value)} placeholder="Ex: 50" />
+              <Input label="Validade (opcional)" type="date" value={newCouponExpiresAt} onChange={(e) => setNewCouponExpiresAt(e.target.value)} />
+            </div>
+            <div className="mt-3 flex justify-end">
+              <Button onClick={() => { 
+                if (!newCouponCode.trim() || !newCouponPct) { notify('Preencha código e desconto', 'warning'); return; } 
+                addCoupon({ 
+                  code: newCouponCode.trim(), 
+                  discountPercentage: Math.min(100, Math.max(1, Number(newCouponPct) || 0)), 
+                  maxUses: newCouponMaxUses ? Number(newCouponMaxUses) : undefined,
+                  expiresAt: newCouponExpiresAt ? new Date(newCouponExpiresAt).toISOString() : undefined,
+                  isActive: true 
+                }); 
+                setNewCouponCode(''); 
+                setNewCouponPct(''); 
+                setNewCouponMaxUses('');
+                setNewCouponExpiresAt('');
+                notify('Cupom criado com sucesso!'); 
+              }}><Plus className="h-4 w-4" /> Criar Cupom</Button>
             </div>
           </div>
           <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 overflow-hidden">
             <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
               {coupons.length === 0 && <p className="p-6 text-center text-neutral-400">Nenhum cupom criado.</p>}
               {coupons.map((cp) => (
-                <div key={cp.id} className="flex items-center justify-between gap-3 bg-white p-4 dark:bg-neutral-900">
-                  <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-100 text-primary-600 dark:bg-primary-500/15"><Ticket className="h-5 w-5" /></div><div><p className="font-display font-bold text-neutral-900 dark:text-white">{cp.code}</p><p className="text-xs text-neutral-400">{cp.discountPercentage}% de desconto · Criado em {formatDate(cp.createdAt)}</p></div></div>
+                <div key={cp.id} className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 dark:bg-neutral-900">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-100 text-primary-600 dark:bg-primary-500/15"><Ticket className="h-5 w-5" /></div>
+                    <div>
+                      <p className="font-display font-bold text-neutral-900 dark:text-white">{cp.code}</p>
+                      <p className="text-xs text-neutral-400">
+                        {cp.discountPercentage}% de desconto · Usos: {cp.timesUsed ?? 0} {cp.maxUses ? `/ ${cp.maxUses}` : '(ilimitado)'}
+                        {cp.expiresAt ? ` · Expira em: ${formatDate(cp.expiresAt)}` : ''}
+                      </p>
+                    </div>
+                  </div>
                   <div className="flex items-center gap-2">
                     <Badge tone={cp.isActive ? 'success' : 'neutral'}>{cp.isActive ? 'Ativo' : 'Inativo'}</Badge>
                     <Button size="sm" variant="outline" onClick={() => { toggleCoupon(cp.id); notify(cp.isActive ? 'Cupom desativado' : 'Cupom ativado'); }}>{cp.isActive ? 'Desativar' : 'Ativar'}</Button>
