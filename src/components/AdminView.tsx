@@ -21,7 +21,7 @@ import type { Contract, User, Tier, EstTier, ContractStatus, ShiftSlot, Period, 
 type Tab = 'overview' | 'freelancers' | 'establishments' | 'contracts' | 'jobs' | 'reviews' | 'coupons' | 'audit' | 'wallet' | 'vip' | 'admins';
 
 export function AdminView() {
-  const { data, currentUser, isSuperAdmin, setDefaultFeePercent, overrideContractStatus, forceRefund, resetData, banUser, unbanUser, deleteEntity, adminWalletTxs, coupons, addCoupon, toggleCoupon, deleteCoupon, auditLogs, deleteReview, broadcastNotification, deleteJob, updateJob, updateVipPlan, addVipPlan, removeVipPlan, updateEstVipPlan, addEstVipPlan, removeEstVipPlan, adminTab: tab } = useApp();
+  const { data, currentUser, isSuperAdmin, setDefaultFeePercent, overrideContractStatus, forceRefund, resetData, banUser, unbanUser, deleteEntity, adminWalletTxs, coupons, addCoupon, toggleCoupon, deleteCoupon, auditLogs, deleteReview, broadcastNotification, deleteJob, updateJob, updateVipPlan, addVipPlan, removeVipPlan, updateEstVipPlan, addEstVipPlan, removeEstVipPlan, adminTab: tab, adminRemoveAdmin, adminUpdateAdmin } = useApp();
   const { notify } = useToast();
   const [feeDraft, setFeeDraft] = useState(String(data.config.defaultFeePercent));
   const [confirmReset, setConfirmReset] = useState(false);
@@ -37,6 +37,7 @@ export function AdminView() {
   const [showBroadcast, setShowBroadcast] = useState(false);
   const [showAddAdmin, setShowAddAdmin] = useState(false);
   const [walletTarget, setWalletTarget] = useState<User | null>(null);
+  const [editAdminTarget, setEditAdminTarget] = useState<User | null>(null);
 
   const stats = useMemo(() => {
     const escrowTotal = data.contracts.filter((c) => c.status === 'paid' || c.status === 'checked_in').reduce((a, c) => a + c.total, 0);
@@ -366,11 +367,31 @@ export function AdminView() {
       )}
 
       {tab === 'admins' && isSuperAdmin && (
-        <AdminsTab admins={data.users.filter((u) => u.isAdmin)} currentAdminId={currentUser!.id} onRemove={() => {}} onAdd={() => setShowAddAdmin(true)} />
+        <AdminsTab
+          admins={data.users.filter((u) => u.isAdmin)}
+          currentAdminId={currentUser!.id}
+          onRemove={(id) => {
+            adminRemoveAdmin(id);
+            notify('Administrador removido com sucesso!', 'warning');
+          }}
+          onEdit={(adminUser) => setEditAdminTarget(adminUser)}
+          onAdd={() => setShowAddAdmin(true)}
+        />
       )}
 
       {escrowContract && <EscrowFlowModal contract={escrowContract} open={!!escrowContract} onClose={() => setEscrowContract(null)} />}
       {editUser && <AdminEditUserModal user={editUser} open={!!editUser} onClose={() => setEditUser(null)} />}
+      {editAdminTarget && (
+        <AdminEditAdminModal
+          adminUser={editAdminTarget}
+          open={!!editAdminTarget}
+          onClose={() => setEditAdminTarget(null)}
+          onSave={(id, patch) => {
+            adminUpdateUser(id, patch);
+            notify('Dados do administrador atualizados com sucesso!');
+          }}
+        />
+      )}
       {vipTarget && <AdminVipModal user={vipTarget} open={!!vipTarget} onClose={() => setVipTarget(null)} />}
       {showAddUser && <AdminCreateUserModal open={showAddUser} onClose={() => setShowAddUser(false)} />}
       {showBroadcast && <AdminBroadcastModal open={showBroadcast} onClose={() => setShowBroadcast(false)} />}
@@ -632,6 +653,46 @@ function AdminEditUserModal({ user, open, onClose }: { user: User; open: boolean
           <p className="text-xs text-neutral-400">O admin pode adicionar ou subtrair saldo arbitrariamente. Cada ajuste é registrado no log de auditoria.</p>
         </div>
       )}
+    </Modal>
+  );
+}
+
+function AdminEditAdminModal({ adminUser, open, onClose, onSave }: { adminUser: User; open: boolean; onClose: () => void; onSave: (id: string, patch: Partial<User>) => void }) {
+  const [name, setName] = useState(adminUser.name);
+  const [email, setEmail] = useState(adminUser.email);
+  const [password, setPassword] = useState(adminUser.password);
+  const [adminRole, setAdminRole] = useState<'super' | 'regular'>(adminUser.adminRole ?? 'regular');
+  const [showPassword, setShowPassword] = useState(false);
+  const { notify } = useToast();
+
+  const handleSave = () => {
+    if (!name.trim() || !email.trim() || !password.trim()) {
+      notify('Preencha nome, e-mail e senha', 'warning');
+      return;
+    }
+    onSave(adminUser.id, { name: name.trim(), email: email.trim(), password, adminRole });
+    onClose();
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Editar Administrador" size="sm"
+      footer={<div className="flex gap-2"><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={handleSave}><Save className="h-4 w-4" /> Salvar</Button></div>}>
+      <div className="space-y-4">
+        <div className="flex gap-1.5 rounded-xl border border-neutral-200 bg-neutral-50 p-1 dark:border-neutral-700 dark:bg-neutral-800">
+          {(['regular', 'super'] as const).map((r) => (
+            <button key={r} onClick={() => setAdminRole(r)} className={`flex-1 rounded-lg py-2 text-sm font-semibold transition ${adminRole === r ? 'bg-white text-primary-600 shadow-sm dark:bg-neutral-700 dark:text-primary-400' : 'text-neutral-500'}`}>{r === 'super' ? 'Super Admin' : 'Moderador'}</button>
+          ))}
+        </div>
+        <Input label="Nome" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input label="E-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-neutral-500">Senha</label>
+          <div className="relative">
+            <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 pr-10 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100" />
+            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
+          </div>
+        </div>
+      </div>
     </Modal>
   );
 }
@@ -922,7 +983,7 @@ export function AdminProfileModal({ open, onClose, admin, onSave }: { open: bool
   );
 }
 
-function AdminsTab({ admins, currentAdminId, onRemove, onAdd }: { admins: User[]; currentAdminId: string; onRemove: (id: string) => void; onAdd: () => void }) {
+function AdminsTab({ admins, currentAdminId, onRemove, onEdit, onAdd }: { admins: User[]; currentAdminId: string; onRemove: (id: string) => void; onEdit: (adminUser: User) => void; onAdd: () => void }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -941,7 +1002,14 @@ function AdminsTab({ admins, currentAdminId, onRemove, onAdd }: { admins: User[]
               <p className="text-xs text-neutral-400">{a.email}</p>
             </div>
           </div>
-          {a.id !== currentAdminId && <Button size="sm" variant="ghost" className="text-error-500" onClick={() => { if (confirm(`Remover ${a.name} como administrador?`)) { onRemove(a.id); } }}><Trash2 className="h-3.5 w-3.5" /></Button>}
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => onEdit(a)}><Pencil className="h-3.5 w-3.5" /> Editar</Button>
+            {a.id !== currentAdminId && (
+              <Button size="sm" variant="ghost" className="text-error-500" onClick={() => { if (confirm(`Remover ${a.name} como administrador?`)) { onRemove(a.id); } }}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
         </div>
       ))}
     </div>
