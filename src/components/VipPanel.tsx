@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Crown, Check, Sparkles, ShieldCheck, Diamond, Star, Store, Percent, Ticket, QrCode, CreditCard, FileText, Wallet, AlertCircle } from 'lucide-react';
+import { Crown, Check, Sparkles, ShieldCheck, Diamond, Star, Store, Percent, Ticket, QrCode, CreditCard, FileText, Wallet, AlertCircle, Copy } from 'lucide-react';
 import { useApp } from '@/AppContext';
+import { supabase } from '@/lib/supabase';
 import { useToast } from './ui/Toast';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
@@ -48,6 +49,7 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [couponError, setCouponError] = useState('');
   const [billingType, setBillingType] = useState<BillingType>('WALLET');
+  const [pixData, setPixData] = useState<{ qrCode: string; payload: string } | null>(null);
 
   const paymentReady = isPaymentConfigured();
   const providerInfo = getActiveProviderInfo();
@@ -65,6 +67,73 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
   const currentEstTier: EstTier = currentUser?.estVipTier ?? 'free';
   const currentPlan = getPlan(currentTier, data.vipPlans);
   const currentEstPlan = getEstPlan(currentEstTier, data.estVipPlans);
+
+  const handleProceedPayment = async (tier: Tier | EstTier, type: 'freelancer' | 'establishment') => {
+    if (billingType === 'WALLET') {
+      if (type === 'freelancer') {
+        const t = tier as Tier;
+        if (appliedCoupon) {
+          applyCouponToPurchase(userId, t, period, appliedCoupon, 'freelancer');
+        } else {
+          setVipTier(userId, t, period);
+        }
+        notify(`Plano ${getPlan(t, data.vipPlans).label} ativado com sucesso!`);
+      } else {
+        const et = tier as EstTier;
+        if (appliedCoupon) {
+          applyCouponToPurchase(userId, et, period, appliedCoupon, 'establishment');
+        } else {
+          setEstVipTier(userId, et, period);
+        }
+        notify(`Plano ${getEstPlan(et, data.estVipPlans).label} ativado com sucesso!`);
+      }
+      setConfirmTier(null);
+      setConfirmEstTier(null);
+    } else {
+      try {
+        const planObj = type === 'freelancer' ? getPlan(tier as Tier, data.vipPlans) : getEstPlan(tier as EstTier, data.estVipPlans);
+        const finalPrice = priceFor(planObj.prices[period]);
+
+        const response = await supabase.functions.invoke('asaas-payment', {
+          body: {
+            amount: finalPrice,
+            description: `Assinatura ${planObj.label} (${periodLabel(period)})`,
+            customerName: currentUser?.name || 'Cliente FreelaAgora',
+            cpfCnpj: currentUser?.cpfCnpj || '00000000000',
+            referenceId: userId,
+            type: 'vip',
+            billingType: billingType
+          }
+        });
+
+        if (response.error || !response.data?.success) {
+          throw new Error(response.error?.message || response.data?.error || 'Erro ao comunicar com o gateway de pagamento.');
+        }
+
+        if (billingType === 'PIX') {
+          setPixData({
+            qrCode: `data:image/png;base64,${response.data.encodedImage}`,
+            payload: response.data.payload
+          });
+          notify('Cobrança PIX gerada com sucesso! Escaneie o QR Code.');
+        } else if (billingType === 'BOLETO' || billingType === 'CREDIT_CARD') {
+          notify('Cobrança gerada com sucesso! Redirecionando...');
+          if (response.data.invoiceUrl) {
+            window.open(response.data.invoiceUrl, '_blank');
+          }
+        }
+      } catch (err: any) {
+        notify(err.message || 'Erro ao processar pagamento.', 'error');
+        return;
+      }
+
+      setConfirmTier(null);
+      setConfirmEstTier(null);
+    }
+
+    setAppliedCoupon(null);
+    setCouponCode('');
+  };
 
   return (
     <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
@@ -136,18 +205,42 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
       )}
 
       <Modal open={!!confirmTier} onClose={() => setConfirmTier(null)} title="Confirmar assinatura" size="sm"
-        footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={() => setConfirmTier(null)}>Cancelar</Button><Button variant="warning" fullWidth onClick={() => { if (confirmTier) { if (appliedCoupon) { applyCouponToPurchase(userId, confirmTier, period, appliedCoupon, 'freelancer'); } else { setVipTier(userId, confirmTier, period); } setConfirmTier(null); setAppliedCoupon(null); setCouponCode(''); notify(`Plano ${getPlan(confirmTier, data.vipPlans).label} ativado!`); } }}><Check className="h-4 w-4" /> Confirmar</Button></div>}>
+        footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={() => setConfirmTier(null)}>Cancelar</Button><Button variant="warning" fullWidth onClick={() => confirmTier && handleProceedPayment(confirmTier, 'freelancer')}><Check className="h-4 w-4" /> Confirmar</Button></div>}>
         {confirmTier && <div className="space-y-3"><div className="flex items-center gap-3 rounded-xl bg-warning-50 p-3 dark:bg-warning-500/10"><Crown className="h-8 w-8 text-warning-500" /><div><p className="font-bold text-neutral-900 dark:text-white">{getPlan(confirmTier, data.vipPlans).label} — {periodLabel(period)}</p><p className="text-xs text-neutral-400">{appliedCoupon ? <><span className="line-through">{formatCurrency(getPlan(confirmTier, data.vipPlans).prices[period])}</span> → {formatCurrency(priceFor(getPlan(confirmTier, data.vipPlans).prices[period]))}</> : formatCurrency(getPlan(confirmTier, data.vipPlans).prices[period])}</p></div></div>
         <BillingTypeSelector billingType={billingType} setBillingType={setBillingType} paymentReady={paymentReady} providerLabel={providerInfo.label} />
         <p className="text-sm text-neutral-600 dark:text-neutral-300">{billingType === 'WALLET' ? 'Ao confirmar, o valor será debitado da sua carteira e seu plano será ativado imediatamente.' : `Ao confirmar, você será direcionado ao pagamento via ${providerInfo.label}.`}</p></div>}
       </Modal>
 
       <Modal open={!!confirmEstTier} onClose={() => setConfirmEstTier(null)} title="Confirmar assinatura empresarial" size="sm"
-        footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={() => setConfirmEstTier(null)}>Cancelar</Button><Button variant="warning" fullWidth onClick={() => { if (confirmEstTier) { if (appliedCoupon) { applyCouponToPurchase(userId, confirmEstTier, period, appliedCoupon, 'establishment'); } else { setEstVipTier(userId, confirmEstTier, period); } setConfirmEstTier(null); setAppliedCoupon(null); setCouponCode(''); notify(`Plano ${getEstPlan(confirmEstTier, data.estVipPlans).label} ativado!`); } }}><Check className="h-4 w-4" /> Confirmar</Button></div>}>
+        footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={() => setConfirmEstTier(null)}>Cancelar</Button><Button variant="warning" fullWidth onClick={() => confirmEstTier && handleProceedPayment(confirmEstTier, 'establishment')}><Check className="h-4 w-4" /> Confirmar</Button></div>}>
         {confirmEstTier && <div className="space-y-3"><div className="flex items-center gap-3 rounded-xl bg-warning-50 p-3 dark:bg-warning-500/10"><Store className="h-8 w-8 text-warning-500" /><div><p className="font-bold text-neutral-900 dark:text-white">{getEstPlan(confirmEstTier, data.estVipPlans).label} — {periodLabel(period)}</p><p className="text-xs text-neutral-400">{appliedCoupon ? <><span className="line-through">{formatCurrency(getEstPlan(confirmEstTier, data.estVipPlans).prices[period])}</span> → {formatCurrency(priceFor(getEstPlan(confirmEstTier, data.estVipPlans).prices[period]))}</> : formatCurrency(getEstPlan(confirmEstTier, data.estVipPlans).prices[period])} · Taxa: {getEstPlan(confirmEstTier, data.estVipPlans).intermediationFee}%</p></div></div>
         <BillingTypeSelector billingType={billingType} setBillingType={setBillingType} paymentReady={paymentReady} providerLabel={providerInfo.label} />
         <p className="text-sm text-neutral-600 dark:text-neutral-300">{billingType === 'WALLET' ? 'Ao confirmar, o valor será debitado da sua carteira e sua nova taxa de intermediação será aplicada nas próximas contratações.' : `Ao confirmar, você será direcionado ao pagamento via ${providerInfo.label}.`}</p></div>}
       </Modal>
+
+      <Modal open={!!pixData} onClose={() => setPixData(null)} title="Pagamento via PIX" size="sm">
+        {pixData && (
+          <div className="space-y-4 text-center">
+            <p className="text-sm text-neutral-600 dark:text-neutral-300">Escaneie o QR Code abaixo com o aplicativo do seu banco para realizar o pagamento:</p>
+            <div className="flex justify-center">
+              <img src={pixData.qrCode} alt="QR Code PIX" className="h-48 w-48 rounded-xl border border-neutral-200 p-2 dark:border-neutral-700" />
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-semibold text-neutral-500">Ou copie o código Pix Copia e Cola:</p>
+              <div className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 p-2 dark:border-neutral-700 dark:bg-neutral-800">
+                <input type="text" readOnly value={pixData.payload} className="w-full bg-transparent text-xs text-neutral-700 outline-none dark:text-neutral-300" />
+                <Button size="sm" variant="outline" onClick={() => {
+                  navigator.clipboard.writeText(pixData.payload);
+                  notify('Chave PIX copiada para a área de transferência!');
+                }}>
+                  <Copy className="h-3.5 w-3.5" /> Copiar
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       {/* Coupon input */}
       <div className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-800/50">
         <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-neutral-500"><Ticket className="h-3.5 w-3.5" /> Cupom de desconto</label>
