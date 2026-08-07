@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Wallet, ArrowDownRight, ArrowUpRight, Plus, ArrowUpFromLine, Lock, TrendingUp, DollarSign, Check, Ticket } from 'lucide-react';
+import { Wallet, ArrowDownRight, ArrowUpRight, Plus, ArrowUpFromLine, Lock, TrendingUp, DollarSign, Check, Ticket, Copy, QrCode as QrIcon } from 'lucide-react';
 import { useApp } from '@/AppContext';
+import { supabase } from '@/lib/supabase';
 import { useToast } from './ui/Toast';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
@@ -21,22 +22,56 @@ const txMeta: Record<WalletTx['type'], { icon: typeof Plus; tone: 'success' | 'w
 };
 
 export function WalletPanel({ userId }: { userId: string }) {
-  const { userWalletBalance, userWalletTxs, depositToWallet, withdrawFromWallet } = useApp();
+  const { currentUser, userWalletBalance, userWalletTxs, depositToWallet, withdrawFromWallet } = useApp();
   const { notify } = useToast();
   const balance = userWalletBalance(userId);
   const txs = userWalletTxs(userId);
   const [modal, setModal] = useState<null | 'deposit' | 'withdraw'>(null);
   const [amount, setAmount] = useState('');
+  const [pixData, setPixData] = useState<{ qrCode: string; payload: string } | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const submit = () => {
+  const submit = async () => {
     const v = Number(amount);
     if (!v || v <= 0) { notify('Informe um valor válido', 'warning'); return; }
-    if (modal === 'deposit') { depositToWallet(userId, v); notify(`${formatCurrency(v)} depositado na carteira`); }
-    else {
+    
+    if (modal === 'deposit') {
+      try {
+        setLoading(true);
+        // Gera cobrança real no Asaas para o depósito via PIX
+        const response = await supabase.functions.invoke('asaas-payment', {
+          body: {
+            amount: v,
+            description: `Depósito na carteira FreelaAgora`,
+            customerName: currentUser?.name || 'Cliente FreelaAgora',
+            cpfCnpj: currentUser?.cpfCnpj || '00000000000',
+            referenceId: userId,
+            type: 'deposit',
+            billingType: 'PIX'
+          }
+        });
+
+        if (response.error || !response.data?.success) {
+          throw new Error(response.error?.message || response.data?.error || 'Erro ao gerar PIX de depósito.');
+        }
+
+        setPixData({
+          qrCode: `data:image/png;base64,${response.data.encodedImage}`,
+          payload: response.data.payload
+        });
+        notify('PIX de depósito gerado com sucesso!');
+      } catch (err: any) {
+        notify(err.message || 'Erro ao processar depósito.', 'error');
+      } finally {
+        setLoading(false);
+      }
+    } else {
       if (v > balance) { notify('Saldo insuficiente para saque', 'warning'); return; }
-      withdrawFromWallet(userId, v); notify(`${formatCurrency(v)} sacado da carteira`);
+      withdrawFromWallet(userId, v); 
+      notify(`${formatCurrency(v)} sacado da carteira`);
+      setModal(null); 
+      setAmount('');
     }
-    setModal(null); setAmount('');
   };
 
   return (
@@ -89,15 +124,41 @@ export function WalletPanel({ userId }: { userId: string }) {
         </div>
       </div>
 
-      <Modal open={!!modal} onClose={() => setModal(null)} title={modal === 'deposit' ? 'Depositar na carteira' : 'Sacar da carteira'} size="sm"
-        footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={() => setModal(null)}>Cancelar</Button><Button fullWidth onClick={submit}><Check className="h-4 w-4" /> Confirmar</Button></div>}>
+      <Modal open={!!modal} onClose={() => { setModal(null); setPixData(null); }} title={modal === 'deposit' ? 'Depositar na carteira via PIX' : 'Sacar da carteira'} size="sm"
+        footer={!pixData ? <div className="flex gap-2"><Button variant="ghost" fullWidth onClick={() => setModal(null)}>Cancelar</Button><Button fullWidth onClick={submit} disabled={loading}><Check className="h-4 w-4" /> {loading ? 'Gerando...' : 'Confirmar'}</Button></div> : undefined}>
         <div className="space-y-3">
-          <div className="rounded-xl bg-neutral-50 p-3 dark:bg-neutral-800">
-            <p className="text-xs text-neutral-400">Saldo atual</p>
-            <p className="font-display text-xl font-bold text-neutral-900 dark:text-white">{formatCurrency(balance)}</p>
-          </div>
-          <Input label="Valor (R$)" type="number" min={0} placeholder="0,00" value={amount} onChange={(e) => setAmount(e.target.value)} />
-          {modal === 'withdraw' && <p className="text-xs text-neutral-400">O saque é processado via PIX para a chave cadastrada.</p>}
+          {!pixData ? (
+            <>
+              <div className="rounded-xl bg-neutral-50 p-3 dark:bg-neutral-800">
+                <p className="text-xs text-neutral-400">Saldo atual</p>
+                <p className="font-display text-xl font-bold text-neutral-900 dark:text-white">{formatCurrency(balance)}</p>
+              </div>
+              <Input label="Valor (R$)" type="number" min={0} placeholder="0,00" value={amount} onChange={(e) => setAmount(e.target.value)} />
+              {modal === 'withdraw' && <p className="text-xs text-neutral-400">O saque é processado via PIX para a chave cadastrada.</p>}
+            </>
+          ) : (
+            <div className="space-y-4 text-center">
+              <p className="text-sm text-neutral-600 dark:text-neutral-300">Escaneie o QR Code abaixo para adicionar saldo à carteira:</p>
+              <div className="flex justify-center">
+                <img src={pixData.qrCode} alt="QR Code PIX Depósito" className="h-48 w-48 rounded-xl border border-neutral-200 p-2 dark:border-neutral-700" />
+              </div>
+              <div>
+                <p className="mb-1 text-xs font-semibold text-neutral-500">Pix Copia e Cola:</p>
+                <div className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 p-2 dark:border-neutral-700 dark:bg-neutral-800">
+                  <input type="text" readOnly value={pixData.payload} className="w-full bg-transparent text-xs text-neutral-700 outline-none dark:text-neutral-300" />
+                  <Button size="sm" variant="outline" onClick={() => {
+                    navigator.clipboard.writeText(pixData.payload);
+                    notify('Chave PIX copiada!');
+                  }}>
+                    <Copy className="h-3.5 w-3.5" /> Copiar
+                  </Button>
+                </div>
+              </div>
+              <Button fullWidth variant="outline" onClick={() => { setModal(null); setPixData(null); setAmount(''); }}>
+                Concluir / Fechar
+              </Button>
+            </div>
+          )}
         </div>
       </Modal>
     </div>
