@@ -41,12 +41,13 @@ export function WalletPanel({ userId }: { userId: string }) {
         // Gera cobrança real no Asaas para o depósito via PIX
         const response = await supabase.functions.invoke('asaas-payment', {
           body: {
-            amount: v,
+            value: v, // Ajustado para 'value' para bater com a Edge Function
             description: `Depósito na carteira FreelaAgora`,
             customerName: currentUser?.name || 'Cliente FreelaAgora',
-            cpfCnpj: currentUser?.cpfCnpj || '00000000000',
-            referenceId: userId,
-            type: 'deposit',
+            customerEmail: currentUser?.email || 'cliente@freelaagora.com', // E-mail obrigatório
+            customerCpfCnpj: currentUser?.cpfCnpj || '00000000000',
+            externalReference: userId,
+            type: 'payment',
             billingType: 'PIX'
           }
         });
