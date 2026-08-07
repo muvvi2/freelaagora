@@ -99,10 +99,15 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
         
         const token = sessionData?.session?.access_token || supabase.supabaseKey;
 
-        // Limpeza inteligente do CPF: se estiver mascarado ou vazio, usa o CPF oficial de homologação do Asaas Sandbox
-        const rawCpf = currentUser?.cpf || currentUser?.cpfCnpj || '';
-        const cleanCpf = rawCpf.includes('*') ? '47690623000' : rawCpf.replace(/\D/g, '');
-        const validCpfCnpj = cleanCpf.length === 11 ? cleanCpf : '47690623000';
+        // Prioridade corrigida: Se for estabelecimento pega o CNPJ, senão pega o CPF
+        const rawDocument = accountType === 'establishment' 
+          ? (currentUser?.cnpj || '') 
+          : (currentUser?.cpf || currentUser?.cpfCnpj || '');
+
+        const cleanDocument = rawDocument.replace(/\D/g, '');
+        const validCpfCnpj = (cleanDocument.length === 11 || cleanDocument.length === 14) 
+          ? cleanDocument 
+          : '47690623000'; // Fallback de teste caso venha vazio
 
         const res = await fetch(`${supabaseUrl}/functions/v1/asaas-payment`, {
           method: 'POST',
