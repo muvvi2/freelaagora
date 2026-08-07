@@ -16,13 +16,12 @@ import { Input, Select } from './ui/Field';
 import { EscrowFlowModal } from './EscrowFlowModal';
 import { AvailabilityCalendar } from './AvailabilityCalendar';
 import { formatCurrency, formatDate, formatDateTime, contractStatusLabel, getPlan, getEstPlan, maskCEP, maskDocumentDisplay, periodLabel } from '@/utils';
-import type { Contract, User, Tier, EstTier, ContractStatus, ShiftSlot, Period, AccountType, VipPlan, EstVipPlan, PaymentProviderConfig, PaymentSettings } from '@/types';
-import { PAYMENT_PROVIDERS } from '@/types';
+import type { Contract, User, Tier, EstTier, ContractStatus, ShiftSlot, Period, AccountType, VipPlan, EstVipPlan } from '@/types';
 
-type Tab = 'overview' | 'freelancers' | 'establishments' | 'contracts' | 'jobs' | 'reviews' | 'coupons' | 'audit' | 'wallet' | 'vip' | 'admins' | 'payments';
+type Tab = 'overview' | 'freelancers' | 'establishments' | 'contracts' | 'jobs' | 'reviews' | 'coupons' | 'audit' | 'wallet' | 'vip' | 'admins';
 
 export function AdminView() {
-  const { data, currentUser, isSuperAdmin, setDefaultFeePercent, overrideContractStatus, forceRefund, resetData, banUser, unbanUser, deleteEntity, adminWalletTxs, coupons, addCoupon, toggleCoupon, deleteCoupon, auditLogs, deleteReview, broadcastNotification, deleteJob, updateJob, updateVipPlan, addVipPlan, removeVipPlan, updateEstVipPlan, addEstVipPlan, removeEstVipPlan, updatePaymentSettings, adminTab: tab } = useApp();
+  const { data, currentUser, isSuperAdmin, setDefaultFeePercent, overrideContractStatus, forceRefund, resetData, banUser, unbanUser, deleteEntity, adminWalletTxs, coupons, addCoupon, toggleCoupon, deleteCoupon, auditLogs, deleteReview, broadcastNotification, deleteJob, updateJob, updateVipPlan, addVipPlan, removeVipPlan, updateEstVipPlan, addEstVipPlan, removeEstVipPlan, adminTab: tab } = useApp();
   const { notify } = useToast();
   const [feeDraft, setFeeDraft] = useState(String(data.config.defaultFeePercent));
   const [confirmReset, setConfirmReset] = useState(false);
@@ -367,11 +366,7 @@ export function AdminView() {
       )}
 
       {tab === 'admins' && isSuperAdmin && (
-        <AdminsTab admins={data.users.filter((u) => u.isAdmin)} currentAdminId={currentUser!.id} onRemove={removeAdmin} onAdd={() => setShowAddAdmin(true)} />
-      )}
-
-      {tab === 'payments' && (
-        <PaymentsTab settings={data.paymentSettings ?? { activeProvider: 'asaas', configs: {} }} onSave={updatePaymentSettings} canEdit={isSuperAdmin} />
+        <AdminsTab admins={data.users.filter((u) => u.isAdmin)} currentAdminId={currentUser!.id} onRemove={() => {}} onAdd={() => setShowAddAdmin(true)} />
       )}
 
       {escrowContract && <EscrowFlowModal contract={escrowContract} open={!!escrowContract} onClose={() => setEscrowContract(null)} />}
@@ -1053,88 +1048,6 @@ function ActionMenu({ items }: { items: { icon: typeof Pencil; label: string; on
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function PaymentsTab({ settings, onSave, canEdit }: { settings: PaymentSettings; onSave: (s: PaymentSettings) => void; canEdit: boolean }) {
-  const { notify } = useToast();
-  const [activeProvider, setActiveProvider] = useState<PaymentProviderId>(settings.activeProvider ?? 'asaas');
-  const [configs, setConfigs] = useState(settings.configs ?? {});
-  const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
-
-  const updateConfig = (id: PaymentProviderId, field: 'apiKey' | 'env', value: string) => {
-    setConfigs((c) => ({ ...c, [id]: { ...(c[id] ?? { apiKey: '', env: 'sandbox' }), [field]: value } as PaymentProviderConfig }));
-  };
-
-  const save = () => {
-    onSave({ activeProvider, configs });
-    notify('Configurações de pagamento salvas');
-  };
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="font-display text-lg font-bold text-neutral-900 dark:text-white">Gateway de Pagamentos</h3>
-        <p className="text-sm text-neutral-500">Selecione o provedor de pagamentos que processará as transações da plataforma.</p>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {PAYMENT_PROVIDERS.map((p) => {
-          const active = activeProvider === p.id;
-          return (
-            <button key={p.id} disabled={!canEdit} onClick={() => setActiveProvider(p.id)} className={`rounded-2xl border p-4 text-left transition ${active ? 'border-primary-400 bg-primary-50 ring-2 ring-primary-400/30 dark:bg-primary-500/10' : 'border-neutral-200 hover:border-neutral-300 dark:border-neutral-700 dark:hover:border-neutral-600'} ${!canEdit ? 'cursor-not-allowed opacity-60' : ''}`}>
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-neutral-900 dark:text-white">{p.label}</span>
-                {active && <CheckCircle2 className="h-5 w-5 text-primary-600" />}
-              </div>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {p.supportsPix && <span className="rounded-md bg-success-100 px-1.5 py-0.5 text-[10px] font-semibold text-success-700 dark:bg-success-500/15 dark:text-success-400">Pix</span>}
-                {p.supportsBoleto && <span className="rounded-md bg-warning-100 px-1.5 py-0.5 text-[10px] font-semibold text-warning-700 dark:bg-warning-500/15 dark:text-warning-400">Boleto</span>}
-                {p.supportsCard && <span className="rounded-md bg-accent-100 px-1.5 py-0.5 text-[10px] font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">Cartão</span>}
-                {p.supportsSplit && <span className="rounded-md bg-primary-100 px-1.5 py-0.5 text-[10px] font-semibold text-primary-700 dark:bg-primary-500/15 dark:text-primary-400">Split</span>}
-              </div>
-              <div className="mt-3 flex gap-2">
-                <a href={p.signupUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-primary-600 hover:underline" onClick={(e) => e.stopPropagation()}>Criar conta</a>
-                <span className="text-neutral-300 dark:text-neutral-600">·</span>
-                <a href={p.docsUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-neutral-500 hover:underline" onClick={(e) => e.stopPropagation()}>Docs</a>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="rounded-2xl border border-neutral-200 p-5 dark:border-neutral-700">
-        <h4 className="font-display text-base font-bold text-neutral-900 dark:text-white">Credenciais — {PAYMENT_PROVIDERS.find((p) => p.id === activeProvider)?.label}</h4>
-        <p className="mb-4 text-xs text-neutral-500">As chaves ficam armazenadas localmente para este protótipo. Em produção, utilize o cofre de segredos do backend.</p>
-        <div className="space-y-4">
-          <div>
-            <label className="mb-1.5 block text-sm font-semibold text-neutral-700 dark:text-neutral-300">Ambiente</label>
-            <div className="flex gap-2">
-              {(['sandbox', 'production'] as const).map((env) => (
-                <button key={env} disabled={!canEdit} onClick={() => updateConfig(activeProvider, 'env', env)} className={`flex-1 rounded-lg py-2 text-sm font-semibold transition ${(configs[activeProvider]?.env ?? 'sandbox') === env ? 'bg-primary-600 text-white' : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300'} ${!canEdit ? 'cursor-not-allowed opacity-60' : ''}`}>{env === 'sandbox' ? 'Sandbox (Teste)' : 'Produção'}</button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-semibold text-neutral-700 dark:text-neutral-300">API Key</label>
-            <div className="relative">
-              <input type={showKeys[activeProvider] ? 'text' : 'password'} value={configs[activeProvider]?.apiKey ?? ''} onChange={(e) => updateConfig(activeProvider, 'apiKey', e.target.value)} placeholder="$aab1234..." disabled={!canEdit} className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 pr-10 text-sm text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white disabled:cursor-not-allowed disabled:opacity-60" />
-              <button type="button" onClick={() => setShowKeys((s) => ({ ...s, [activeProvider]: !s[activeProvider] }))} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400">{showKeys[activeProvider] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {!canEdit && (
-        <div className="rounded-xl bg-warning-50 p-3 text-sm text-warning-700 dark:bg-warning-500/10 dark:text-warning-400">
-          <Lock className="mr-1.5 inline h-4 w-4" /> Apenas Super Admin pode alterar as configurações de pagamento.
-        </div>
-      )}
-
-      <div className="flex justify-end">
-        <Button variant="primary" onClick={save} disabled={!canEdit}><CheckCircle2 className="h-4 w-4" /> Salvar configurações</Button>
-      </div>
     </div>
   );
 }
