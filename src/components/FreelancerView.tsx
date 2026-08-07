@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User as UserIcon, MapPin, Tags, Calendar, Crown, Wallet, Briefcase, Fingerprint, ShieldCheck, MessageSquare, Save, Inbox, Megaphone } from 'lucide-react';
+import { User as UserIcon, MapPin, Tags, Calendar, Crown, Wallet, Briefcase, Fingerprint, ShieldCheck, MessageSquare, Save, Inbox, Megaphone, Upload } from 'lucide-react';
 import { useApp } from '@/AppContext';
 import { useToast } from './ui/Toast';
 import { Avatar } from './ui/Avatar';
@@ -188,19 +188,53 @@ export function FreelancerView() {
 }
 
 // ============================================================
-// TAB 1: Dados Pessoais e Documentação
+// TAB 1: Dados Pessoais, Foto e Documentação
 // ============================================================
 function PersonalTab({ me, onSave }: { me: import('@/types').User; onSave: (patch: Partial<import('@/types').User>) => void }) {
   const [name, setName] = useState(me.name);
   const [nickname, setNickname] = useState(me.nickname ?? '');
   const [email, setEmail] = useState(me.email);
   const [bio, setBio] = useState(me.bio ?? '');
+  const [photo, setPhoto] = useState(me.photo);
   const [verified, setVerified] = useState(me.documentVerified ?? false);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhoto(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   return (
     <section className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
       <h2 className="mb-4 flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white"><UserIcon className="h-5 w-5 text-primary-500" /> Dados Pessoais e Documentação</h2>
+      
       <div className="grid gap-4 sm:grid-cols-2">
+        <div className="sm:col-span-2 flex flex-col gap-2 mb-2">
+          <label className="text-xs font-semibold text-neutral-500">Foto de Perfil</label>
+          <div className="flex items-center gap-4">
+            <img 
+              src={photo || "https://via.placeholder.com/150"} 
+              alt="Preview" 
+              className="w-16 h-16 rounded-full object-cover border-2 border-primary-500 shadow-sm"
+            />
+            <label className="cursor-pointer bg-primary-600 hover:bg-primary-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition-all shadow flex items-center gap-2">
+              <Upload className="h-4 w-4" />
+              <span>Carregar nova foto</span>
+              <input 
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                onChange={handleFileChange} 
+              />
+            </label>
+          </div>
+        </div>
+
         <Input label="Nome completo" value={name} onChange={(e) => setName(e.target.value)} />
         <Input label="Apelido / Nickname" value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="Ex: Tigrão" />
         <div className="sm:col-span-2"><Input label="E-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
@@ -220,7 +254,7 @@ function PersonalTab({ me, onSave }: { me: import('@/types').User; onSave: (patc
           <span className="flex items-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-300"><Fingerprint className="h-4 w-4 text-secondary-500" /> Perfil Verificado por Documento</span>
         </label>
       </div>
-      <Button className="mt-4" onClick={() => onSave({ name, nickname: nickname || undefined, email, bio, documentVerified: verified })}><Save className="h-4 w-4" /> Salvar alterações</Button>
+      <Button className="mt-4" onClick={() => onSave({ name, nickname: nickname || undefined, email, bio, photo, documentVerified: verified })}><Save className="h-4 w-4" /> Salvar alterações</Button>
     </section>
   );
 }
@@ -271,7 +305,6 @@ function SpecialtiesTab({ me, onToggleCat, onSave }: { me: import('@/types').Use
     <section className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
       <h2 className="mb-4 flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white"><Tags className="h-5 w-5 text-primary-500" /> Especialidades e Valores</h2>
 
-      {/* Categories via combobox */}
       <div className="mb-4">
         <CategoryCombobox
           selected={me.categories ?? []}
@@ -286,7 +319,6 @@ function SpecialtiesTab({ me, onToggleCat, onSave }: { me: import('@/types').Use
         )}
       </div>
 
-      {/* Geo preferences */}
       <div className="mb-4 rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-800/50">
         <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300"><MapPin className="h-4 w-4 text-primary-500" /> Área de Atendimento</h3>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -304,7 +336,6 @@ function SpecialtiesTab({ me, onToggleCat, onSave }: { me: import('@/types').Use
         </div>
       </div>
 
-      {/* Financial values */}
       <div className="grid gap-4 sm:grid-cols-2">
         <Input label="Valor da Hora Comercial (R$/h)" type="number" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} placeholder="45" />
         <Input label="Valor da Diária Fechada (R$)" type="number" value={dailyRate} onChange={(e) => setDailyRate(e.target.value)} placeholder="320" />
