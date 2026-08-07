@@ -97,11 +97,12 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
         const supabaseUrl = supabase.supabaseUrl;
         const { data: sessionData } = await supabase.auth.getSession();
         
-        // Pega o token da sessão ou recorre à chave pública do Supabase se necessário
         const token = sessionData?.session?.access_token || supabase.supabaseKey;
 
-        // CPF oficial de homologação/sandbox do Asaas
-        const validTestCpf = '47690623000';
+        // Limpeza inteligente do CPF: se estiver mascarado ou vazio, usa o CPF oficial de homologação do Asaas Sandbox
+        const rawCpf = currentUser?.cpf || currentUser?.cpfCnpj || '';
+        const cleanCpf = rawCpf.includes('*') ? '47690623000' : rawCpf.replace(/\D/g, '');
+        const validCpfCnpj = cleanCpf.length === 11 ? cleanCpf : '47690623000';
 
         const res = await fetch(`${supabaseUrl}/functions/v1/asaas-payment`, {
           method: 'POST',
@@ -116,7 +117,7 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
             description: `Assinatura ${planObj.label} (${periodLabel(period)})`,
             customerName: currentUser?.name || 'Rafael Ricardo Pereira',
             customerEmail: currentUser?.email || 'csdjrrp@gmail.com',
-            customerCpfCnpj: validTestCpf,
+            customerCpfCnpj: validCpfCnpj,
             externalReference: userId
           })
         });
