@@ -116,7 +116,17 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
           })
         });
 
-        const responseData = await res.json();
+        // LE O TEXTO PURO ANTES DE TENTAR CONVERTER PARA JSON
+        const rawText = await res.text();
+        console.log("STATUS HTTP:", res.status);
+        console.log("TEXTO BRUTO RETORNADO PELA EDGE FUNCTION:", rawText);
+
+        let responseData;
+        try {
+          responseData = JSON.parse(rawText);
+        } catch (e) {
+          throw new Error(`A Edge Function retornou HTML/Texto inválido (Status ${res.status}): ${rawText.substring(0, 100)}...`);
+        }
 
         if (!res.ok || !responseData.success) {
           throw new Error(responseData?.error || 'Erro ao comunicar com o gateway de pagamento.');
@@ -290,7 +300,7 @@ function BillingTypeSelector({ billingType, setBillingType, paymentReady, provid
       {!paymentReady && (
         <div className="mt-2 flex items-start gap-2 rounded-lg bg-warning-50 p-2.5 text-xs text-warning-700 dark:bg-warning-500/10 dark:text-warning-400">
           <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          <span>Pagamento via {providerLabel} não configurado. O admin precisa ativar em Painel Admin → Pagamentos. Por enquanto, apenas pagamento via carteira está disponível.</span>
+          <span>Pagamento via {providerLabel} não configurado. O admin precisa ativar em Painel Admin → Pagamentos. Por favor, utilize a carteira enquanto isso.</span>
         </div>
       )}
     </div>
