@@ -94,14 +94,17 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
         const planObj = type === 'freelancer' ? getPlan(tier as Tier, data.vipPlans) : getEstPlan(tier as EstTier, data.estVipPlans);
         const finalPrice = priceFor(planObj.prices[period]);
 
+        const supabaseUrl = supabase.supabaseUrl;
         const { data: sessionData } = await supabase.auth.getSession();
         const token = sessionData?.session?.access_token;
 
-        const response = await supabase.functions.invoke('asaas-payment', {
+        const res = await fetch(`${supabaseUrl}/functions/v1/asaas-payment`, {
+          method: 'POST',
           headers: {
-            Authorization: token ? `Bearer ${token}` : '',
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : `Bearer ${supabase.supabaseKey}`,
           },
-          body: {
+          body: JSON.stringify({
             type: 'payment',
             billingType: billingType,
             value: finalPrice,
@@ -110,32 +113,28 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
             customerEmail: currentUser?.email || 'cliente@freelaagora.com',
             customerCpfCnpj: currentUser?.cpfCnpj || '00000000000',
             externalReference: userId
-          }
+          })
         });
 
-        // Tratamento de segurança contra erros de rede ou retorno em HTML da Edge Function
-        if (response.error) {
-          throw new Error(response.error.message || 'Erro de comunicação com a Edge Function.');
-        }
+        const responseData = await res.json();
 
-        const resData = response.data;
-        if (!resData || resData.success === false) {
-          throw new Error(resData?.error || 'Erro ao processar o pagamento no gateway.');
+        if (!res.ok || !responseData.success) {
+          throw new Error(responseData?.error || 'Erro ao comunicar com o gateway de pagamento.');
         }
 
         if (billingType === 'PIX') {
-          if (!resData.encodedImage && !resData.payload) {
+          if (!responseData.encodedImage && !responseData.payload) {
             throw new Error('A API não retornou os dados do QR Code Pix.');
           }
           setPixData({
-            qrCode: resData.encodedImage ? `data:image/png;base64,${resData.encodedImage}` : '',
-            payload: resData.payload || ''
+            qrCode: responseData.encodedImage ? `data:image/png;base64,${responseData.encodedImage}` : '',
+            payload: responseData.payload || ''
           });
           notify('Cobrança PIX gerada com sucesso! Escaneie o QR Code.');
         } else if (billingType === 'BOLETO' || billingType === 'CREDIT_CARD') {
           notify('Cobrança gerada com sucesso! Redirecionando...');
-          if (resData.invoiceUrl) {
-            window.open(resData.invoiceUrl, '_blank');
+          if (responseData.invoiceUrl) {
+            window.open(responseData.invoiceUrl, '_blank');
           }
         }
       } catch (err: any) {
