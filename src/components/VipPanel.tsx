@@ -94,14 +94,21 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
         const planObj = type === 'freelancer' ? getPlan(tier as Tier, data.vipPlans) : getEstPlan(tier as EstTier, data.estVipPlans);
         const finalPrice = priceFor(planObj.prices[period]);
 
+        // Obtém o token de sessão ativo do Supabase para autorizar a Edge Function
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+
         const response = await supabase.functions.invoke('asaas-payment', {
+          headers: {
+            Authorization: token ? `Bearer ${token}` : '',
+          },
           body: {
             type: 'payment',
             billingType: billingType,
-            value: finalPrice, // Corrigido para 'value' conforme a Edge Function espera
+            value: finalPrice,
             description: `Assinatura ${planObj.label} (${periodLabel(period)})`,
             customerName: currentUser?.name || 'Cliente FreelaAgora',
-            customerEmail: currentUser?.email || 'cliente@freelaagora.com', // E-mail obrigatório para o Asaas
+            customerEmail: currentUser?.email || 'cliente@freelaagora.com',
             customerCpfCnpj: currentUser?.cpfCnpj || '00000000000',
             externalReference: userId
           }
