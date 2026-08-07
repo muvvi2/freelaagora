@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check } from 'lucide-react';
+import { Check, Upload } from 'lucide-react';
 import type { User } from '@/types';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
@@ -22,6 +22,18 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
   const [email, setEmail] = useState(establishment.email);
   const [cnpj, setCnpj] = useState(establishment.cnpj ?? '');
 
+  // Função para lidar com o carregamento do arquivo do computador/celular
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhoto(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <Modal open={open} onClose={onClose} title="Editar estabelecimento" size="lg"
       footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={onClose}>Cancelar</Button><Button fullWidth onClick={() => { updateUser(establishment.id, { name, photo, establishmentType, address: { ...establishment.address, street, city, state }, phone, whatsapp, email, cnpj }); onClose(); notify('Estabelecimento atualizado'); }}><Check className="h-4 w-4" /> Salvar</Button></div>}>
@@ -37,7 +49,29 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
         <Input label="Telefone (oculto)" value={phone} onChange={(e) => setPhone(maskPhone(e.target.value))} />
         <Input label="WhatsApp (oculto)" value={whatsapp} onChange={(e) => setWhatsapp(maskPhone(e.target.value))} />
         <div className="sm:col-span-2"><Input label="E-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-        <div className="sm:col-span-2"><Input label="URL da foto" value={photo} onChange={(e) => setPhoto(e.target.value)} /></div>
+        
+        {/* Bloco de Carregar Foto substituindo o campo de texto */}
+        <div className="sm:col-span-2 flex flex-col gap-2">
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Foto do Estabelecimento</label>
+          <div className="flex items-center gap-4">
+            <img 
+              src={photo || "https://via.placeholder.com/150"} 
+              alt="Preview" 
+              className="w-16 h-16 rounded-full object-cover border-2 border-orange-500 shadow-sm"
+            />
+            <label className="cursor-pointer bg-orange-600 hover:bg-orange-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition-all shadow flex items-center gap-2">
+              <Upload className="h-4 w-4" />
+              <span>Carregar nova foto</span>
+              <input 
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                onChange={handleFileChange} 
+              />
+            </label>
+          </div>
+        </div>
+
       </div>
     </Modal>
   );
