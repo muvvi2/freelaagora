@@ -94,7 +94,6 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
         const planObj = type === 'freelancer' ? getPlan(tier as Tier, data.vipPlans) : getEstPlan(tier as EstTier, data.estVipPlans);
         const finalPrice = priceFor(planObj.prices[period]);
 
-        // Obtém o token de sessão ativo do Supabase para autorizar a Edge Function
         const { data: sessionData } = await supabase.auth.getSession();
         const token = sessionData?.session?.access_token;
 
@@ -114,23 +113,33 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
           }
         });
 
-        if (response.error || !response.data?.success) {
-          throw new Error(response.error?.message || response.data?.error || 'Erro ao comunicar com o gateway de pagamento.');
+        // Tratamento de segurança contra erros de rede ou retorno em HTML da Edge Function
+        if (response.error) {
+          throw new Error(response.error.message || 'Erro de comunicação com a Edge Function.');
+        }
+
+        const resData = response.data;
+        if (!resData || resData.success === false) {
+          throw new Error(resData?.error || 'Erro ao processar o pagamento no gateway.');
         }
 
         if (billingType === 'PIX') {
+          if (!resData.encodedImage && !resData.payload) {
+            throw new Error('A API não retornou os dados do QR Code Pix.');
+          }
           setPixData({
-            qrCode: `data:image/png;base64,${response.data.encodedImage}`,
-            payload: response.data.payload
+            qrCode: resData.encodedImage ? `data:image/png;base64,${resData.encodedImage}` : '',
+            payload: resData.payload || ''
           });
           notify('Cobrança PIX gerada com sucesso! Escaneie o QR Code.');
         } else if (billingType === 'BOLETO' || billingType === 'CREDIT_CARD') {
           notify('Cobrança gerada com sucesso! Redirecionando...');
-          if (response.data.invoiceUrl) {
-            window.open(response.data.invoiceUrl, '_blank');
+          if (resData.invoiceUrl) {
+            window.open(resData.invoiceUrl, '_blank');
           }
         }
       } catch (err: any) {
+        console.error("Erro no pagamento:", err);
         notify(err.message || 'Erro ao processar pagamento.', 'error');
         return;
       }
