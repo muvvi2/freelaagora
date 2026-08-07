@@ -7,7 +7,7 @@ import { Button } from './ui/Button';
 import { Input, Textarea, Select } from './ui/Field';
 import { useApp } from '@/AppContext';
 import { useToast } from './ui/Toast';
-import { CATEGORIES } from '@/mockData';
+import { CATEGORIES } from '@/mockData'; // Certifique-se de que exporta o formato correto
 
 export function JobFormModal({ open, onClose, editing, establishment }: { open: boolean; onClose: () => void; editing: Job | null; establishment: User }) {
   const { addJob, updateJob } = useApp();
@@ -58,9 +58,27 @@ export function JobFormModal({ open, onClose, editing, establishment }: { open: 
       footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={onClose}>Cancelar</Button><Button fullWidth onClick={handleSave}><Check className="h-4 w-4" /> {editing ? 'Salvar' : 'Publicar'}</Button></div>}>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2"><Input label="Título da vaga" placeholder="Ex: Cobertura de sexta à noite" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
-        <Select label="Categoria" value={category} onChange={(e) => setCategory(e.target.value)}>
-          {CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+        
+        {/* Campo de Categoria Atualizado com suporte a Grupos se aplicável */}
+        <Select label="Categoria da Vaga" value={category} onChange={(e) => setCategory(e.target.value)}>
+          {CATEGORIES.map((cat) => {
+            // Se o seu mock usa estrutura de grupo com subcategorias:
+            if (cat.subcategories) {
+              return (
+                <optgroup key={cat.id || cat.name} label={cat.name || cat.label}>
+                  {cat.subcategories.map((sub) => (
+                    <option key={sub.id || sub} value={sub.id || sub}>
+                      {sub.label || sub}
+                    </option>
+                  ))}
+                </optgroup>
+              );
+            }
+            // Fallback para lista simples plana
+            return <option key={cat.id} value={cat.id}>{cat.label}</option>;
+          })}
         </Select>
+
         <Select label="Urgência" value={urgency} onChange={(e) => setUrgency(e.target.value as Urgency)}>
           {(['hoje', 'amanha', 'esta_semana'] as Urgency[]).map((u) => <option key={u} value={u}>{urgencyLabel(u)}</option>)}
         </Select>
