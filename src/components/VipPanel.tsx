@@ -98,6 +98,9 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
         const { data: sessionData } = await supabase.auth.getSession();
         const token = sessionData?.session?.access_token;
 
+        // Limpa a formatação do CPF/CNPJ (remove pontos, traços, barras)
+        const rawCpfCnpj = currentUser?.cpfCnpj ? currentUser.cpfCnpj.replace(/\D/g, '') : '';
+
         const res = await fetch(`${supabaseUrl}/functions/v1/asaas-payment`, {
           method: 'POST',
           headers: {
@@ -111,7 +114,7 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
             description: `Assinatura ${planObj.label} (${periodLabel(period)})`,
             customerName: currentUser?.name || 'Cliente FreelaAgora',
             customerEmail: currentUser?.email || 'cliente@freelaagora.com',
-            customerCpfCnpj: currentUser?.cpfCnpj || '00000000000',
+            customerCpfCnpj: rawCpfCnpj,
             externalReference: userId
           })
         });
