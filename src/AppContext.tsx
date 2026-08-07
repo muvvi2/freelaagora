@@ -119,7 +119,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const price = getPlan(tier, d.vipPlans).prices[period];
       const expiry = tier === 'free' ? undefined : new Date(Date.now() + (period === 'annual' ? 365 : period === 'semestral' ? 180 : 30) * 86400000).toISOString();
       const newTxs: WalletTx[] = price > 0 ? [{ id: uid('wt'), userId: id, type: 'vip_charge', amount: -price, description: `Assinatura ${getPlan(tier, d.vipPlans).label} (${period})`, date: new Date().toISOString() }] : [];
-      return { ...d, users: d.users.map((u) => (u.id === id ? { ...u, vipTier: tier, vipExpiresAt: expiry } : u)), walletTxs: [...newTxs, ...d.walletTxs] };
+      return {
+        ...d,
+        users: d.users.map((u) => (u.id === id ? { ...u, vipTier: tier, vipExpiresAt: expiry, walletBalance: Math.max(0, (u.walletBalance ?? 0) - price) } : u)),
+        walletTxs: [...newTxs, ...d.walletTxs]
+      };
     });
   }, [setData]);
 
@@ -128,7 +132,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const price = getEstPlan(tier, d.estVipPlans).prices[period];
       const expiry = tier === 'free' ? undefined : new Date(Date.now() + (period === 'annual' ? 365 : period === 'semestral' ? 180 : 30) * 86400000).toISOString();
       const newTxs: WalletTx[] = price > 0 ? [{ id: uid('wt'), userId: id, type: 'vip_charge_est', amount: -price, description: `Assinatura ${getEstPlan(tier, d.estVipPlans).label} (${period})`, date: new Date().toISOString() }] : [];
-      return { ...d, users: d.users.map((u) => (u.id === id ? { ...u, estVipTier: tier, estVipExpiresAt: expiry } : u)), walletTxs: [...newTxs, ...d.walletTxs] };
+      return {
+        ...d,
+        users: d.users.map((u) => (u.id === id ? { ...u, estVipTier: tier, estVipExpiresAt: expiry, walletBalance: Math.max(0, (u.walletBalance ?? 0) - price) } : u)),
+        walletTxs: [...newTxs, ...d.walletTxs]
+      };
     });
   }, [setData]);
 
@@ -317,8 +325,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const discounted = Math.round(fullPrice * (1 - coupon.discountPercentage / 100) * 100) / 100;
     setData((d) => ({ ...d, users: d.users.map((u) => {
       if (u.id !== userId) return u;
-      if (accountType === 'freelancer') { const expiry = tier === 'free' ? undefined : new Date(Date.now() + (period === 'annual' ? 365 : period === 'semestral' ? 180 : 30) * 86400000).toISOString(); return { ...u, vipTier: tier as Tier, vipExpiresAt: expiry }; }
-      const expiry = tier === 'free' ? undefined : new Date(Date.now() + (period === 'annual' ? 365 : period === 'semestral' ? 180 : 30) * 86400000).toISOString(); return { ...u, estVipTier: tier as EstTier, estVipExpiresAt: expiry };
+      if (accountType === 'freelancer') { const expiry = tier === 'free' ? undefined : new Date(Date.now() + (period === 'annual' ? 365 : period === 'semestral' ? 180 : 30) * 86400000).toISOString(); return { ...u, vipTier: tier as Tier, vipExpiresAt: expiry, walletBalance: Math.max(0, (u.walletBalance ?? 0) - discounted) }; }
+      const expiry = tier === 'free' ? undefined : new Date(Date.now() + (period === 'annual' ? 365 : period === 'semestral' ? 180 : 30) * 86400000).toISOString(); return { ...u, estVipTier: tier as EstTier, estVipExpiresAt: expiry, walletBalance: Math.max(0, (u.walletBalance ?? 0) - discounted) };
     }), walletTxs: [
       { id: uid('wt'), userId, type: 'vip_charge', amount: -discounted, description: `Assinatura ${plan.label} (${period}) com cupom ${coupon.code}`, date: new Date().toISOString() },
       { id: uid('wt'), userId, type: 'coupon_discount', amount: -(fullPrice - discounted), description: `Desconto do cupom ${coupon.code} (${coupon.discountPercentage}%)`, date: new Date().toISOString() },
