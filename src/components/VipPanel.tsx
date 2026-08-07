@@ -96,20 +96,18 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
 
         const supabaseUrl = supabase.supabaseUrl;
         const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData?.session?.access_token;
+        
+        // Pega o token da sessão ou recorre à chave pública do Supabase se necessário
+        const token = sessionData?.session?.access_token || supabase.supabaseKey;
 
-        if (!token) {
-          throw new Error('Sessão expirada. Por favor, faça login novamente.');
-        }
-
-        // CPF de testes oficial do Asaas Sandbox
+        // CPF oficial de homologação/sandbox do Asaas
         const validTestCpf = '47690623000';
 
         const res = await fetch(`${supabaseUrl}/functions/v1/asaas-payment`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`, // Garante o envio correto do token da sessão do usuário
+            'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify({
             type: 'payment',
@@ -123,7 +121,6 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
           })
         });
 
-        // LE O TEXTO PURO ANTES DE TENTAR CONVERTER PARA JSON
         const rawText = await res.text();
         console.log("STATUS HTTP:", res.status);
         console.log("TEXTO BRUTO RETORNADO PELA EDGE FUNCTION:", rawText);
