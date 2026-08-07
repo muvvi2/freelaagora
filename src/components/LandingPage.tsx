@@ -32,7 +32,7 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
         <main className="flex flex-1 flex-col items-center justify-center px-5 py-12 text-center sm:px-8">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium text-neutral-300 backdrop-blur">
             <Shield className="h-3.5 w-3.5 text-secondary-400" />
-            Pagamento seguro com garantia (escrow) via Cora
+            Pagamento seguro com garantia (escrow)
           </div>
           <h1 className="font-display text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-6xl md:text-7xl">
             Precisa de alguém?<br />
