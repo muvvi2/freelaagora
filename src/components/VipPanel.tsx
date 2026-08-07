@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Crown, Check, Sparkles, ShieldCheck, Diamond, Star, Store, Percent, Ticket } from 'lucide-react';
+import { Crown, Check, Sparkles, ShieldCheck, Diamond, Star, Store, Percent, Ticket, QrCode, CreditCard, FileText, Wallet, AlertCircle } from 'lucide-react';
 import { useApp } from '@/AppContext';
 import { useToast } from './ui/Toast';
 import { Modal } from './ui/Modal';
@@ -7,7 +7,16 @@ import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { Input } from './ui/Field';
 import { formatCurrency, periodLabel, getPlan, getEstPlan } from '@/utils';
+import { isPaymentConfigured, getActiveProviderInfo } from '@/services/paymentService';
 import type { Tier, EstTier, Period, Coupon } from '@/types';
+
+type BillingType = 'PIX' | 'BOLETO' | 'CREDIT_CARD' | 'WALLET';
+const BILLING_OPTIONS: { id: BillingType; label: string; icon: typeof QrCode }[] = [
+  { id: 'WALLET', label: 'Carteira', icon: Wallet },
+  { id: 'PIX', label: 'PIX', icon: QrCode },
+  { id: 'BOLETO', label: 'Boleto', icon: FileText },
+  { id: 'CREDIT_CARD', label: 'Cartão', icon: CreditCard },
+];
 
 const tierIcon: Record<Tier, typeof Crown> = { free: Sparkles, vip1: Star, vip2: ShieldCheck, vip3: Diamond, vip4: Diamond, vip5: Diamond, vip6: Diamond };
 const tierTone: Record<Tier, string> = {
@@ -38,6 +47,10 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [couponError, setCouponError] = useState('');
+  const [billingType, setBillingType] = useState<BillingType>('WALLET');
+
+  const paymentReady = isPaymentConfigured();
+  const providerInfo = getActiveProviderInfo();
 
   const applyCoupon = () => {
     if (!couponCode.trim()) { setCouponError('Digite um código.'); return; }
@@ -124,12 +137,16 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
 
       <Modal open={!!confirmTier} onClose={() => setConfirmTier(null)} title="Confirmar assinatura" size="sm"
         footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={() => setConfirmTier(null)}>Cancelar</Button><Button variant="warning" fullWidth onClick={() => { if (confirmTier) { if (appliedCoupon) { applyCouponToPurchase(userId, confirmTier, period, appliedCoupon, 'freelancer'); } else { setVipTier(userId, confirmTier, period); } setConfirmTier(null); setAppliedCoupon(null); setCouponCode(''); notify(`Plano ${getPlan(confirmTier, data.vipPlans).label} ativado!`); } }}><Check className="h-4 w-4" /> Confirmar</Button></div>}>
-        {confirmTier && <div className="space-y-3"><div className="flex items-center gap-3 rounded-xl bg-warning-50 p-3 dark:bg-warning-500/10"><Crown className="h-8 w-8 text-warning-500" /><div><p className="font-bold text-neutral-900 dark:text-white">{getPlan(confirmTier, data.vipPlans).label} — {periodLabel(period)}</p><p className="text-xs text-neutral-400">{appliedCoupon ? <><span className="line-through">{formatCurrency(getPlan(confirmTier, data.vipPlans).prices[period])}</span> → {formatCurrency(priceFor(getPlan(confirmTier, data.vipPlans).prices[period]))}</> : formatCurrency(getPlan(confirmTier, data.vipPlans).prices[period])}</p></div></div><p className="text-sm text-neutral-600 dark:text-neutral-300">Ao confirmar, o valor será debitado da sua carteira e seu plano será ativado imediatamente.</p></div>}
+        {confirmTier && <div className="space-y-3"><div className="flex items-center gap-3 rounded-xl bg-warning-50 p-3 dark:bg-warning-500/10"><Crown className="h-8 w-8 text-warning-500" /><div><p className="font-bold text-neutral-900 dark:text-white">{getPlan(confirmTier, data.vipPlans).label} — {periodLabel(period)}</p><p className="text-xs text-neutral-400">{appliedCoupon ? <><span className="line-through">{formatCurrency(getPlan(confirmTier, data.vipPlans).prices[period])}</span> → {formatCurrency(priceFor(getPlan(confirmTier, data.vipPlans).prices[period]))}</> : formatCurrency(getPlan(confirmTier, data.vipPlans).prices[period])}</p></div></div>
+        <BillingTypeSelector billingType={billingType} setBillingType={setBillingType} paymentReady={paymentReady} providerLabel={providerInfo.label} />
+        <p className="text-sm text-neutral-600 dark:text-neutral-300">{billingType === 'WALLET' ? 'Ao confirmar, o valor será debitado da sua carteira e seu plano será ativado imediatamente.' : `Ao confirmar, você será direcionado ao pagamento via ${providerInfo.label}.`}</p></div>}
       </Modal>
 
       <Modal open={!!confirmEstTier} onClose={() => setConfirmEstTier(null)} title="Confirmar assinatura empresarial" size="sm"
         footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={() => setConfirmEstTier(null)}>Cancelar</Button><Button variant="warning" fullWidth onClick={() => { if (confirmEstTier) { if (appliedCoupon) { applyCouponToPurchase(userId, confirmEstTier, period, appliedCoupon, 'establishment'); } else { setEstVipTier(userId, confirmEstTier, period); } setConfirmEstTier(null); setAppliedCoupon(null); setCouponCode(''); notify(`Plano ${getEstPlan(confirmEstTier, data.estVipPlans).label} ativado!`); } }}><Check className="h-4 w-4" /> Confirmar</Button></div>}>
-        {confirmEstTier && <div className="space-y-3"><div className="flex items-center gap-3 rounded-xl bg-warning-50 p-3 dark:bg-warning-500/10"><Store className="h-8 w-8 text-warning-500" /><div><p className="font-bold text-neutral-900 dark:text-white">{getEstPlan(confirmEstTier, data.estVipPlans).label} — {periodLabel(period)}</p><p className="text-xs text-neutral-400">{appliedCoupon ? <><span className="line-through">{formatCurrency(getEstPlan(confirmEstTier, data.estVipPlans).prices[period])}</span> → {formatCurrency(priceFor(getEstPlan(confirmEstTier, data.estVipPlans).prices[period]))}</> : formatCurrency(getEstPlan(confirmEstTier, data.estVipPlans).prices[period])} · Taxa: {getEstPlan(confirmEstTier, data.estVipPlans).intermediationFee}%</p></div></div><p className="text-sm text-neutral-600 dark:text-neutral-300">Ao confirmar, o valor será debitado da sua carteira e sua nova taxa de intermediação será aplicada nas próximas contratações.</p></div>}
+        {confirmEstTier && <div className="space-y-3"><div className="flex items-center gap-3 rounded-xl bg-warning-50 p-3 dark:bg-warning-500/10"><Store className="h-8 w-8 text-warning-500" /><div><p className="font-bold text-neutral-900 dark:text-white">{getEstPlan(confirmEstTier, data.estVipPlans).label} — {periodLabel(period)}</p><p className="text-xs text-neutral-400">{appliedCoupon ? <><span className="line-through">{formatCurrency(getEstPlan(confirmEstTier, data.estVipPlans).prices[period])}</span> → {formatCurrency(priceFor(getEstPlan(confirmEstTier, data.estVipPlans).prices[period]))}</> : formatCurrency(getEstPlan(confirmEstTier, data.estVipPlans).prices[period])} · Taxa: {getEstPlan(confirmEstTier, data.estVipPlans).intermediationFee}%</p></div></div>
+        <BillingTypeSelector billingType={billingType} setBillingType={setBillingType} paymentReady={paymentReady} providerLabel={providerInfo.label} />
+        <p className="text-sm text-neutral-600 dark:text-neutral-300">{billingType === 'WALLET' ? 'Ao confirmar, o valor será debitado da sua carteira e sua nova taxa de intermediação será aplicada nas próximas contratações.' : `Ao confirmar, você será direcionado ao pagamento via ${providerInfo.label}.`}</p></div>}
       </Modal>
       {/* Coupon input */}
       <div className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-800/50">
@@ -141,6 +158,32 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
         {couponError && <p className="mt-1 text-xs text-error-500">{couponError}</p>}
         {appliedCoupon && <p className="mt-1 text-xs text-success-500">Cupom {appliedCoupon.code} aplicado: {appliedCoupon.discountPercentage}% OFF</p>}
       </div>
+    </div>
+  );
+}
+
+function BillingTypeSelector({ billingType, setBillingType, paymentReady, providerLabel }: { billingType: BillingType; setBillingType: (b: BillingType) => void; paymentReady: boolean; providerLabel: string }) {
+  const options = paymentReady ? BILLING_OPTIONS : BILLING_OPTIONS.filter((o) => o.id === 'WALLET');
+  return (
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-neutral-500">Forma de pagamento</label>
+      <div className="grid grid-cols-2 gap-2">
+        {options.map((opt) => {
+          const Icon = opt.icon;
+          const active = billingType === opt.id;
+          return (
+            <button key={opt.id} type="button" onClick={() => setBillingType(opt.id)} className={`flex items-center gap-2 rounded-xl border-2 px-3 py-2.5 text-sm font-semibold transition ${active ? 'border-primary-400 bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-400' : 'border-neutral-200 text-neutral-600 hover:border-neutral-300 dark:border-neutral-700 dark:text-neutral-300'}`}>
+              <Icon className="h-4 w-4" /> {opt.label}
+            </button>
+          );
+        })}
+      </div>
+      {!paymentReady && (
+        <div className="mt-2 flex items-start gap-2 rounded-lg bg-warning-50 p-2.5 text-xs text-warning-700 dark:bg-warning-500/10 dark:text-warning-400">
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>Pagamento via {providerLabel} não configurado. O admin precisa ativar em Painel Admin → Pagamentos. Por enquanto, apenas pagamento via carteira está disponível.</span>
+        </div>
+      )}
     </div>
   );
 }

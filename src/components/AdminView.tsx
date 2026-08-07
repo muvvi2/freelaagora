@@ -379,8 +379,8 @@ export function AdminView() {
         <AdminsTab admins={data.users.filter((u) => u.isAdmin)} currentAdminId={currentUser!.id} onRemove={removeAdmin} onAdd={() => setShowAddAdmin(true)} />
       )}
 
-      {tab === 'payments' && isSuperAdmin && (
-        <PaymentsTab settings={data.paymentSettings} onSave={updatePaymentSettings} />
+      {tab === 'payments' && (
+        <PaymentsTab settings={data.paymentSettings ?? { activeProvider: 'asaas', configs: {} }} onSave={updatePaymentSettings} canEdit={isSuperAdmin} />
       )}
 
       {/* Modals */}
@@ -1068,10 +1068,10 @@ function ActionMenu({ items }: { items: { icon: typeof Pencil; label: string; on
   );
 }
 
-function PaymentsTab({ settings, onSave }: { settings: PaymentSettings; onSave: (s: PaymentSettings) => void }) {
+function PaymentsTab({ settings, onSave, canEdit }: { settings: PaymentSettings; onSave: (s: PaymentSettings) => void; canEdit: boolean }) {
   const { notify } = useToast();
-  const [activeProvider, setActiveProvider] = useState<PaymentProviderId>(settings.activeProvider);
-  const [configs, setConfigs] = useState(settings.configs);
+  const [activeProvider, setActiveProvider] = useState<PaymentProviderId>(settings.activeProvider ?? 'asaas');
+  const [configs, setConfigs] = useState(settings.configs ?? {});
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
 
   const updateConfig = (id: PaymentProviderId, field: 'apiKey' | 'env', value: string) => {
@@ -1094,7 +1094,7 @@ function PaymentsTab({ settings, onSave }: { settings: PaymentSettings; onSave: 
         {PAYMENT_PROVIDERS.map((p) => {
           const active = activeProvider === p.id;
           return (
-            <button key={p.id} onClick={() => setActiveProvider(p.id)} className={`rounded-2xl border p-4 text-left transition ${active ? 'border-primary-400 bg-primary-50 ring-2 ring-primary-400/30 dark:bg-primary-500/10' : 'border-neutral-200 hover:border-neutral-300 dark:border-neutral-700 dark:hover:border-neutral-600'}`}>
+            <button key={p.id} disabled={!canEdit} onClick={() => setActiveProvider(p.id)} className={`rounded-2xl border p-4 text-left transition ${active ? 'border-primary-400 bg-primary-50 ring-2 ring-primary-400/30 dark:bg-primary-500/10' : 'border-neutral-200 hover:border-neutral-300 dark:border-neutral-700 dark:hover:border-neutral-600'} ${!canEdit ? 'cursor-not-allowed opacity-60' : ''}`}>
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-neutral-900 dark:text-white">{p.label}</span>
                 {active && <CheckCircle2 className="h-5 w-5 text-primary-600" />}
@@ -1123,22 +1123,28 @@ function PaymentsTab({ settings, onSave }: { settings: PaymentSettings; onSave: 
             <label className="mb-1.5 block text-sm font-semibold text-neutral-700 dark:text-neutral-300">Ambiente</label>
             <div className="flex gap-2">
               {(['sandbox', 'production'] as const).map((env) => (
-                <button key={env} onClick={() => updateConfig(activeProvider, 'env', env)} className={`flex-1 rounded-lg py-2 text-sm font-semibold transition ${(configs[activeProvider]?.env ?? 'sandbox') === env ? 'bg-primary-600 text-white' : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300'}`}>{env === 'sandbox' ? 'Sandbox (Teste)' : 'Produção'}</button>
+                <button key={env} disabled={!canEdit} onClick={() => updateConfig(activeProvider, 'env', env)} className={`flex-1 rounded-lg py-2 text-sm font-semibold transition ${(configs[activeProvider]?.env ?? 'sandbox') === env ? 'bg-primary-600 text-white' : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300'} ${!canEdit ? 'cursor-not-allowed opacity-60' : ''}`}>{env === 'sandbox' ? 'Sandbox (Teste)' : 'Produção'}</button>
               ))}
             </div>
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-semibold text-neutral-700 dark:text-neutral-300">API Key</label>
             <div className="relative">
-              <input type={showKeys[activeProvider] ? 'text' : 'password'} value={configs[activeProvider]?.apiKey ?? ''} onChange={(e) => updateConfig(activeProvider, 'apiKey', e.target.value)} placeholder="$aab1234..." className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 pr-10 text-sm text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white" />
+              <input type={showKeys[activeProvider] ? 'text' : 'password'} value={configs[activeProvider]?.apiKey ?? ''} onChange={(e) => updateConfig(activeProvider, 'apiKey', e.target.value)} placeholder="$aab1234..." disabled={!canEdit} className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 pr-10 text-sm text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white disabled:cursor-not-allowed disabled:opacity-60" />
               <button type="button" onClick={() => setShowKeys((s) => ({ ...s, [activeProvider]: !s[activeProvider] }))} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400">{showKeys[activeProvider] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
             </div>
           </div>
         </div>
       </div>
 
+      {!canEdit && (
+        <div className="rounded-xl bg-warning-50 p-3 text-sm text-warning-700 dark:bg-warning-500/10 dark:text-warning-400">
+          <Lock className="mr-1.5 inline h-4 w-4" /> Apenas Super Admin pode alterar as configurações de pagamento.
+        </div>
+      )}
+
       <div className="flex justify-end">
-        <Button variant="primary" onClick={save}><CheckCircle2 className="h-4 w-4" /> Salvar configurações</Button>
+        <Button variant="primary" onClick={save} disabled={!canEdit}><CheckCircle2 className="h-4 w-4" /> Salvar configurações</Button>
       </div>
     </div>
   );

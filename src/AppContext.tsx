@@ -3,6 +3,7 @@ import { AppContext, type AppContextValue, useApp } from './context';
 import { initialData, CATEGORIES, metroNearby, emptyAvailability } from './mockData';
 import { uid, getPlan, canSelectCategories, getEstPlan, getIntermediationFeePercent, calculateFees } from './utils';
 import { supabase } from './lib/supabase';
+import { setPaymentSettings } from '@/services/paymentService';
 import type { AppData, User, Job, Contract, WalletTx, AppNotification, Review, Tier, Period, WeekAvailability, DateAvailability, ContractStatus, EstTier, TermsAcceptance, Coupon, VipPlan, EstVipPlan, PaymentSettings } from './types';
 
 export { useApp };
@@ -38,6 +39,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    setPaymentSettings(data.paymentSettings ?? { activeProvider: 'asaas', configs: {} });
+  }, [data.paymentSettings]);
 
   // Persist to Supabase whenever data changes (debounced via microtask)
   const persist = useCallback(async (next: AppData) => {
