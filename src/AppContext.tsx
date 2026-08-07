@@ -47,11 +47,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Persist to Supabase whenever data changes (debounced via microtask)
   const persist = useCallback(async (next: AppData) => {
     try {
-      await supabase
+      const { error } = await supabase
         .from('app_state')
         .upsert({ id: STATE_ID, data: next as unknown as Record<string, unknown>, updated_at: new Date().toISOString() });
+      
+      if (error) {
+        console.error("❌ Erro ao salvar no Supabase (app_state):", error.message, error.details);
+      } else {
+        console.log("✅ Estado salvo com sucesso no Supabase!");
+      }
     } catch (e) {
-      // ignore network errors
+      console.error("❌ Exceção na rede/código ao persistir:", e);
     }
   }, []);
 
