@@ -98,22 +98,26 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
         const { data: sessionData } = await supabase.auth.getSession();
         const token = sessionData?.session?.access_token;
 
-        // CPF de testes oficial do Asaas Sandbox (ignora qualquer máscara ou dado incompleto da UI)
+        if (!token) {
+          throw new Error('Sessão expirada. Por favor, faça login novamente.');
+        }
+
+        // CPF de testes oficial do Asaas Sandbox
         const validTestCpf = '47690623000';
 
         const res = await fetch(`${supabaseUrl}/functions/v1/asaas-payment`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': token ? `Bearer ${token}` : `Bearer ${supabase.supabaseKey}`,
+            'Authorization': `Bearer ${token}`, // Garante o envio correto do token da sessão do usuário
           },
           body: JSON.stringify({
             type: 'payment',
             billingType: billingType,
             value: finalPrice,
             description: `Assinatura ${planObj.label} (${periodLabel(period)})`,
-            customerName: currentUser?.name || 'Cliente FreelaAgora',
-            customerEmail: currentUser?.email || 'cliente@freelaagora.com',
+            customerName: currentUser?.name || 'Rafael Ricardo Pereira',
+            customerEmail: currentUser?.email || 'csdjrrp@gmail.com',
             customerCpfCnpj: validTestCpf,
             externalReference: userId
           })
