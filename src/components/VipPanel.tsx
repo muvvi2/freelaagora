@@ -96,13 +96,14 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
 
         const response = await supabase.functions.invoke('asaas-payment', {
           body: {
-            amount: finalPrice,
+            type: 'payment',
+            billingType: billingType,
+            value: finalPrice, // Corrigido para 'value' conforme a Edge Function espera
             description: `Assinatura ${planObj.label} (${periodLabel(period)})`,
             customerName: currentUser?.name || 'Cliente FreelaAgora',
-            cpfCnpj: currentUser?.cpfCnpj || '00000000000',
-            referenceId: userId,
-            type: 'vip',
-            billingType: billingType
+            customerEmail: currentUser?.email || 'cliente@freelaagora.com', // E-mail obrigatório para o Asaas
+            customerCpfCnpj: currentUser?.cpfCnpj || '00000000000',
+            externalReference: userId
           }
         });
 
