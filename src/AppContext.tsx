@@ -216,21 +216,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addJob = useCallback((j: Job): { ok: boolean; error?: string } => {
     if (!data) return { ok: false, error: 'Sistema carregando.' };
     
-    // 1. Acha o estabelecimento que está criando a vaga
     const est = data.users.find((u) => u.id === j.establishmentId);
     if (!est) return { ok: false, error: 'Estabelecimento não encontrado.' };
 
-    // 2. Descobre o plano atual do estabelecimento
     const plan = getEstPlan(est.estVipTier ?? 'free', data.estVipPlans);
-
-    // 3. Verifica período de teste (Trial) — limitando estritamente a 10 vagas no trial
     const isOnTrial = est.trialEndsAt && new Date(est.trialEndsAt) > new Date();
     const effectiveMaxJobs = isOnTrial ? 10 : plan.maxActiveJobs;
 
-    // 4. Conta quantas vagas ativas o estabelecimento já possui (tudo que não estiver fechado)
     const activeJobsCount = data.jobs.filter((job) => job.establishmentId === est.id && job.status !== 'closed').length;
 
-    // 5. BLOQUEIO GLOBAL: Se atingiu ou passou do limite, rejeita a criação!
     if (activeJobsCount >= effectiveMaxJobs) {
       return { 
         ok: false, 
