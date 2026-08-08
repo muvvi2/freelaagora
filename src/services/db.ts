@@ -235,7 +235,7 @@ const STATUS_FROM_DB: Record<string, string> = {
   canceled: 'cancelled',
 };
 
-// Mapeamento exato de IDs para Freelancer (1=free, 2=vip1, 3=vip2, 4=vip3, 5=vip4...)
+// Mapeamento ID Fixo por Tiers para Freelancer
 function freelancerTierToId(tier: string): number {
   switch (tier) {
     case 'free': return 1;
@@ -249,11 +249,11 @@ function freelancerTierToId(tier: string): number {
   }
 }
 
-// Mapeamento exato de IDs para Estabelecimento (4=free, 5=vip1, 6=vip2, 7=vip3, 8=vip4...)
+// Mapeamento ID Fixo por Tiers para Estabelecimento (Free=4, VIP1=5, VIP2=6, VIP3=7)
 function establishmentTierToId(tier: string): number {
   switch (tier) {
     case 'free': return 4;
-    case 'trial': return 999; // ID fictício para o trial não buscar o ID 4 do banco e não clonar o Gratuito
+    case 'trial': return 999; // Trial gerido via app, não vai para tabela
     case 'vip1': return 5;
     case 'vip2': return 6;
     case 'vip3': return 7;
@@ -621,7 +621,7 @@ export async function dbDeleteVipPlan(tier: Tier): Promise<void> {
 
 export async function dbUpsertEstVipPlan(plan: EstVipPlan): Promise<void> {
   const planId = establishmentTierToId(plan.tier);
-  if (planId === 999) return; // O Trial é gerido pelo sistema e não precisa ir para o banco
+  if (planId === 999) return;
   const { error } = await supabase.from('vip_plans_establishment').upsert({
     id: planId,
     name: plan.label,
@@ -642,7 +642,7 @@ export async function dbDeleteEstVipPlan(tier: EstTier): Promise<void> {
 }
 
 // ============================================================
-// LOAD ALL DATA
+// LOAD ALL DATA (BLINDADO E LIMPO)
 // ============================================================
 export async function loadAllData(): Promise<AppData> {
   const [
@@ -767,7 +767,7 @@ export async function loadAllData(): Promise<AppData> {
     createdAt: row.created_at,
   }));
 
-  // Sincroniza os planos de freelancer respeitando exatamente os IDs do Supabase
+  // Sincroniza rigidamente com os IDs oficiais, mapeando os dados do Supabase
   const vipPlans: VipPlan[] = VIP_PLANS.map(plan => {
     const targetId = freelancerTierToId(plan.tier);
     const dbPlan = vipFlRes.data?.find((p: any) => p.id === targetId);
@@ -787,10 +787,9 @@ export async function loadAllData(): Promise<AppData> {
     return plan;
   });
 
-  // Sincroniza os planos de estabelecimento sem deixar o Trial copiar o Gratuito (ID 4)
   const estVipPlans: EstVipPlan[] = EST_VIP_PLANS.map(plan => {
     const targetId = establishmentTierToId(plan.tier);
-    if (targetId === 999) return plan; // Mantém o Trial original do mockData intacto
+    if (targetId === 999) return plan; // Mantém o Trial original limpo e isolado
     const dbPlan = vipEsRes.data?.find((p: any) => p.id === targetId);
     if (dbPlan) {
       return {
@@ -802,7 +801,6 @@ export async function loadAllData(): Promise<AppData> {
           semestral: Number(dbPlan.semestral_price ?? plan.prices.semestral),
           annual: Number(dbPlan.annual_price ?? plan.prices.annual),
         },
-        allowAds: ['vip4', 'vip5', 'vip6', 'vip7'].includes(plan.tier),
       };
     }
     return plan;
