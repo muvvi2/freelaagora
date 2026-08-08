@@ -93,6 +93,16 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
 
   const handleProceedPayment = async (tier: Tier | EstTier, type: 'freelancer' | 'establishment') => {
     if (billingType === 'WALLET') {
+      const planObj = type === 'freelancer' ? getPlan(tier as Tier, data.vipPlans) : getEstPlan(tier as EstTier, data.estVipPlans);
+      const finalPrice = priceFor(planObj.prices[period]);
+      const userBalance = currentUser?.walletBalance ?? 0;
+
+      // Validação estrita de saldo na carteira
+      if (finalPrice > 0 && userBalance < finalPrice) {
+        notify(`Saldo insuficiente na carteira! Necessário: ${formatCurrency(finalPrice)} (Disponível: ${formatCurrency(userBalance)})`, 'error');
+        return;
+      }
+
       if (type === 'freelancer') {
         const t = tier as Tier;
         if (appliedCoupon) {
