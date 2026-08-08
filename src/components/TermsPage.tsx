@@ -94,7 +94,14 @@ function DynamicEstablishmentPlansList() {
   return (
     <div className="space-y-3 ml-2">
       {data.estVipPlans.map((plan: EstVipPlan) => {
-        const jobsLimit = plan.maxActiveJobs ?? (plan.tier === 'free' ? 2 : plan.tier === 'vip1' ? 5 : plan.tier === 'vip2' ? 20 : 999);
+        let jobsLimit = plan.maxActiveJobs;
+        if (!jobsLimit || jobsLimit <= 0) {
+          if (plan.tier === 'free') jobsLimit = 2;
+          else if (plan.tier === 'vip1') jobsLimit = 5;
+          else if (plan.tier === 'vip2') jobsLimit = 20;
+          else jobsLimit = 999;
+        }
+
         return (
           <div key={plan.tier}>
             <p className="font-semibold text-neutral-900 dark:text-white">
