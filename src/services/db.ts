@@ -624,7 +624,6 @@ export async function loadAllData(): Promise<AppData> {
     usersRes, flProfilesRes, esProfilesRes, flCategoriesRes, flAvailRes,
     contractsRes, eventsRes, contractReviewsRes, walletRes, notifRes,
     jobsRes, applicantsRes, couponsRes, auditRes, configRes, paymentRes,
-    vipFlRes, vipEsRes,
   ] = await Promise.all([
     supabase.from('users').select('*'),
     supabase.from('freelancer_profiles').select('*'),
@@ -642,8 +641,6 @@ export async function loadAllData(): Promise<AppData> {
     supabase.from('admin_audit_logs').select('*').order('created_at', { ascending: false }),
     supabase.from('platform_config').select('*').limit(1).maybeSingle(),
     supabase.from('payment_settings').select('*').limit(1).maybeSingle(),
-    supabase.from('vip_plans_freelancer').select('*'),
-    supabase.from('vip_plans_establishment').select('*'),
   ]);
 
   const usersRows = (usersRes.data ?? []) as unknown as DbUser[];
@@ -742,44 +739,9 @@ export async function loadAllData(): Promise<AppData> {
     createdAt: row.created_at,
   }));
 
-  let vipPlans: VipPlan[] = VIP_PLANS;
-  if (vipFlRes.data && vipFlRes.data.length > 0) {
-    vipPlans = vipFlRes.data.map((p: any) => {
-      const tierKey = p.id === 5 ? 'vip1' : p.id === 6 ? 'vip2' : p.id === 7 ? 'vip3' : p.id === 8 ? 'vip4' : p.id === 9 ? 'vip5' : p.id === 10 ? 'vip6' : 'free';
-      return {
-        tier: tierKey as Tier,
-        label: p.name || `VIP ${p.id}`,
-        maxCategories: p.max_categories || 5,
-        prices: {
-          monthly: Number(p.monthly_price || 0),
-          semestral: Number(p.semestral_price || 0),
-          annual: Number(p.annual_price || 0),
-        },
-        badge: p.badge_type || undefined,
-        features: ['Plano personalizado'],
-      };
-    });
-  }
-
-  let estVipPlans: EstVipPlan[] = EST_VIP_PLANS;
-  if (vipEsRes.data && vipEsRes.data.length > 0) {
-    estVipPlans = vipEsRes.data.map((p: any) => {
-      const tierKey = p.id === 5 ? 'vip1' : p.id === 6 ? 'vip2' : p.id === 7 ? 'vip3' : p.id === 8 ? 'vip4' : p.id === 9 ? 'vip5' : p.id === 10 ? 'vip6' : 'free';
-      return {
-        tier: tierKey as EstTier,
-        label: p.name || `VIP ${p.id}`,
-        intermediationFee: Number(p.intermediation_fee_percentage || 0),
-        maxActiveJobs: 999,
-        allowAds: ['vip4', 'vip5', 'vip6'].includes(tierKey),
-        prices: {
-          monthly: Number(p.monthly_price || 0),
-          semestral: Number(p.semestral_price || 0),
-          annual: Number(p.annual_price || 0),
-        },
-        features: ['Plano personalizado'],
-      };
-    });
-  }
+  // Mantém rigorosamente os planos originais do mockData (VIP_PLANS e EST_VIP_PLANS) preservando nome, trial e benefícios
+  const vipPlans: VipPlan[] = VIP_PLANS;
+  const estVipPlans: EstVipPlan[] = EST_VIP_PLANS;
 
   let paymentSettings: PaymentSettings = { activeProvider: 'asaas', configs: {} };
   if (paymentRes.data) {
