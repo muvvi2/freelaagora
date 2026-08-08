@@ -32,26 +32,6 @@ export function JobFormModal({ open, onClose, editing, establishment }: { open: 
       notify('Vaga atualizada');
       onClose();
     } else {
-      // 1. Identifica o tier atual do estabelecimento (ex: 'free', 'vip1', 'vip2', 'vip3')
-      const tierKey = currentEstablishment.estVipTier ?? 'free';
-
-      // 2. Busca o limite de vagas diretamente no array global de planos do app para evitar falhas do utilitário
-      const matchedPlan = data.estVipPlans?.find((p) => p.tier === tierKey);
-      const planMaxJobs = matchedPlan ? matchedPlan.maxActiveJobs : (tierKey === 'free' ? 2 : tierKey === 'vip1' ? 5 : tierKey === 'vip2' ? 10 : 999);
-
-      // 3. Período de teste (Trial) — restringe a 10 vagas no trial
-      const isOnTrial = currentEstablishment.trialEndsAt && new Date(currentEstablishment.trialEndsAt) > new Date();
-      const effectiveMaxJobs = isOnTrial ? 10 : planMaxJobs;
-
-      // 4. Conta quantas vagas ativas o estabelecimento possui (tudo que não estiver fechado)
-      const activeJobsCount = data.jobs.filter((j) => j.establishmentId === currentEstablishment.id && j.status !== 'closed').length;
-
-      // 5. BLOQUEIO SE O LIMITE FOR ATINGIDO
-      if (activeJobsCount >= effectiveMaxJobs) {
-        notify(`Limite atingido! ${isOnTrial ? 'Seu período de teste permite até 10 vagas ativas.' : `Seu plano atual permite até ${effectiveMaxJobs} vagas ativas.`} Faça um upgrade para o VIP para publicar mais.`, 'error');
-        return; 
-      }
-
       const job: Job = {
         id: uid('job'),
         establishmentId: currentEstablishment.id,
@@ -72,7 +52,16 @@ export function JobFormModal({ open, onClose, editing, establishment }: { open: 
         createdAt: new Date().toISOString(),
       };
 
-      addJob(job);
+      // Envia para o contexto global e captura a resposta de segurança da trava
+      const result = addJob(job);
+
+      if (result && !result.ok) {
+        // Se a trava global recusar, exibe o erro e BLOQUEIA o fechamento do modal
+        notify(result.error ?? 'Limite de vagas atingido para o seu plano.', 'error');
+        return; 
+      }
+
+      // Só avisa e fecha se o contexto realmente permitiu
       notify('Vaga urgente publicada no feed!');
       onClose();
     }
