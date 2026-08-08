@@ -214,13 +214,13 @@ export function AdminView() {
                 <div className="flex items-center gap-3">
                   <Avatar src={e.photo} alt={e.name} size={48} ring={e.estVipTier && e.estVipTier !== 'free' ? 'vip' : 'neutral'} vipBadge={e.estVipTier === 'vip2' || e.estVipTier === 'vip3'} />
                   <div>
-                    <div className="flex items-center gap-2"><p className="font-semibold text-neutral-900 dark:text-white">{e.name}</p>{e.estVipTier && e.estVipTier !== 'free' && <Badge tone="vip"><Crown className="h-3 w-3" /> {getEstPlan(e.estVipTier, data.estVipPlans).label}</Badge>}{e.banned && <Badge tone="error">Banido</Badge>}</div>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-neutral-400"><span>{e.establishmentType}</span><span>{e.address.city}, {e.address.state}</span><span>{e.email}</span>{e.cnpj && <span>CNPJ: {maskDocumentDisplay(e.cnpj)}</span>}{e.estVipExpiresAt && <span className="text-warning-500">VIP expira: {formatDate(e.estVipExpiresAt)}</span>}</div>
+                    <div className="flex items-center gap-2"><p className="font-semibold text-neutral-900 dark:text-white">{e.name}</p>{e.estVipTier && <Badge tone={e.estVipTier === 'trial' ? 'neutral' : 'vip'}><Crown className="h-3 w-3" /> {getEstPlan(e.estVipTier, data.estVipPlans).label}</Badge>}{e.banned && <Badge tone="error">Banido</Badge>}</div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-neutral-400"><span>{e.establishmentType}</span><span>{e.address.city}, {e.address.state}</span><span>{e.email}</span>{e.cnpj && <span>CNPJ: {maskDocumentDisplay(e.cnpj)}</span>}{e.estVipExpiresAt && <span className="text-warning-500">VIP/Trial expira: {formatDate(e.estVipExpiresAt)}</span>}</div>
                   </div>
                 </div>
                 <ActionMenu items={[
                   { icon: Pencil, label: 'Editar', onClick: () => setEditUser(e) },
-                  { icon: Crown, label: 'Gerenciar VIP', onClick: () => setVipTarget(e) },
+                  { icon: Crown, label: 'Gerenciar VIP / Plano', onClick: () => setVipTarget(e) },
                   ...(isSuperAdmin ? [{ icon: DollarSign, label: 'Ajustar carteira', onClick: () => setWalletTarget(e) }] : []),
                   ...(e.banned
                     ? [{ icon: CheckCircle2, label: 'Desbanir', onClick: () => { unbanUser(e.id); notify('Desbanido'); } }]
@@ -601,15 +601,15 @@ function AdminVipModal({ user, open, onClose }: { user: User; open: boolean; onC
     } else {
       setVipTier(user.id, tier);
     }
-    notify('Plano VIP atualizado com sucesso!');
+    notify('Plano VIP / Trial atualizado com sucesso!');
     onClose();
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={`Gerenciar VIP — ${user.name}`} size="sm"
+    <Modal open={open} onClose={onClose} title={`Gerenciar Plano — ${user.name}`} size="sm"
       footer={<div className="flex gap-2"><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={save}><Crown className="h-4 w-4" /> Salvar</Button></div>}>
       <div className="space-y-4">
-        <Select label="Plano VIP" value={tier} onChange={(e) => setTier(e.target.value)}>
+        <Select label="Selecionar Plano" value={tier} onChange={(e) => setTier(e.target.value)}>
           {isEst ? data.estVipPlans.map((p) => <option key={p.tier} value={p.tier}>{p.label}</option>) : data.vipPlans.map((p) => <option key={p.tier} value={p.tier}>{p.label}</option>)}
         </Select>
       </div>
@@ -876,7 +876,7 @@ function VipPlanEditor({ plan, onUpdate, onRemove, isEst }: {
 }) {
   const { notify } = useToast();
   const [expanded, setExpanded] = useState(false);
-  const canDelete = plan.tier !== 'free';
+  const canDelete = plan.tier !== 'free' && plan.tier !== 'trial';
 
   return (
     <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
@@ -900,7 +900,7 @@ function VipPlanEditor({ plan, onUpdate, onRemove, isEst }: {
             {isEst && (
               <>
                 <Input label="Taxa de intermediação (%)" type="number" step="0.5" value={String((plan as EstVipPlan).intermediationFee)} onChange={(e) => onUpdate({ intermediationFee: Number(e.target.value) || 0 } as Partial<EstVipPlan>)} />
-                <Input label="Máx. vagas ativas (999 = ilimitado)" type="number" value={String((plan as EstVipPlan).maxActiveJobs ?? 2)} onChange={(e) => onUpdate({ maxActiveJobs: Number(e.target.value) || 0 } as Partial<EstVipPlan>)} />
+                <Input label="Máx. vagas semanais (999 = ilimitado)" type="number" value={String((plan as EstVipPlan).maxActiveJobs ?? 2)} onChange={(e) => onUpdate({ maxActiveJobs: Number(e.target.value) || 0 } as Partial<EstVipPlan>)} />
               </>
             )}
           </div>
