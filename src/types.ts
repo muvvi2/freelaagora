@@ -3,7 +3,7 @@
 // ============================================================
 
 export type Tier = 'free' | 'vip1' | 'vip2' | 'vip3' | 'vip4' | 'vip5' | 'vip6';
-export type EstTier = 'free' | 'vip1' | 'vip2' | 'vip3' | 'vip4' | 'vip5' | 'vip6';
+export type EstTier = 'free' | 'trial' | 'vip1' | 'vip2' | 'vip3' | 'vip4' | 'vip5' | 'vip6';
 export type Period = 'monthly' | 'semestral' | 'annual';
 export type AccountType = 'freelancer' | 'establishment';
 
@@ -118,6 +118,7 @@ export interface EstVipPlan {
   tier: EstTier;
   label: string;
   intermediationFee: number;
+  maxActiveJobs: number; // <--- Limite semanal de vagas configurável por plano
   features: string[];
   prices: Record<Period, number>;
 }
