@@ -21,6 +21,16 @@ import type { Contract, User, Tier, EstTier, ContractStatus, ShiftSlot, Period, 
 
 type Tab = 'overview' | 'freelancers' | 'establishments' | 'contracts' | 'jobs' | 'reviews' | 'coupons' | 'audit' | 'wallet' | 'vip' | 'admins';
 
+const getPlanTierColor = (tier: string) => {
+  if (tier === 'vip6') return 'text-rose-500';
+  if (tier === 'vip5') return 'text-purple-500';
+  if (tier === 'vip4') return 'text-amber-500';
+  if (tier === 'vip3') return 'text-warning-500';
+  if (tier === 'vip2') return 'text-secondary-500';
+  if (tier === 'vip1') return 'text-primary-500';
+  return 'text-neutral-400';
+};
+
 export function AdminView() {
   const { data, currentUser, isSuperAdmin, overrideContractStatus, forceRefund, resetData, banUser, unbanUser, deleteEntity, adminWalletTxs, coupons, addCoupon, toggleCoupon, deleteCoupon, auditLogs, deleteReview, broadcastNotification, deleteJob, updateJob, updateVipPlan, addVipPlan, removeVipPlan, updateEstVipPlan, addEstVipPlan, removeEstVipPlan, adminTab: tab, adminRemoveAdmin, adminUpdateAdmin, adminUpdateUser } = useApp();
   const { notify } = useToast();
@@ -850,7 +860,7 @@ function VipPlanEditor({ plan, onUpdate, onRemove, isEst }: {
     <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
       <div className="flex items-center justify-between gap-2">
         <button onClick={() => setExpanded(!expanded)} className="flex items-center gap-2 text-left">
-          <Crown className={`h-4 w-4 ${plan.tier === 'vip3' ? 'text-warning-500' : plan.tier === 'vip2' ? 'text-secondary-500' : plan.tier === 'vip1' ? 'text-primary-500' : 'text-neutral-400'}`} />
+          <Crown className={`h-4 w-4 ${getPlanTierColor(plan.tier)}`} />
           <span className="font-semibold text-neutral-900 dark:text-white">{plan.label}</span>
           <Badge tone={plan.tier === 'free' ? 'neutral' : 'vip'}>{plan.tier.toUpperCase()}</Badge>
           {isEst && estPlan?.allowAds && <Badge tone="success"><ImageIcon className="h-3 w-3" /> Anúncios Ativos na Home/Widgets</Badge>}
