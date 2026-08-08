@@ -259,7 +259,7 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
         </div>
       )}
 
-      {/* Painel de Gerenciamento de Anúncios Dinâmico e Verificado pelo Admin */}
+      {/* Painel de Gerenciamento de Anúncios Dinâmico e 100% configurado pelo Painel Admin */}
       {accountType === 'establishment' && (
         (() => {
           const activeEstPlan = data.estVipPlans.find(p => p.tier === (currentUser?.estVipTier ?? 'free'));
@@ -276,11 +276,11 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
                   <h3 className="font-display font-bold text-neutral-900 dark:text-white">Gerenciamento de Anúncios ({activeEstPlan?.label ?? currentUser?.estVipTier?.toUpperCase()})</h3>
                 </div>
                 <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300">
-                  Limite: {maxAllowedAds} anúncio(s)
+                  Limite configurado: {maxAllowedAds} anúncio(s)
                 </span>
               </div>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-4">
-                Seu plano atual dá direito a publicar até {maxAllowedAds} imagem(ns) de propaganda em nossa rede de exibições (carrossel e widgets).
+                Seu plano atual permite publicar até {maxAllowedAds} imagem(ns) de propaganda em nossa rede de exibições (carrossel e widgets).
               </p>
 
               <div className="mb-4 rounded-xl bg-amber-500/10 p-3 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300 space-y-1">
