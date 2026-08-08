@@ -1,0 +1,1060 @@
+import { supabase } from '@/lib/supabase';
+import { CATEGORIES, VIP_PLANS, EST_VIP_PLANS } from '@/mockData';
+import { emptyAvailability, fullAvailability } from '@/mockData';
+import type {
+  User, Job, Contract, WalletTx, AppNotification, Review,
+  AppData, WeekAvailability, DateAvailability, DayKey, Tier, EstTier,
+  PaymentSettings, PaymentProviderId, PaymentProviderConfig,
+} from '@/types';
+
+const DAY_KEYS: DayKey[] = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+const DAY_INDEX: Record<DayKey, number> = { dom: 0, seg: 1, ter: 2, qua: 3, qui: 4, sex: 5, sab: 6 };
+const INDEX_TO_DAY: Record<number, DayKey> = { 0: 'dom', 1: 'seg', 2: 'ter', 3: 'qua', 4: 'qui', 5: 'sex', 6: 'sab' };
+
+export interface DbUser {
+  id: string;
+  email: string;
+  password: string;
+  user_type: string;
+  full_name: string;
+  photo_url: string | null;
+  document_cpf: string | null;
+  document_cnpj: string | null;
+  whatsapp: string;
+  phone_contact: string | null;
+  city: string;
+  state: string;
+  banned: boolean;
+  created_at: string;
+  nickname: string | null;
+  document_verified: boolean;
+  terms_acceptance_json: Record<string, unknown> | null;
+  last_admin_edit: string | null;
+  address_cep: string | null;
+  address_street: string | null;
+  address_number: string | null;
+  address_complement: string | null;
+  address_neighborhood: string | null;
+  address_lat: number | null;
+  address_lng: number | null;
+  service_radius_km: number | null;
+  accepts_interstate: boolean;
+  establishment_type: string | null;
+  bio: string | null;
+  hourly_rate: number | null;
+  daily_rate: number | null;
+  pix_key: string | null;
+  asaas_wallet_id: string | null;
+  rating_average: number;
+  reviews_count: number;
+  completed_shifts: number;
+  vip_tier: string;
+  est_vip_tier: string;
+  vip_expires_at: string | null;
+  est_vip_expires_at: string | null;
+  wallet_balance: number;
+  is_admin: boolean;
+  admin_role: string | null;
+  trial_ends_at: string | null;
+}
+
+export interface DbFreelancerProfile {
+  user_id: string;
+  bio: string | null;
+  specialties: string[] | null;
+  hourly_rate: number | null;
+  daily_rate: number | null;
+  pix_key: string | null;
+  vip_plan_id: number | null;
+  vip_expires_at: string | null;
+  rating_average: number;
+  reviews_count: number;
+  completed_shifts: number;
+  wallet_balance: number;
+  is_verified: boolean;
+  service_radius_km: number | null;
+  accepts_interstate: boolean;
+}
+
+export interface DbEstablishmentProfile {
+  user_id: string;
+  company_description: string | null;
+  establishment_type: string | null;
+  address: string | null;
+  vip_plan_id: number | null;
+  vip_expires_at: string | null;
+  rating_average: number;
+  reviews_count: number;
+  wallet_balance: number;
+  address_cep: string | null;
+  address_street: string | null;
+  address_number: string | null;
+  address_complement: string | null;
+  address_neighborhood: string | null;
+  address_city: string | null;
+  address_state: string | null;
+  address_lat: number | null;
+  address_lng: number | null;
+}
+
+export interface DbFreelancerCategory {
+  freelancer_id: string;
+  category_id: number;
+}
+
+export interface DbFreelancerAvailability {
+  id: string;
+  freelancer_id: string;
+  day_of_week: number;
+  shift_morning: boolean;
+  shift_afternoon: boolean;
+  shift_night: boolean;
+  specific_date: string | null;
+}
+
+export interface DbContract {
+  id: string;
+  establishment_id: string;
+  freelancer_id: string;
+  job_id: string | null;
+  contract_date: string;
+  shifts_contracted: string;
+  hours_contracted: number;
+  total_freelancer_value: number;
+  platform_fee_percentage: number;
+  platform_fee_value: number;
+  total_amount_paid: number;
+  status: string;
+  cora_invoice_id: string | null;
+  created_at: string;
+  category: string | null;
+  freelancer_name: string | null;
+  establishment_name: string | null;
+  freelancer_photo: string | null;
+  freelancer_phone: string | null;
+  freelancer_whatsapp: string | null;
+  review_from_establishment_id: string | null;
+  review_from_freelancer_id: string | null;
+}
+
+export interface DbContractEvent {
+  id: string;
+  contract_id: string;
+  status: string;
+  note: string | null;
+  created_at: string;
+}
+
+export interface DbContractReview {
+  id: string;
+  contract_id: string;
+  from_user_id: string;
+  to_user_id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+}
+
+export interface DbWalletTx {
+  id: string;
+  user_id: string;
+  type: string;
+  amount: number;
+  description: string | null;
+  contract_id: string | null;
+  created_at: string;
+}
+
+export interface DbNotification {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  read: boolean;
+  contract_id: string | null;
+  created_at: string;
+}
+
+export interface DbJob {
+  id: string;
+  establishment_id: string;
+  category_id: number | null;
+  title: string;
+  description: string | null;
+  job_date: string;
+  start_time: string;
+  hours: number;
+  value: number;
+  urgency: string;
+  status: string;
+  city: string | null;
+  state: string | null;
+  created_at: string;
+  establishment_name: string | null;
+  establishment_photo: string | null;
+}
+
+export interface DbJobApplicant {
+  job_id: string;
+  freelancer_id: string;
+  created_at: string;
+}
+
+export interface DbCoupon {
+  id: number;
+  code: string;
+  discount_percentage: number;
+  is_active: boolean;
+  expires_at: string | null;
+  created_at: string;
+}
+
+export interface DbAuditLog {
+  id: string;
+  admin_id: string | null;
+  action_performed: string;
+  target_user_id: string | null;
+  created_at: string;
+}
+
+const STATUS_TO_DB: Record<string, string> = {
+  requested: 'pending_admin_check',
+  confirmed: 'accepted_by_freela',
+  paid: 'paid_escrow',
+  checked_in: 'check_in_done',
+  completed: 'completed_split',
+  cancelled: 'canceled',
+};
+const STATUS_FROM_DB: Record<string, string> = {
+  pending_admin_check: 'requested',
+  accepted_by_freela: 'confirmed',
+  paid_escrow: 'paid',
+  check_in_done: 'checked_in',
+  completed_split: 'completed',
+  canceled: 'cancelled',
+};
+
+const VIP_TIER_MAP: Record<string, number> = { free: 1, vip1: 2, vip2: 3, vip3: 4, vip4: 5, vip5: 6, vip6: 7 };
+const VIP_ID_TO_TIER: Record<number, Tier> = { 1: 'free', 2: 'vip1', 3: 'vip2', 4: 'vip3', 5: 'vip4', 6: 'vip5', 7: 'vip6' };
+const EST_VIP_ID_TO_TIER: Record<number, EstTier> = { 1: 'free', 2: 'vip1', 3: 'vip2', 4: 'vip3', 5: 'vip4', 6: 'vip5', 7: 'vip6' };
+
+function categorySlugToId(slug: string): number | null {
+  const cat = CATEGORIES.find((c) => c.id === slug);
+  if (!cat) return null;
+  const idx = CATEGORIES.indexOf(cat) + 1;
+  return idx;
+}
+
+function categoryIdToSlug(id: number): string {
+  if (id >= 1 && id <= CATEGORIES.length) return CATEGORIES[id - 1].id;
+  return 'geral';
+}
+
+function mapDbUserToUser(
+  row: DbUser,
+  flProfile?: DbFreelancerProfile | null,
+  esProfile?: DbEstablishmentProfile | null,
+  categories?: string[],
+  availability?: WeekAvailability,
+  dateAvailability?: DateAvailability,
+): User {
+  const address = {
+    cep: esProfile?.address_cep ?? row.address_cep ?? '',
+    street: esProfile?.address_street ?? row.address_street ?? '',
+    number: esProfile?.address_number ?? row.address_number ?? '',
+    complement: esProfile?.address_complement ?? row.address_complement,
+    neighborhood: esProfile?.address_neighborhood ?? row.address_neighborhood ?? '',
+    city: esProfile?.address_city ?? row.city,
+    state: esProfile?.address_state ?? row.state,
+    lat: esProfile?.address_lat ?? row.address_lat ?? undefined,
+    lng: esProfile?.address_lng ?? row.address_lng ?? undefined,
+  };
+
+  const isFreelancer = row.user_type === 'freelancer' || (row.user_type === 'admin' && !row.establishment_type);
+  const isEstablishment = row.user_type === 'establishment';
+
+  return {
+    id: row.id,
+    accountType: row.user_type === 'admin' ? 'freelancer' : (row.user_type as 'freelancer' | 'establishment'),
+    email: row.email,
+    password: row.password,
+    name: row.full_name,
+    nickname: row.nickname ?? undefined,
+    photo: row.photo_url ?? '',
+    phone: row.phone_contact ?? row.whatsapp ?? '',
+    whatsapp: row.whatsapp,
+    address,
+    cpf: row.document_cpf ?? undefined,
+    cnpj: row.document_cnpj ?? undefined,
+    asaasWalletId: row.asaas_wallet_id ?? undefined,
+    bio: flProfile?.bio ?? row.bio ?? undefined,
+    specialties: flProfile?.specialties ?? undefined,
+    hourlyRate: flProfile?.hourly_rate ?? row.hourly_rate ?? undefined,
+    dailyRate: flProfile?.daily_rate ?? row.daily_rate ?? undefined,
+    pixKey: flProfile?.pix_key ?? row.pix_key ?? undefined,
+    rating: row.rating_average ?? flProfile?.rating_average ?? (esProfile?.rating_average ?? 0),
+    reviewsCount: row.reviews_count ?? flProfile?.reviews_count ?? (esProfile?.reviews_count ?? 0),
+    completedShifts: row.completed_shifts ?? flProfile?.completed_shifts ?? 0,
+    vipTier: isFreelancer ? (row.vip_tier as Tier) : undefined,
+    vipExpiresAt: isFreelancer ? (row.vip_expires_at ?? undefined) : undefined,
+    categories: isFreelancer ? (categories ?? []) : undefined,
+    availability: isFreelancer ? (availability ?? emptyAvailability()) : undefined,
+    dateAvailability: isFreelancer ? (dateAvailability ?? undefined) : undefined,
+    walletBalance: row.wallet_balance ?? flProfile?.wallet_balance ?? esProfile?.wallet_balance ?? 0,
+    documentVerified: row.document_verified ?? flProfile?.is_verified ?? false,
+    serviceRadiusKm: flProfile?.service_radius_km ?? row.service_radius_km ?? undefined,
+    acceptsInterstate: flProfile?.accepts_interstate ?? row.accepts_interstate ?? false,
+    establishmentType: isEstablishment ? (esProfile?.establishment_type ?? row.establishment_type ?? undefined) : undefined,
+    estVipTier: isEstablishment ? (row.est_vip_tier as EstTier) : undefined,
+    estVipExpiresAt: isEstablishment ? (row.est_vip_expires_at ?? undefined) : undefined,
+    trialEndsAt: isEstablishment ? (row.trial_ends_at ?? undefined) : undefined,
+    isAdmin: row.is_admin ?? row.user_type === 'admin',
+    adminRole: row.admin_role === 'super' || row.admin_role === 'regular' ? row.admin_role : undefined,
+    banned: row.banned ?? false,
+    termsAcceptance: row.terms_acceptance_json as { timestamp: string; ip: string; userAgent: string; legalVersion: string } | undefined,
+    lastAdminEdit: row.last_admin_edit ?? undefined,
+    createdAt: row.created_at,
+  };
+}
+
+function mapUserToDbUser(user: User): Partial<DbUser> {
+  return {
+    id: user.id,
+    email: user.email,
+    password: user.password,
+    user_type: user.isAdmin ? 'admin' : user.accountType,
+    full_name: user.name,
+    photo_url: user.photo,
+    document_cpf: user.cpf ?? null,
+    document_cnpj: user.cnpj ?? null,
+    whatsapp: user.whatsapp,
+    phone_contact: user.phone,
+    city: user.address.city,
+    state: user.address.state,
+    banned: user.banned ?? false,
+    nickname: user.nickname ?? null,
+    document_verified: user.documentVerified ?? false,
+    terms_acceptance_json: (user.termsAcceptance as Record<string, unknown>) ?? null,
+    last_admin_edit: user.lastAdminEdit ?? null,
+    address_cep: user.address.cep ?? null,
+    address_street: user.address.street ?? null,
+    address_number: user.address.number ?? null,
+    address_complement: user.address.complement ?? null,
+    address_neighborhood: user.address.neighborhood ?? null,
+    address_lat: user.address.lat ?? null,
+    address_lng: user.address.lng ?? null,
+    service_radius_km: user.serviceRadiusKm ?? null,
+    accepts_interstate: user.acceptsInterstate ?? false,
+    establishment_type: user.establishmentType ?? null,
+    bio: user.bio ?? null,
+    hourly_rate: user.hourlyRate ?? null,
+    daily_rate: user.dailyRate ?? null,
+    pix_key: user.pixKey ?? null,
+    asaas_wallet_id: user.asaasWalletId ?? null,
+    rating_average: user.rating ?? 0,
+    reviews_count: user.reviewsCount ?? 0,
+    completed_shifts: user.completedShifts ?? 0,
+    vip_tier: user.vipTier ?? 'free',
+    est_vip_tier: user.estVipTier ?? 'free',
+    vip_expires_at: user.vipExpiresAt ?? null,
+    est_vip_expires_at: user.estVipExpiresAt ?? null,
+    wallet_balance: user.walletBalance ?? 0,
+    is_admin: user.isAdmin ?? false,
+    admin_role: user.adminRole ?? null,
+    trial_ends_at: user.trialEndsAt ?? null,
+  };
+}
+
+function mapUserToFlProfile(user: User): Partial<DbFreelancerProfile> {
+  return {
+    user_id: user.id,
+    bio: user.bio ?? null,
+    specialties: user.specialties ?? null,
+    hourly_rate: user.hourlyRate ?? 0,
+    daily_rate: user.dailyRate ?? 0,
+    pix_key: user.pixKey ?? null,
+    vip_plan_id: user.vipTier ? VIP_TIER_MAP[user.vipTier] : 1,
+    vip_expires_at: user.vipExpiresAt ?? null,
+    rating_average: user.rating ?? 5,
+    reviews_count: user.reviewsCount ?? 0,
+    completed_shifts: user.completedShifts ?? 0,
+    wallet_balance: user.walletBalance ?? 0,
+    is_verified: user.documentVerified ?? false,
+    service_radius_km: user.serviceRadiusKm ?? 25,
+    accepts_interstate: user.acceptsInterstate ?? false,
+  };
+}
+
+function mapUserToEsProfile(user: User): Partial<DbEstablishmentProfile> {
+  return {
+    user_id: user.id,
+    company_description: user.bio ?? null,
+    establishment_type: user.establishmentType ?? null,
+    address: `${user.address.street}, ${user.address.number}`,
+    vip_plan_id: user.estVipTier ? VIP_TIER_MAP[user.estVipTier] : 1,
+    vip_expires_at: user.estVipExpiresAt ?? null,
+    rating_average: user.rating ?? 0,
+    reviews_count: user.reviewsCount ?? 0,
+    wallet_balance: user.walletBalance ?? 0,
+    address_cep: user.address.cep ?? null,
+    address_street: user.address.street ?? null,
+    address_number: user.address.number ?? null,
+    address_complement: user.address.complement ?? null,
+    address_neighborhood: user.address.neighborhood ?? null,
+    address_city: user.address.city ?? null,
+    address_state: user.address.state ?? null,
+    address_lat: user.address.lat ?? null,
+    address_lng: user.address.lng ?? null,
+  };
+}
+
+function mapAvailabilityToRows(userId: string, av: WeekAvailability): Array<{ freelancer_id: string; day_of_week: number; shift_morning: boolean; shift_afternoon: boolean; shift_night: boolean; specific_date: null }> {
+  return DAY_KEYS.map((day) => ({
+    freelancer_id: userId,
+    day_of_week: DAY_INDEX[day],
+    shift_morning: av[day]?.manha ?? false,
+    shift_afternoon: av[day]?.tarde ?? false,
+    shift_night: av[day]?.noite ?? false,
+    specific_date: null,
+  }));
+}
+
+function mapRowsToAvailability(rows: DbFreelancerAvailability[]): WeekAvailability {
+  const av = emptyAvailability();
+  for (const row of rows) {
+    if (row.specific_date) continue;
+    const day = INDEX_TO_DAY[row.day_of_week];
+    if (day) {
+      av[day] = {
+        manha: row.shift_morning,
+        tarde: row.shift_afternoon,
+        noite: row.shift_night,
+      };
+    }
+  }
+  return av;
+}
+
+function mapRowsToDateAvailability(rows: DbFreelancerAvailability[]): DateAvailability {
+  const da: DateAvailability = {};
+  for (const row of rows) {
+    if (!row.specific_date) continue;
+    da[row.specific_date] = {
+      manha: row.shift_morning,
+      tarde: row.shift_afternoon,
+      noite: row.shift_night,
+    };
+  }
+  return da;
+}
+
+function mapDbContractToContract(
+  row: DbContract,
+  events: DbContractEvent[],
+  reviews: DbContractReview[],
+): Contract {
+  const reviewFromEst = reviews.find((r) => r.id === row.review_from_establishment_id);
+  const reviewFromFl = reviews.find((r) => r.id === row.review_from_freelancer_id);
+
+  const mapReview = (r: DbContractReview | undefined): Review | undefined => {
+    if (!r) return undefined;
+    return {
+      id: r.id,
+      fromId: r.from_user_id,
+      fromName: '',
+      toId: r.to_user_id,
+      rating: r.rating,
+      comment: r.comment ?? '',
+      date: r.created_at,
+    };
+  };
+
+  return {
+    id: row.id,
+    jobId: row.job_id,
+    establishmentId: row.establishment_id,
+    establishmentName: row.establishment_name ?? '',
+    freelancerId: row.freelancer_id,
+    freelancerName: row.freelancer_name ?? '',
+    freelancerPhoto: row.freelancer_photo ?? '',
+    freelancerPhone: row.freelancer_phone ?? '',
+    freelancerWhatsapp: row.freelancer_whatsapp ?? '',
+    category: row.category ?? 'geral',
+    date: row.contract_date,
+    hours: row.hours_contracted,
+    freelancerFee: Number(row.total_freelancer_value),
+    platformFeePercentage: Number(row.platform_fee_percentage),
+    platformFee: Number(row.platform_fee_value),
+    total: Number(row.total_amount_paid),
+    status: (STATUS_FROM_DB[row.status] ?? 'requested') as Contract['status'],
+    coraInvoiceId: row.cora_invoice_id ?? undefined,
+    createdAt: row.created_at,
+    history: events.map((e) => ({
+      status: (STATUS_FROM_DB[e.status] ?? 'requested') as Contract['status'],
+      at: e.created_at,
+      note: e.note ?? undefined,
+    })),
+    reviewFromEstablishment: mapReview(reviewFromEst),
+    reviewFromFreelancer: mapReview(reviewFromFl),
+  };
+}
+
+function mapContractToDbRow(c: Contract): Partial<DbContract> {
+  return {
+    id: c.id,
+    establishment_id: c.establishmentId,
+    freelancer_id: c.freelancerId,
+    job_id: c.jobId,
+    contract_date: c.date.slice(0, 10),
+    shifts_contracted: 'manha',
+    hours_contracted: c.hours,
+    total_freelancer_value: c.freelancerFee,
+    platform_fee_percentage: c.platformFeePercentage,
+    platform_fee_value: c.platformFee,
+    total_amount_paid: c.total,
+    status: STATUS_TO_DB[c.status] ?? 'pending_admin_check',
+    cora_invoice_id: c.coraInvoiceId ?? null,
+    created_at: c.createdAt,
+    category: c.category,
+    freelancer_name: c.freelancerName,
+    establishment_name: c.establishmentName,
+    freelancer_photo: c.freelancerPhoto,
+    freelancer_phone: c.freelancerPhone,
+    freelancer_whatsapp: c.freelancerWhatsapp,
+  };
+}
+
+function mapDbJobToJob(row: DbJob, applicants: string[]): Job {
+  return {
+    id: row.id,
+    establishmentId: row.establishment_id,
+    establishmentName: row.establishment_name ?? '',
+    establishmentPhoto: row.establishment_photo ?? '',
+    category: row.category_id ? categoryIdToSlug(row.category_id) : 'geral',
+    title: row.title,
+    description: row.description ?? '',
+    date: row.job_date,
+    startTime: row.start_time,
+    hours: row.hours,
+    value: Number(row.value),
+    urgency: (row.urgency as Job['urgency']) ?? 'esta_semana',
+    status: (row.status as Job['status']) ?? 'active',
+    city: row.city ?? '',
+    state: row.state ?? '',
+    applicants,
+    createdAt: row.created_at,
+  };
+}
+
+function mapJobToDbRow(j: Job): Partial<DbJob> {
+  return {
+    id: j.id,
+    establishment_id: j.establishmentId,
+    category_id: categorySlugToId(j.category),
+    title: j.title,
+    description: j.description,
+    job_date: j.date.slice(0, 10),
+    start_time: j.startTime,
+    hours: j.hours,
+    value: j.value,
+    urgency: j.urgency,
+    status: j.status,
+    city: j.city,
+    state: j.state,
+    created_at: j.createdAt,
+    establishment_name: j.establishmentName,
+    establishment_photo: j.establishmentPhoto,
+  };
+}
+
+// ============================================================
+// LOAD ALL DATA
+// ============================================================
+export async function loadAllData(): Promise<AppData> {
+  const [
+    usersRes, flProfilesRes, esProfilesRes, flCategoriesRes, flAvailRes,
+    contractsRes, eventsRes, contractReviewsRes, walletRes, notifRes,
+    jobsRes, applicantsRes, couponsRes, auditRes, configRes, paymentRes,
+  ] = await Promise.all([
+    supabase.from('users').select('*'),
+    supabase.from('freelancer_profiles').select('*'),
+    supabase.from('establishment_profiles').select('*'),
+    supabase.from('freelancer_categories').select('*'),
+    supabase.from('freelancer_availability').select('*'),
+    supabase.from('contracts').select('*'),
+    supabase.from('contract_events').select('*'),
+    supabase.from('contract_reviews').select('*'),
+    supabase.from('wallet_transactions').select('*'),
+    supabase.from('notifications').select('*'),
+    supabase.from('jobs').select('*'),
+    supabase.from('job_applicants').select('*'),
+    supabase.from('discount_coupons').select('*'),
+    supabase.from('admin_audit_logs').select('*').order('created_at', { ascending: false }),
+    supabase.from('platform_config').select('*').limit(1).maybeSingle(),
+    supabase.from('payment_settings').select('*').limit(1).maybeSingle(),
+  ]);
+
+  const usersRows = (usersRes.data ?? []) as unknown as DbUser[];
+  const flProfiles = (flProfilesRes.data ?? []) as unknown as DbFreelancerProfile[];
+  const esProfiles = (esProfilesRes.data ?? []) as unknown as DbEstablishmentProfile[];
+  const flCategories = (flCategoriesRes.data ?? []) as unknown as DbFreelancerCategory[];
+  const flAvail = (flAvailRes.data ?? []) as unknown as DbFreelancerAvailability[];
+  const contractsRows = (contractsRes.data ?? []) as unknown as DbContract[];
+  const eventsRows = (eventsRes.data ?? []) as unknown as DbContractEvent[];
+  const contractReviewsRows = (contractReviewsRes.data ?? []) as unknown as DbContractReview[];
+  const walletRows = (walletRes.data ?? []) as unknown as DbWalletTx[];
+  const notifRows = (notifRes.data ?? []) as unknown as DbNotification[];
+  const jobsRows = (jobsRes.data ?? []) as unknown as DbJob[];
+  const applicantsRows = (applicantsRes.data ?? []) as unknown as DbJobApplicant[];
+  const couponRows = (couponsRes.data ?? []) as unknown as DbCoupon[];
+  const auditRows = (auditRes.data ?? []) as unknown as DbAuditLog[];
+
+  const users: User[] = usersRows.map((row) => {
+    const flProfile = flProfiles.find((p) => p.user_id === row.id);
+    const esProfile = esProfiles.find((p) => p.user_id === row.id);
+    const userCatIds = flCategories.filter((c) => c.freelancer_id === row.id).map((c) => categoryIdToSlug(c.category_id));
+    const userAvailRows = flAvail.filter((a) => a.freelancer_id === row.id);
+    const availability = mapRowsToAvailability(userAvailRows);
+    const dateAvailability = mapRowsToDateAvailability(userAvailRows);
+    return mapDbUserToUser(row, flProfile, esProfile, userCatIds, availability, dateAvailability);
+  });
+
+  const eventsByContract = new Map<string, DbContractEvent[]>();
+  for (const e of eventsRows) {
+    const arr = eventsByContract.get(e.contract_id) ?? [];
+    arr.push(e);
+    eventsByContract.set(e.contract_id, arr);
+  }
+
+  const contracts: Contract[] = contractsRows.map((row) =>
+    mapDbContractToContract(row, eventsByContract.get(row.id) ?? [], contractReviewsRows),
+  );
+
+  const applicantsByJob = new Map<string, string[]>();
+  for (const a of applicantsRows) {
+    const arr = applicantsByJob.get(a.job_id) ?? [];
+    arr.push(a.freelancer_id);
+    applicantsByJob.set(a.job_id, arr);
+  }
+
+  const jobs: Job[] = jobsRows.map((row) => mapDbJobToJob(row, applicantsByJob.get(row.id) ?? []));
+
+  const walletTxs: WalletTx[] = walletRows.map((row) => ({
+    id: row.id,
+    userId: row.user_id,
+    type: row.type as WalletTx['type'],
+    amount: Number(row.amount),
+    description: row.description ?? '',
+    contractId: row.contract_id ?? undefined,
+    date: row.created_at,
+  }));
+
+  const notifications: AppNotification[] = notifRows.map((row) => ({
+    id: row.id,
+    userId: row.user_id,
+    type: row.type as AppNotification['type'],
+    title: row.title,
+    body: row.body ?? '',
+    read: row.read,
+    date: row.created_at,
+    contractId: row.contract_id ?? undefined,
+  }));
+
+  const reviews: Review[] = contractReviewsRows.map((row) => {
+    const fromUser = users.find((u) => u.id === row.from_user_id);
+    return {
+      id: row.id,
+      fromId: row.from_user_id,
+      fromName: fromUser?.name ?? '',
+      toId: row.to_user_id,
+      rating: row.rating,
+      comment: row.comment ?? '',
+      date: row.created_at,
+    };
+  });
+
+  const coupons = couponRows.map((row) => ({
+    id: String(row.id),
+    code: row.code,
+    discountPercentage: Number(row.discount_percentage),
+    isActive: row.is_active,
+    expiresAt: row.expires_at ?? undefined,
+    createdAt: row.created_at,
+  }));
+
+  const adminAuditLogs = auditRows.map((row) => ({
+    id: row.id,
+    adminId: row.admin_id ?? '',
+    action: row.action_performed,
+    targetUserId: row.target_user_id ?? undefined,
+    createdAt: row.created_at,
+  }));
+
+  let paymentSettings: PaymentSettings = { activeProvider: 'asaas', configs: {} };
+  if (paymentRes.data) {
+    const ps = paymentRes.data as { active_provider: string; configs: Record<string, unknown> };
+    const configs: Partial<Record<PaymentProviderId, PaymentProviderConfig>> = {};
+    if (ps.configs) {
+      for (const [key, val] of Object.entries(ps.configs)) {
+        if (val && typeof val === 'object') {
+          const v = val as { apiKey?: string; env?: string };
+          configs[key as PaymentProviderId] = {
+            apiKey: v.apiKey ?? '',
+            env: (v.env as 'sandbox' | 'production') ?? 'sandbox',
+          };
+        }
+      }
+    }
+    paymentSettings = {
+      activeProvider: (ps.active_provider as PaymentProviderId) ?? 'asaas',
+      configs,
+    };
+  }
+
+  return {
+    users,
+    jobs,
+    contracts,
+    walletTxs,
+    notifications,
+    reviews,
+    coupons,
+    adminAuditLogs,
+    config: { defaultFeePercent: configRes.data ? Number((configRes.data as { default_fee_percent: number }).default_fee_percent) : 15.0 },
+    paymentSettings,
+    currentUserId: null,
+    vipPlans: VIP_PLANS,
+    estVipPlans: EST_VIP_PLANS,
+  };
+}
+
+// ============================================================
+// USER OPERATIONS
+// ============================================================
+export async function dbInsertUser(user: User): Promise<void> {
+  const dbUser = mapUserToDbUser(user);
+  const { error } = await supabase.from('users').insert(dbUser as never);
+  if (error) throw new Error(`Erro ao inserir usuário: ${error.message}`);
+
+  if (user.accountType === 'freelancer') {
+    const flProfile = mapUserToFlProfile(user);
+    const { error: e2 } = await supabase.from('freelancer_profiles').insert(flProfile as never);
+    if (e2) throw new Error(`Erro ao inserir perfil freelancer: ${e2.message}`);
+
+    if (user.categories && user.categories.length > 0) {
+      const catRows = user.categories.map((cat) => ({
+        freelancer_id: user.id,
+        category_id: categorySlugToId(cat),
+      })).filter((r) => r.category_id !== null);
+      if (catRows.length > 0) {
+        const { error: e3 } = await supabase.from('freelancer_categories').insert(catRows as never);
+        if (e3) throw new Error(`Erro ao inserir categorias: ${e3.message}`);
+      }
+    }
+
+    if (user.availability) {
+      const avRows = mapAvailabilityToRows(user.id, user.availability);
+      const { error: e4 } = await supabase.from('freelancer_availability').insert(avRows as never);
+      if (e4) throw new Error(`Erro ao inserir disponibilidade: ${e4.message}`);
+    }
+  } else if (user.accountType === 'establishment') {
+    const esProfile = mapUserToEsProfile(user);
+    const { error: e2 } = await supabase.from('establishment_profiles').insert(esProfile as never);
+    if (e2) throw new Error(`Erro ao inserir perfil estabelecimento: ${e2.message}`);
+  }
+}
+
+export async function dbUpdateUser(id: string, patch: Partial<User>): Promise<void> {
+  const fullUser: User = {
+    id,
+    accountType: 'freelancer',
+    email: '',
+    password: '',
+    name: '',
+    photo: '',
+    phone: '',
+    whatsapp: '',
+    address: { cep: '', street: '', number: '', neighborhood: '', city: '', state: '' },
+    createdAt: '',
+    ...patch,
+  } as User;
+
+  const dbUser = mapUserToDbUser(fullUser);
+  const { error } = await supabase.from('users').update(dbUser as never).eq('id', id);
+  if (error) throw new Error(`Erro ao atualizar usuário: ${error.message}`);
+
+  if (patch.accountType === 'freelancer' || patch.bio !== undefined || patch.hourlyRate !== undefined || patch.dailyRate !== undefined || patch.pixKey !== undefined || patch.specialties !== undefined || patch.walletBalance !== undefined || patch.rating !== undefined || patch.reviewsCount !== undefined || patch.completedShifts !== undefined || patch.vipTier !== undefined || patch.vipExpiresAt !== undefined || patch.documentVerified !== undefined || patch.serviceRadiusKm !== undefined || patch.acceptsInterstate !== undefined) {
+    const flProfile = mapUserToFlProfile(fullUser);
+    const { error: e2 } = await supabase.from('freelancer_profiles').upsert(flProfile as never).eq('user_id', id);
+    if (e2) throw new Error(`Erro ao atualizar perfil freelancer: ${e2.message}`);
+  }
+
+  if (patch.accountType === 'establishment' || patch.establishmentType !== undefined || patch.walletBalance !== undefined || patch.rating !== undefined || patch.reviewsCount !== undefined || patch.estVipTier !== undefined || patch.estVipExpiresAt !== undefined || patch.address !== undefined) {
+    const esProfile = mapUserToEsProfile(fullUser);
+    const { error: e2 } = await supabase.from('establishment_profiles').upsert(esProfile as never).eq('user_id', id);
+    if (e2) throw new Error(`Erro ao atualizar perfil estabelecimento: ${e2.message}`);
+  }
+
+  if (patch.categories !== undefined) {
+    await supabase.from('freelancer_categories').delete().eq('freelancer_id', id);
+    if (patch.categories.length > 0) {
+      const catRows = patch.categories.map((cat) => ({
+        freelancer_id: id,
+        category_id: categorySlugToId(cat),
+      })).filter((r) => r.category_id !== null);
+      if (catRows.length > 0) {
+        await supabase.from('freelancer_categories').insert(catRows as never);
+      }
+    }
+  }
+
+  if (patch.availability !== undefined) {
+    await supabase.from('freelancer_availability').delete().eq('freelancer_id', id).is('specific_date', null);
+    const avRows = mapAvailabilityToRows(id, patch.availability);
+    await supabase.from('freelancer_availability').insert(avRows as never);
+  }
+
+  if (patch.dateAvailability !== undefined) {
+    await supabase.from('freelancer_availability').delete().eq('freelancer_id', id).not('specific_date', 'is', null);
+    const dateRows = Object.entries(patch.dateAvailability).map(([dateKey, shifts]) => ({
+      freelancer_id: id,
+      day_of_week: new Date(dateKey).getDay(),
+      shift_morning: shifts.manha,
+      shift_afternoon: shifts.tarde,
+      shift_night: shifts.noite,
+      specific_date: dateKey,
+    }));
+    if (dateRows.length > 0) {
+      await supabase.from('freelancer_availability').insert(dateRows as never);
+    }
+  }
+}
+
+export async function dbDeleteUser(id: string): Promise<void> {
+  const { error } = await supabase.from('users').delete().eq('id', id);
+  if (error) throw new Error(`Erro ao deletar usuário: ${error.message}`);
+}
+
+// ============================================================
+// JOB OPERATIONS
+// ============================================================
+export async function dbInsertJob(job: Job): Promise<void> {
+  const row = mapJobToDbRow(job);
+  const { error } = await supabase.from('jobs').insert(row as never);
+  if (error) throw new Error(`Erro ao inserir vaga: ${error.message}`);
+}
+
+export async function dbUpdateJob(id: string, patch: Partial<Job>): Promise<void> {
+  const updateRow: Record<string, unknown> = {};
+  if (patch.title !== undefined) updateRow.title = patch.title;
+  if (patch.description !== undefined) updateRow.description = patch.description;
+  if (patch.date !== undefined) updateRow.job_date = patch.date.slice(0, 10);
+  if (patch.startTime !== undefined) updateRow.start_time = patch.startTime;
+  if (patch.hours !== undefined) updateRow.hours = patch.hours;
+  if (patch.value !== undefined) updateRow.value = patch.value;
+  if (patch.urgency !== undefined) updateRow.urgency = patch.urgency;
+  if (patch.status !== undefined) updateRow.status = patch.status;
+  if (patch.city !== undefined) updateRow.city = patch.city;
+  if (patch.state !== undefined) updateRow.state = patch.state;
+  if (patch.category !== undefined) updateRow.category_id = categorySlugToId(patch.category);
+  if (patch.establishmentName !== undefined) updateRow.establishment_name = patch.establishmentName;
+  if (patch.establishmentPhoto !== undefined) updateRow.establishment_photo = patch.establishmentPhoto;
+
+  if (Object.keys(updateRow).length > 0) {
+    const { error } = await supabase.from('jobs').update(updateRow).eq('id', id);
+    if (error) throw new Error(`Erro ao atualizar vaga: ${error.message}`);
+  }
+}
+
+export async function dbDeleteJob(id: string): Promise<void> {
+  const { error } = await supabase.from('jobs').delete().eq('id', id);
+  if (error) throw new Error(`Erro ao deletar vaga: ${error.message}`);
+}
+
+export async function dbApplyToJob(jobId: string, freelancerId: string): Promise<void> {
+  const { error } = await supabase.from('job_applicants').insert({ job_id: jobId, freelancer_id: freelancerId } as never);
+  if (error && !error.message.includes('duplicate')) throw new Error(`Erro ao candidatar: ${error.message}`);
+}
+
+// ============================================================
+// CONTRACT OPERATIONS
+// ============================================================
+export async function dbInsertContract(contract: Contract): Promise<void> {
+  const row = mapContractToDbRow(contract);
+  const { error } = await supabase.from('contracts').insert(row as never);
+  if (error) throw new Error(`Erro ao inserir contrato: ${error.message}`);
+
+  for (const evt of contract.history) {
+    const { error: e2 } = await supabase.from('contract_events').insert({
+      contract_id: contract.id,
+      status: STATUS_TO_DB[evt.status] ?? evt.status,
+      note: evt.note ?? null,
+      created_at: evt.at,
+    } as never);
+    if (e2) throw new Error(`Erro ao inserir evento: ${e2.message}`);
+  }
+}
+
+export async function dbUpdateContractStatus(contractId: string, status: string, note?: string): Promise<void> {
+  const dbStatus = STATUS_TO_DB[status] ?? status;
+  const { error } = await supabase.from('contracts').update({ status: dbStatus }).eq('id', contractId);
+  if (error) throw new Error(`Erro ao atualizar contrato: ${error.message}`);
+
+  const { error: e2 } = await supabase.from('contract_events').insert({
+    contract_id: contractId,
+    status: dbStatus,
+    note: note ?? null,
+  } as never);
+  if (e2) throw new Error(`Erro ao inserir evento: ${e2.message}`);
+}
+
+export async function dbUpdateContractInvoice(contractId: string, invoiceId: string): Promise<void> {
+  const { error } = await supabase.from('contracts').update({ cora_invoice_id: invoiceId }).eq('id', contractId);
+  if (error) throw new Error(`Erro ao atualizar fatura: ${error.message}`);
+}
+
+// ============================================================
+// WALLET OPERATIONS
+// ============================================================
+export async function dbInsertWalletTx(tx: WalletTx): Promise<void> {
+  const { error } = await supabase.from('wallet_transactions').insert({
+    id: tx.id,
+    user_id: tx.userId,
+    type: tx.type,
+    amount: tx.amount,
+    description: tx.description,
+    contract_id: tx.contractId ?? null,
+    created_at: tx.date,
+  } as never);
+  if (error) throw new Error(`Erro ao inserir transação: ${error.message}`);
+}
+
+export async function dbUpdateWalletBalance(userId: string, newBalance: number): Promise<void> {
+  const { error } = await supabase.from('users').update({ wallet_balance: newBalance }).eq('id', userId);
+  if (error) throw new Error(`Erro ao atualizar saldo: ${error.message}`);
+
+  const { error: e2 } = await supabase.from('freelancer_profiles').update({ wallet_balance: newBalance }).eq('user_id', userId);
+  if (e2 && !e2.message.includes('no rows')) { /* may not have a profile */ }
+  const { error: e3 } = await supabase.from('establishment_profiles').update({ wallet_balance: newBalance }).eq('user_id', userId);
+  if (e3 && !e3.message.includes('no rows')) { /* may not have a profile */ }
+}
+
+// ============================================================
+// NOTIFICATION OPERATIONS
+// ============================================================
+export async function dbInsertNotification(n: AppNotification): Promise<void> {
+  const { error } = await supabase.from('notifications').insert({
+    id: n.id,
+    user_id: n.userId,
+    type: n.type,
+    title: n.title,
+    body: n.body,
+    read: n.read,
+    contract_id: n.contractId ?? null,
+    created_at: n.date,
+  } as never);
+  if (error) throw new Error(`Erro ao inserir notificação: ${error.message}`);
+}
+
+export async function dbMarkNotificationRead(id: string): Promise<void> {
+  const { error } = await supabase.from('notifications').update({ read: true }).eq('id', id);
+  if (error) throw new Error(`Erro ao marcar notificação: ${error.message}`);
+}
+
+export async function dbMarkAllNotificationsRead(userId: string): Promise<void> {
+  const { error } = await supabase.from('notifications').update({ read: true }).eq('user_id', userId);
+  if (error) throw new Error(`Erro ao marcar notificações: ${error.message}`);
+}
+
+// ============================================================
+// REVIEW OPERATIONS
+// ============================================================
+export async function dbInsertReview(review: Review, contractId: string, fromEstablishment: boolean): Promise<void> {
+  const { data, error } = await supabase.from('contract_reviews').insert({
+    id: review.id,
+    contract_id: contractId,
+    from_user_id: review.fromId,
+    to_user_id: review.toId,
+    rating: review.rating,
+    comment: review.comment,
+    created_at: review.date,
+  } as never).select().single();
+  if (error) throw new Error(`Erro ao inserir avaliação: ${error.message}`);
+
+  const reviewId = (data as { id: string }).id;
+  const updateCol = fromEstablishment ? 'review_from_establishment_id' : 'review_from_freelancer_id';
+  const { error: e2 } = await supabase.from('contracts').update({ [updateCol]: reviewId }).eq('id', contractId);
+  if (e2) throw new Error(`Erro ao vincular avaliação: ${e2.message}`);
+}
+
+export async function dbDeleteReview(reviewId: string, fromEstablishment: boolean, contractId: string): Promise<void> {
+  const updateCol = fromEstablishment ? 'review_from_establishment_id' : 'review_from_freelancer_id';
+  await supabase.from('contracts').update({ [updateCol]: null }).eq('id', contractId);
+  const { error } = await supabase.from('contract_reviews').delete().eq('id', reviewId);
+  if (error) throw new Error(`Erro ao deletar avaliação: ${error.message}`);
+}
+
+// ============================================================
+// COUPON OPERATIONS
+// ============================================================
+export async function dbInsertCoupon(coupon: { code: string; discountPercentage: number; isActive: boolean; expiresAt?: string }): Promise<void> {
+  const { error } = await supabase.from('discount_coupons').insert({
+    code: coupon.code,
+    discount_percentage: coupon.discountPercentage,
+    is_active: coupon.isActive,
+    expires_at: coupon.expiresAt ?? null,
+  } as never);
+  if (error) throw new Error(`Erro ao inserir cupom: ${error.message}`);
+}
+
+export async function dbToggleCoupon(id: string): Promise<void> {
+  const { data } = await supabase.from('discount_coupons').select('is_active').eq('id', Number(id)).single();
+  if (data) {
+    const { error } = await supabase.from('discount_coupons').update({ is_active: !(data as { is_active: boolean }).is_active }).eq('id', Number(id));
+    if (error) throw new Error(`Erro ao alternar cupom: ${error.message}`);
+  }
+}
+
+export async function dbDeleteCoupon(id: string): Promise<void> {
+  const { error } = await supabase.from('discount_coupons').delete().eq('id', Number(id));
+  if (error) throw new Error(`Erro ao deletar cupom: ${error.message}`);
+}
+
+// ============================================================
+// AUDIT LOG OPERATIONS
+// ============================================================
+export async function dbInsertAuditLog(log: { id: string; adminId: string; action: string; targetUserId?: string; createdAt: string }): Promise<void> {
+  const { error } = await supabase.from('admin_audit_logs').insert({
+    id: log.id,
+    admin_id: log.adminId,
+    action_performed: log.action,
+    target_user_id: log.targetUserId ?? null,
+    created_at: log.createdAt,
+  } as never);
+  if (error) throw new Error(`Erro ao inserir log: ${error.message}`);
+}
+
+// ============================================================
+// CONFIG OPERATIONS
+// ============================================================
+export async function dbUpdateDefaultFeePercent(value: number): Promise<void> {
+  const { error } = await supabase.from('platform_config').update({ default_fee_percent: value }).eq('id', 1);
+  if (error) throw new Error(`Erro ao atualizar taxa: ${error.message}`);
+}
+
+// ============================================================
+// PAYMENT SETTINGS OPERATIONS
+// ============================================================
+export async function dbUpdatePaymentSettings(settings: PaymentSettings): Promise<void> {
+  const configs: Record<string, unknown> = {};
+  for (const [key, val] of Object.entries(settings.configs)) {
+    if (val) configs[key] = { apiKey: val.apiKey, env: val.env };
+  }
+  const { error } = await supabase.from('payment_settings').update({
+    active_provider: settings.activeProvider,
+    configs,
+    updated_at: new Date().toISOString(),
+  }).eq('id', 1);
+  if (error) throw new Error(`Erro ao atualizar pagamentos: ${error.message}`);
+}
