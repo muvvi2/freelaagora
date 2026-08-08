@@ -12,12 +12,12 @@ const ADMIN_ID = 'admin1';
 const STATE_ID = 'freelaagora';
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [data, setDataState] = useState<AppData>(initialData);
+  const [data, setDataState] = useState<AppData | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [adminTab, setAdminTab] = useState('overview');
   const [adminMode, setAdminMode] = useState(true);
 
-  // Load state from Supabase on mount with robust handling
+  // Load state strictly from Supabase on mount, falling back to initialData only if empty/new
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -33,9 +33,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (!cancelled && row?.data && Object.keys(row.data).length > 0) {
           setDataState(row.data as AppData);
           console.log("✅ Estado carregado com sucesso do Supabase!");
+        } else {
+          // Se a tabela estiver vazia, inicializa com o initialData e já salva no banco
+          setDataState(initialData);
+          await supabase.from('app_state').upsert({ id: STATE_ID, data: initialData as unknown as Record<string, unknown>, updated_at: new Date().toISOString() });
+          console.log("📌 Tabela vazia. Inicializado com dados padrão.");
         }
       } catch (e) {
-        console.warn("⚠️ Não foi possível carregar do Supabase, usando dados iniciais locais:", e);
+        console.warn("⚠️ Falha ao carregar do Supabase, usando fallback local:", e);
+        setDataState(initialData);
       } finally {
         if (!cancelled) setLoaded(true);
       }
@@ -44,8 +50,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    setPaymentSettings(data.paymentSettings ?? { activeProvider: 'asaas', configs: {} });
-  }, [data.paymentSettings]);
+    if (data?.paymentSettings) {
+      setPaymentSettings(data.paymentSettings ?? { activeProvider: 'asaas', configs: {} });
+    }
+  }, [data?.paymentSettings]);
 
   // Persist to Supabase whenever data changes with clear console feedback
   const persist = useCallback(async (next: AppData) => {
@@ -66,6 +74,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const setData = useCallback((updater: AppData | ((prev: AppData) => AppData)) => {
     setDataState((prev) => {
+      if (!prev) return prev;
       const next = typeof updater === 'function' ? (updater as (p: AppData) => AppData)(prev) : updater;
       void persist(next);
       return next;
@@ -77,21 +86,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     void persist(initialData);
   }, [persist]);
 
-  const currentUser = useMemo(() => data.users.find((u) => u.id === data.currentUserId) ?? null, [data.users, data.currentUserId]);
+  const currentUser = useMemo(() => data?.users.find((u) => u.id === data.currentUserId) ?? null, [data?.users, data?.currentUserId]);
   const isAdmin = !!currentUser?.isAdmin;
   const isSuperAdmin = !!currentUser?.isAdmin && currentUser?.adminRole === 'super';
   const currentAdminId = currentUser?.id ?? ADMIN_ID;
 
   const login = useCallback((email: string, password: string): { ok: boolean; error?: string } => {
+    if (!data) return { ok: false, error: 'Sistema ainda carregando.' };
     const user = data.users.find((u) => u.email.toLowerCase() === email.toLowerCase().trim());
     if (!user) return { ok: false, error: 'E-mail não cadastrado.' };
     if (user.password !== password) return { ok: false, error: 'Senha incorreta.' };
     if (user.banned) return { ok: false, error: 'Esta conta foi banida. Contate o suporte.' };
     setData((d) => ({ ...d, currentUserId: user.id }));
     return { ok: true };
-  }, [data.users, setData]);
+  }, [data?.users, setData]);
 
   const register = useCallback((user: Omit<User, 'id' | 'createdAt' | 'walletBalance' | 'rating' | 'reviewsCount' | 'completedShifts'> & Partial<User>): { ok: boolean; error?: string } => {
+    if (!data) return { ok: false, error: 'Sistema ainda carregando.' };
     if (data.users.some((u) => u.email.toLowerCase() === user.email.toLowerCase().trim())) {
       return { ok: false, error: 'Este e-mail já está cadastrado.' };
     }
@@ -107,7 +118,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } as User;
     setData((d) => ({ ...d, users: [...d.users, newUser], currentUserId: id }));
     return { ok: true };
-  }, [data.users, setData]);
+  }, [data?.users, setData]);
 
   const logout = useCallback(() => setData((d) => ({ ...d, currentUserId: null })), [setData]);
 
@@ -171,6 +182,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [setData]);
 
   const toggleCategory = useCallback((userId: string, categoryId: string): { ok: boolean; error?: string } => {
+    if (!data) return { ok: false, error: 'Sistema carregando.' };
     const user = data.users.find((u) => u.id === userId);
     if (!user) return { ok: false, error: 'Usuário não encontrado.' };
     const current = user.categories ?? [];
@@ -179,7 +191,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!canSelectCategories(tier, current.length, data.vipPlans)) { const plan = getPlan(tier, data.vipPlans); return { ok: false, error: `Seu plano ${plan.label} permite até ${plan.maxCategories} categorias. Faça upgrade para VIP!` }; }
     updateUser(userId, { categories: [...current, categoryId] });
     return { ok: true };
-  }, [data.users, data.vipPlans, updateUser]);
+  }, [data, updateUser]);
 
   const addJob = useCallback((j: Job) => setData((d) => ({ ...d, jobs: [j, ...d.jobs] })), [setData]);
   const updateJob = useCallback((id: string, patch: Partial<Job>) => setData((d) => ({ ...d, jobs: d.jobs.map((j) => (j.id === id ? { ...j, ...patch } : j)) })), [setData]);
@@ -192,11 +204,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [setData]);
   const markNotificationRead = useCallback((id: string) => setData((d) => ({ ...d, notifications: d.notifications.map((n) => (n.id === id ? { ...n, read: true } : n)) })), [setData]);
   const markAllNotificationsRead = useCallback((userId: string) => setData((d) => ({ ...d, notifications: d.notifications.map((n) => (n.userId === userId ? { ...n, read: true } : n)) })), [setData]);
-  const userNotifications = useCallback((userId: string) => data.notifications.filter((n) => n.userId === userId), [data.notifications]);
+  const userNotifications = useCallback((userId: string) => data?.notifications.filter((n) => n.userId === userId) ?? [], [data?.notifications]);
 
-  const userWalletBalance = useCallback((userId: string) => data.users.find((u) => u.id === userId)?.walletBalance ?? 0, [data.users]);
-  const userWalletTxs = useCallback((userId: string) => data.walletTxs.filter((t) => t.userId === userId), [data.walletTxs]);
-  const adminWalletTxs = useCallback(() => data.walletTxs.filter((t) => t.userId === ADMIN_ID), [data.walletTxs]);
+  const userWalletBalance = useCallback((userId: string) => data?.users.find((u) => u.id === userId)?.walletBalance ?? 0, [data?.users]);
+  const userWalletTxs = useCallback((userId: string) => data?.walletTxs.filter((t) => t.userId === userId) ?? [], [data?.walletTxs]);
+  const adminWalletTxs = useCallback(() => data?.walletTxs.filter((t) => t.userId === ADMIN_ID) ?? [], [data?.walletTxs]);
   const depositToWallet = useCallback((userId: string, amount: number, description?: string) => {
     setData((d) => ({ ...d, users: d.users.map((u) => (u.id === userId ? { ...u, walletBalance: (u.walletBalance ?? 0) + amount } : u)), walletTxs: [{ id: uid('wt'), userId, type: 'deposit', amount, description: description ?? 'Depósito na carteira digital', date: new Date().toISOString() }, ...d.walletTxs] }));
   }, [setData]);
@@ -205,9 +217,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [setData]);
 
   const requestHire = useCallback((establishmentId: string, freelancerId: string, jobId: string | null, hours: number, freelancerFee: number): Contract => {
-    const est = data.users.find((u) => u.id === establishmentId);
-    const fl = data.users.find((u) => u.id === freelancerId);
-    const feePercent = est ? getIntermediationFeePercent(est, data.estVipPlans) : data.config.defaultFeePercent;
+    const est = data?.users.find((u) => u.id === establishmentId);
+    const fl = data?.users.find((u) => u.id === freelancerId);
+    const feePercent = est ? getIntermediationFeePercent(est, data.estVipPlans) : data?.config.defaultFeePercent ?? 15;
     const { fee, total } = calculateFees(freelancerFee, feePercent);
     const contract: Contract = {
       id: uid('ct'), jobId, establishmentId, establishmentName: est?.name ?? '',
@@ -223,7 +235,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ...d.notifications,
     ] }));
     return contract;
-  }, [data.users, data.config, data.estVipPlans, setData]);
+  }, [data?.users, data?.estVipPlans, data?.config?.defaultFeePercent, setData]);
 
   const pushHistory = (d: AppData, contractId: string, status: ContractStatus, note?: string): AppData => ({ ...d, contracts: d.contracts.map((c) => c.id === contractId ? { ...c, status, history: [...c.history, { status, at: new Date().toISOString(), note }] } : c) });
 
@@ -293,7 +305,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, [setData]);
 
-  const reviewsFor = useCallback((userId: string) => data.reviews.filter((r) => r.toId === userId), [data.reviews]);
+  const reviewsFor = useCallback((userId: string) => data?.reviews.filter((r) => r.toId === userId) ?? [], [data?.reviews]);
   const setDefaultFeePercent = useCallback((n: number) => setData((d) => ({ ...d, config: { ...d.config, defaultFeePercent: n } })), [setData]);
   const updatePaymentSettings = useCallback((settings: PaymentSettings) => setData((d) => ({ ...d, paymentSettings: settings })), [setData]);
   const overrideContractStatus = useCallback((contractId: string, status: ContractStatus) => setData((d) => pushHistory(d, contractId, status, 'Override administrativo')), [setData]);
@@ -308,13 +320,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [setData, currentAdminId]);
 
   // Coupons
-  const coupons = useMemo(() => data.coupons, [data.coupons]);
+  const coupons = useMemo(() => data?.coupons ?? [], [data?.coupons]);
   const validateCoupon = useCallback((code: string): Coupon | null => {
+    if (!data) return null;
     const c = data.coupons.find((cp) => cp.code.toUpperCase() === code.toUpperCase().trim() && cp.isActive);
     if (!c) return null;
     if (c.expiresAt && new Date(c.expiresAt) < new Date()) return null;
     return c;
-  }, [data.coupons]);
+  }, [data?.coupons]);
 
   const addCoupon = useCallback((coupon: Omit<Coupon, 'id' | 'createdAt'>) => {
     setData((d) => ({ ...d, coupons: [{ ...coupon, id: uid('cp'), createdAt: new Date().toISOString() }, ...d.coupons], adminAuditLogs: [{ id: uid('al'), adminId: currentAdminId, action: `Admin criou cupom ${coupon.code} (${coupon.discountPercentage}%)`, createdAt: new Date().toISOString() }, ...d.adminAuditLogs] }));
@@ -329,6 +342,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [setData, currentAdminId]);
 
   const applyCouponToPurchase = useCallback((userId: string, tier: Tier | EstTier, period: Period, coupon: Coupon, accountType: 'freelancer' | 'establishment'): { ok: boolean; discountedPrice: number; error?: string } => {
+    if (!data) return { ok: false, discountedPrice: 0, error: 'Sistema carregando.' };
     const plan = accountType === 'freelancer' ? getPlan(tier as Tier, data.vipPlans) : getEstPlan(tier as EstTier, data.estVipPlans);
     const fullPrice = plan.prices[period];
     const discounted = Math.round(fullPrice * (1 - coupon.discountPercentage / 100) * 100) / 100;
@@ -342,15 +356,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ...d.walletTxs,
     ] }));
     return { ok: true, discountedPrice: discounted };
-  }, [data.vipPlans, data.estVipPlans, setData]);
+  }, [data, setData]);
 
   // Audit logs
-  const auditLogs = useMemo(() => data.adminAuditLogs, [data.adminAuditLogs]);
+  const auditLogs = useMemo(() => data?.adminAuditLogs ?? [], [data?.adminAuditLogs]);
   const logAdminAction = useCallback((action: string, targetUserId?: string) => {
     setData((d) => ({ ...d, adminAuditLogs: [{ id: uid('al'), adminId: currentAdminId, action, targetUserId, createdAt: new Date().toISOString() }, ...d.adminAuditLogs] }));
   }, [setData, currentAdminId]);
 
   const adminCreateUser = useCallback((user: Omit<User, 'id' | 'createdAt' | 'walletBalance' | 'rating' | 'reviewsCount' | 'completedShifts'> & Partial<User>): { ok: boolean; error?: string } => {
+    if (!data) return { ok: false, error: 'Sistema carregando.' };
     if (data.users.some((u) => u.email.toLowerCase() === user.email.toLowerCase().trim())) {
       return { ok: false, error: 'Este e-mail já está cadastrado.' };
     }
@@ -365,9 +380,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } as User;
     setData((d) => ({ ...d, users: [...d.users, newUser], adminAuditLogs: [{ id: uid('al'), adminId: currentAdminId, action: `Admin criou usuário ${newUser.name} (${newUser.email})`, targetUserId: id, createdAt: new Date().toISOString() }, ...d.adminAuditLogs] }));
     return { ok: true };
-  }, [data.users, setData, currentAdminId]);
+  }, [data, setData, currentAdminId]);
 
   const adminCreateAdmin = useCallback((user: { name: string; email: string; password: string; adminRole: 'super' | 'regular'; photo?: string }): { ok: boolean; error?: string } => {
+    if (!data) return { ok: false, error: 'Sistema carregando.' };
     if (data.users.some((u) => u.email.toLowerCase() === user.email.toLowerCase().trim())) {
       return { ok: false, error: 'Este e-mail já está cadastrado.' };
     }
@@ -381,7 +397,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } as User;
     setData((d) => ({ ...d, users: [...d.users, newUser], adminAuditLogs: [{ id: uid('al'), adminId: currentAdminId, action: `SuperAdmin criou ${user.adminRole === 'super' ? 'SuperAdmin' : 'Admin'} ${newUser.name} (${newUser.email})`, targetUserId: id, createdAt: new Date().toISOString() }, ...d.adminAuditLogs] }));
     return { ok: true };
-  }, [data.users, setData, currentAdminId]);
+  }, [data, setData, currentAdminId]);
 
   const removeAdmin = useCallback((id: string) => {
     setData((d) => ({ ...d, users: d.users.filter((u) => u.id !== id), adminAuditLogs: [{ id: uid('al'), adminId: currentAdminId, action: `SuperAdmin removeu administrador ${id}`, targetUserId: id, createdAt: new Date().toISOString() }, ...d.adminAuditLogs] }));
@@ -437,13 +453,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const enterAdminMode = useCallback(() => setAdminMode(true), []);
   const exitAdminMode = useCallback(() => { setAdminMode(false); setAdminTab('overview'); }, []);
 
-  const freelancers = useMemo(() => data.users.filter((u) => u.accountType === 'freelancer' && !u.isAdmin), [data.users]);
-  const establishments = useMemo(() => data.users.filter((u) => u.accountType === 'establishment'), [data.users]);
-  const nearbyFreelancers = useCallback((city: string) => { const nearby = metroNearby(city); return data.users.filter((u) => u.accountType === 'freelancer' && !u.isAdmin && !u.banned && nearby.includes(u.address.city)); }, [data.users]);
+  const freelancers = useMemo(() => data?.users.filter((u) => u.accountType === 'freelancer' && !u.isAdmin) ?? [], [data?.users]);
+  const establishments = useMemo(() => data?.users.filter((u) => u.accountType === 'establishment') ?? [], [data?.users]);
+  const nearbyFreelancers = useCallback((city: string) => {
+    if (!data) return [];
+    const nearby = metroNearby(city);
+    return data.users.filter((u) => u.accountType === 'freelancer' && !u.isAdmin && !u.banned && nearby.includes(u.address.city));
+  }, [data?.users]);
   const categoryById = useCallback((id: string) => CATEGORIES.find((c) => c.id === id), []);
 
   const value = useMemo<AppContextValue>(() => ({
-    data, currentUser, isAdmin, isSuperAdmin, login, register, logout, updateUser, adminUpdateUser, deleteEntity, banUser, unbanUser, setVipTier, setEstVipTier, setTermsAcceptance,
+    data: data!, currentUser, isAdmin, isSuperAdmin, login, register, logout, updateUser, adminUpdateUser, deleteEntity, banUser, unbanUser, setVipTier, setEstVipTier, setTermsAcceptance,
     setAvailability, toggleAvailabilitySlot, toggleDateShift, toggleCategory,
     addJob, updateJob, deleteJob, pauseJob, applyToJob,
     requestHire, confirmAvailability, payEscrow, checkInFreelancer, finishService, cancelContract,
@@ -468,7 +488,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateVipPlan, addVipPlan, removeVipPlan, updateEstVipPlan, addEstVipPlan, removeEstVipPlan,
   ]);
 
-  if (!loaded) {
+  if (!loaded || !data) {
     return <div className="flex min-h-screen items-center justify-center bg-neutral-950 text-white"><div className="animate-pulse text-sm">Carregando FreelaAgora…</div></div>;
   }
 
