@@ -92,15 +92,15 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
   const currentEstPlan = getEstPlan(currentEstTier, data.estVipPlans);
 
   const handleProceedPayment = async (tier: Tier | EstTier, type: 'freelancer' | 'establishment') => {
-    if (billingType === 'WALLET') {
-      const planObj = type === 'freelancer' ? getPlan(tier as Tier, data.vipPlans) : getEstPlan(tier as EstTier, data.estVipPlans);
-      const finalPrice = priceFor(planObj.prices[period]);
-      const userBalance = currentUser?.walletBalance ?? 0;
+    const planObj = type === 'freelancer' ? getPlan(tier as Tier, data.vipPlans) : getEstPlan(tier as EstTier, data.estVipPlans);
+    const finalPrice = priceFor(planObj.prices[period]);
+    const userBalance = currentUser?.walletBalance ?? 0;
 
-      // Validação estrita de saldo na carteira
+    if (billingType === 'WALLET') {
+      // TRAVA DE SEGURANÇA ESTRITA: Impede a compra se o saldo for menor que o preço
       if (finalPrice > 0 && userBalance < finalPrice) {
         notify(`Saldo insuficiente na carteira! Necessário: ${formatCurrency(finalPrice)} (Disponível: ${formatCurrency(userBalance)})`, 'error');
-        return;
+        return; // <--- O "return" era o que faltava para parar a execução!
       }
 
       if (type === 'freelancer') {
@@ -124,9 +124,6 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
       setConfirmEstTier(null);
     } else {
       try {
-        const planObj = type === 'freelancer' ? getPlan(tier as Tier, data.vipPlans) : getEstPlan(tier as EstTier, data.estVipPlans);
-        const finalPrice = priceFor(planObj.prices[period]);
-
         const supabaseUrl = supabase.supabaseUrl;
         const { data: sessionData } = await supabase.auth.getSession();
         
