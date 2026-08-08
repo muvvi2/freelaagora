@@ -84,10 +84,25 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
         </div>
       }>
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="sm:col-span-2"><Input label="Nome" value={name} onChange={(e) => setName(e.target.value)} /></div>
+        <div className="sm:col-span-2"><Input label="Nome do Negócio / Empresa" value={name} onChange={(e) => setName(e.target.value)} /></div>
         
-        <Select label="Tipo" value={establishmentType} onChange={(e) => setEstablishmentType(e.target.value)}>
-          {['Bar & Restaurante', 'Buffet & Eventos', 'Restaurante', 'Bar', 'Lanchonete', 'Padaria', 'Casa de Shows', 'Hotel'].map((t) => <option key={t} value={t}>{t}</option>)}
+        <Select label="Tipo de Estabelecimento / Negócio" value={establishmentType} onChange={(e) => setEstablishmentType(e.target.value)}>
+          {[
+            // Alimentação & Gastronomia
+            'Bar & Restaurante', 'Restaurante', 'Bar', 'Lanchonete / Fast Food', 'Buffet & Eventos', 'Padaria & Confeitaria', 'Pizzaria', 'Churrascaria', 'Cafeteria & Barista', 'Cervejaria & Choperia', 'Sorveteria & Gelateria', 'Cozinha Industrial / Coletiva',
+            // Hotelaria & Turismo
+            'Hotel', 'Pousada', 'Resort', 'Hostel', 'Casa de Shows & Eventos', 'Espaço de Festas',
+            // Comércio & Varejo
+            'Supermercado & Hipermercado', 'Loja de Shopping / Varejo', 'Farmácia & Perfumaria', 'Comércio de Hortifrúti', 'Loja de E-commerce / Centro de Distribuição', 'Posto de Combustíveis & Conveniência',
+            // Saúde, Clínicas & Bem-Estar
+            'Clínica Médica / Home Care', 'Clínica Odontológica', 'Salão de Beleza & Barbearia', 'Estúdio de Estética & Spa', 'Academia & Centro Esportivo', 'Clínica Veterinária & Pet Shop',
+            // Construção, Reformas & Imobiliário
+            'Construtora & Incorporadora', 'Empresa de Engenharia & Arquitetura', 'Loja de Materiais de Construção', 'Condomínio Residencial / Predial', 'Administradora de Imóveis',
+            // Escritórios & Serviços Profissionais
+            'Escritório de Advocacia', 'Escritório de Contabilidade', 'Agência de Marketing & Publicidade', 'Empresa de TI / Tecnologia', 'Consultoria & Gestão',
+            // Logística, Indústria & Agronegócio
+            'Empresa de Logística & Transportes', 'Indústria & Fábrica', 'Fazenda & Produtor Rural', 'Cooperativa Agrícola', 'Oficina Mecânica & Estética Automotiva', 'Outros / Geral'
+          ].map((t) => <option key={t} value={t}>{t}</option>)}
         </Select>
         
         <Input label="CNPJ" value={cnpj} onChange={(e) => setCnpj(maskCNPJ(e.target.value))} />
