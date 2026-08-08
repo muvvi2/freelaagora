@@ -432,7 +432,7 @@ export function AdminView() {
       )}
       {refundTarget && (
         <Modal open={!!refundTarget} onClose={() => setRefundTarget(null)} title="Forçar Estorno de Custódia" size="sm"
-          footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={() => setRefundTarget(null)}>Cancelar</Button><Button variant="danger" fullWidth onClick={() => { forceRefund(refundTarget.id); setRefundTarget(null); notify(`Estorno de ${formatCurrency(refundTarget.total)} processado`, 'warning'); }}><RefundIcon className="h-4 w-4" /> Forçar Estorno de Custódia (Reembolso Direto)</Button></div>}>
+          footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={() => setRefundTarget(null)}>Cancelar</Button><Button variant="danger" fullWidth onClick={() => { forceRefund(refundTarget.id); setRefundTarget(null); notify(`Estorno de ${formatCurrency(refundTarget.total)} processado`, 'warning'); }}><RefundIcon className="h-3.5 w-3.5" /> Forçar Estorno de Custódia (Reembolso Direto)</Button></div>}>
           <p className="text-sm text-neutral-600 dark:text-neutral-300">Confirmar reembolso direto de <strong>{formatCurrency(refundTarget.total)}</strong> para <strong>{refundTarget.establishmentName}</strong>? O contrato será cancelado e os valores devolvidos à carteira do estabelecimento.</p>
         </Modal>
       )}
@@ -541,6 +541,79 @@ function AdminEditAdminModal({ adminUser, open, onClose, onSave }: { adminUser: 
         <Input label="Nome" value={name} onChange={(e) => setName(e.target.value)} />
         <Input label="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} />
         <Input label="Senha" value={password} onChange={(e) => setPassword(e.target.value)} />
+      </div>
+    </Modal>
+  );
+}
+
+export function AdminProfileModal({ open, onClose, admin, onSave }: { open: boolean; onClose: () => void; admin: User; onSave: (id: string, patch: Partial<User>) => void }) {
+  const { notify } = useToast();
+  const [email, setEmail] = useState(admin.email);
+  const [password, setPassword] = useState(admin.password);
+  const [photo, setPhoto] = useState(admin.photo ?? '');
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { notify('Imagem muito grande (máx 5MB)', 'warning'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const max = 256;
+        let { width, height } = img;
+        if (width > height && width > max) { height = Math.round(height * max / width); width = max; }
+        else if (height > max) { width = Math.round(width * max / height); height = max; }
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        setPhoto(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const save = () => {
+    if (!email.trim() || !password.trim()) { notify('E-mail e senha são obrigatórios', 'warning'); return; }
+    onSave(admin.id, { email: email.trim(), password, photo: photo.trim() || undefined });
+    onClose();
+    notify('Perfil do administrador atualizado');
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Editar perfil do Admin" size="sm"
+      footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={onClose}>Cancelar</Button><Button fullWidth onClick={save}><Save className="h-4 w-4" /> Salvar</Button></div>}>
+      <div className="space-y-4">
+        <div className="flex items-center gap-3 rounded-xl bg-neutral-50 p-3 dark:bg-neutral-800/50">
+          <Avatar src={photo || admin.photo} alt={admin.name} size={48} ring="vip" />
+          <div><p className="font-semibold text-neutral-900 dark:text-white">{admin.name}</p><p className="text-xs text-neutral-400">Conta administrador</p></div>
+        </div>
+        <div>
+          <label className="mb-1.5 block text-xs font-semibold text-neutral-500">Foto do perfil</label>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Avatar src={photo || admin.photo} alt="Preview" size={56} />
+              <label htmlFor="admin-photo-upload" className="absolute -bottom-1 -right-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-primary-500 text-white shadow-lg transition hover:bg-primary-600">
+                <Camera className="h-3 w-3" />
+              </label>
+              <input id="admin-photo-upload" type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+            </div>
+            <div className="flex-1">
+              <Input label="" value={photo} onChange={(e) => setPhoto(e.target.value)} placeholder="URL da foto ou faça upload" />
+            </div>
+          </div>
+        </div>
+        <Input label="E-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-neutral-500">Senha</label>
+          <div className="relative">
+            <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 pr-10 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100" />
+            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
+          </div>
+        </div>
       </div>
     </Modal>
   );
