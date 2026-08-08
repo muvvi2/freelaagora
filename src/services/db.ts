@@ -14,7 +14,7 @@ const INDEX_TO_DAY: Record<number, DayKey> = { 0: 'dom', 1: 'seg', 2: 'ter', 3: 
 export interface DbUser {
   id: string;
   email: string;
-  password: string;
+  password_hash: string;
   user_type: string;
   full_name: string;
   photo_url: string | null;
@@ -278,7 +278,7 @@ function mapDbUserToUser(
     id: row.id,
     accountType: row.user_type === 'admin' ? 'freelancer' : (row.user_type as 'freelancer' | 'establishment'),
     email: row.email,
-    password: row.password,
+    password: row.password_hash ?? '',
     name: row.full_name,
     nickname: row.nickname ?? undefined,
     photo: row.photo_url ?? '',
@@ -322,7 +322,7 @@ function mapUserToDbUser(user: User): Partial<DbUser> {
   return {
     id: user.id,
     email: user.email,
-    password: user.password,
+    password_hash: user.password,
     user_type: user.isAdmin ? 'admin' : user.accountType,
     full_name: user.name,
     photo_url: user.photo,
