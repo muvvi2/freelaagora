@@ -340,7 +340,7 @@ export const VIP_PLANS: VipPlan[] = [
 ];
 
 // ============================================================
-// ESTABLISHMENT VIP PLANS
+// ESTABLISHMENT VIP PLANS (COM O VIP 4 ADICIONADO)
 // ============================================================
 export const EST_VIP_PLANS: EstVipPlan[] = [
   { tier: 'free', label: 'Plano Gratuito', intermediationFee: 15.0, maxActiveJobs: 2, features: ['Até 2 vagas por semana', 'Taxa de intermediação de 15,0%', 'Gratuito', 'Acesso completo ao marketplace'], prices: { monthly: 0, semestral: 0, annual: 0 } },
@@ -348,12 +348,13 @@ export const EST_VIP_PLANS: EstVipPlan[] = [
   { tier: 'vip1', label: 'Plano VIP 1', intermediationFee: 7.5, maxActiveJobs: 5, features: ['Até 5 vagas por semana', 'Taxa reduzida de 7,5%', 'Prioridade no suporte'], prices: { monthly: 29.90, semestral: 149.90, annual: 249.90 } },
   { tier: 'vip2', label: 'Plano VIP 2', intermediationFee: 5.0, maxActiveJobs: 20, features: ['Até 20 vagas por semana', 'Taxa reduzida de 5,0%', 'Prioridade no suporte', 'Destaque nas buscas'], prices: { monthly: 59.90, semestral: 299.90, annual: 499.90 } },
   { tier: 'vip3', label: 'Plano VIP 3', intermediationFee: 0.0, maxActiveJobs: 999, features: ['Vagas ilimitadas por semana', 'Isenção total (0%) de taxas', 'Suporte prioritário VIP', 'Destaque máximo'], prices: { monthly: 119.90, semestral: 549.00, annual: 949.00 } },
+  { tier: 'vip4', label: 'Plano VIP 4', intermediationFee: 0.0, maxActiveJobs: 999, features: ['Vagas ilimitadas por semana', 'Isenção total (0%) de taxas', 'Suporte VIP exclusivo', 'Anúncios ativos'], prices: { monthly: 149.90, semestral: 699.00, annual: 1199.00 }, allowAds: true },
 ];
 
 export const LEGAL_VERSION = 'v1.9';
 
-export const tierLabel: Record<string, string> = { free: 'Free', vip1: 'VIP 1', vip2: 'VIP 2', vip3: 'VIP 3' };
-export const estTierLabel: Record<string, string> = { free: 'Gratuito', trial: 'Teste Gratuito', vip1: 'VIP 1', vip2: 'VIP 2', vip3: 'VIP 3' };
+export const tierLabel: Record<string, string> = { free: 'Free', vip1: 'VIP 1', vip2: 'VIP 2', vip3: 'VIP 3', vip4: 'VIP 4' };
+export const estTierLabel: Record<string, string> = { free: 'Gratuito', trial: 'Teste Gratuito', vip1: 'VIP 1', vip2: 'VIP 2', vip3: 'VIP 3', vip4: 'VIP 4' };
 
 // ============================================================
 // METRO MAP — São Paulo
