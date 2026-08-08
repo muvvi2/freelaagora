@@ -56,8 +56,8 @@ export function TermsPage({ onBack }: { onBack?: () => void }) {
               
               <div className="mt-4">
                 <p><strong>4.3.</strong> Planos e Benefícios Dinâmicos dos Freelancers:</p>
-                <p className="text-xs text-neutral-500 mb-3">Os benefícios e limites de categorias dos freelancers refletem em tempo real as configurações ativas no Painel Administrativo:</p>
-                <DynamicFreelancerPlansGrid />
+                <p className="text-xs text-neutral-500 mb-2">Os benefícios e limites de categorias dos freelancers refletem em tempo real as configurações ativas no Painel Administrativo:</p>
+                <DynamicFreelancerPlansList />
               </div>
 
               <p className="mt-4"><strong>4.4.</strong> O desbloqueio de dados de contato e a validação da reserva ficam estritamente condicionados à confirmação de compensação bancária enviada pelo gateway de pagamento.</p>
@@ -92,14 +92,14 @@ export function TermsPage({ onBack }: { onBack?: () => void }) {
   );
 }
 
-function DynamicFreelancerPlansGrid() {
+function DynamicFreelancerPlansList() {
   const { data } = useApp();
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <div className="space-y-3 ml-2">
       {data.vipPlans.map((plan: VipPlan) => (
-        <div key={plan.tier} className="rounded-xl border border-neutral-200 bg-neutral-900/5 dark:border-neutral-800 dark:bg-neutral-800/40 p-4">
-          <p className="font-display text-sm font-extrabold uppercase tracking-wider text-neutral-900 dark:text-white mb-2">{plan.label}</p>
-          <ul className="space-y-1 text-xs text-neutral-600 dark:text-neutral-300 list-disc list-inside">
+        <div key={plan.tier}>
+          <p className="font-semibold text-neutral-900 dark:text-white">{plan.label}:</p>
+          <ul className="mt-1 list-disc list-inside space-y-1 ml-2">
             {plan.features.map((f: string, i: number) => (
               <li key={i}>{f}</li>
             ))}
