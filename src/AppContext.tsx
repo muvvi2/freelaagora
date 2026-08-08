@@ -17,7 +17,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [adminTab, setAdminTab] = useState('overview');
   const [adminMode, setAdminMode] = useState(true);
 
-  // Load state from Supabase on mount
+  // Load state from Supabase on mount with robust handling
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -27,12 +27,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
           .select('data')
           .eq('id', STATE_ID)
           .maybeSingle();
+        
         if (error) throw error;
+        
         if (!cancelled && row?.data && Object.keys(row.data).length > 0) {
           setDataState(row.data as AppData);
+          console.log("✅ Estado carregado com sucesso do Supabase!");
         }
       } catch (e) {
-        // fall back to initialData silently
+        console.warn("⚠️ Não foi possível carregar do Supabase, usando dados iniciais locais:", e);
       } finally {
         if (!cancelled) setLoaded(true);
       }
@@ -44,7 +47,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setPaymentSettings(data.paymentSettings ?? { activeProvider: 'asaas', configs: {} });
   }, [data.paymentSettings]);
 
-  // Persist to Supabase whenever data changes (debounced via microtask)
+  // Persist to Supabase whenever data changes with clear console feedback
   const persist = useCallback(async (next: AppData) => {
     try {
       const { error } = await supabase
@@ -54,7 +57,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (error) {
         console.error("❌ Erro ao salvar no Supabase (app_state):", error.message, error.details);
       } else {
-        console.log("✅ Estado salvo com sucesso no Supabase!");
+        console.log("💾 Estado salvo com sucesso no Supabase!");
       }
     } catch (e) {
       console.error("❌ Exceção na rede/código ao persistir:", e);
