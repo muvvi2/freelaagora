@@ -90,8 +90,6 @@ export function AdminView() {
             <FinancialCard icon={CheckCircle2} label="Repasses Concluídos" value={formatCurrency(stats.completedRepasses)} tone="success" desc="Liberações para freelancers" />
           </div>
 
-          <MigrationSection />
-
           <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
             <h3 className="mb-4 flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white"><TrendingUp className="h-5 w-5 text-primary-500" /> Receita Total por Fonte</h3>
             <div className="grid gap-4 sm:grid-cols-3">
@@ -440,34 +438,6 @@ export function AdminView() {
         footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={() => setConfirmReset(false)}>Cancelar</Button><Button variant="danger" fullWidth onClick={() => { resetData(); setConfirmReset(false); notify('Dados restaurados', 'info'); }}><RotateCcw className="h-4 w-4" /> Resetar</Button></div>}>
         <p className="text-sm text-neutral-600 dark:text-neutral-300">Todas as alterações serão perdidas e os dados voltarão ao estado inicial.</p>
       </Modal>
-    </div>
-  );
-}
-
-function MigrationSection() {
-  const { data } = useApp();
-  const { notify } = useToast();
-  const [migrating, setMigrating] = useState(false);
-
-  const runMigration = async () => {
-    if (!confirm("Deseja transferir os dados do app_state atual para as tabelas relacionais do Supabase?")) return;
-    setMigrating(true);
-    try {
-      if (data.users?.length) await supabase.from('users').upsert(data.users);
-      if (data.coupons?.length) await supabase.from('coupons').upsert(data.coupons);
-      if (data.jobs?.length) await supabase.from('jobs').upsert(data.jobs);
-      notify("Migração concluída com sucesso!");
-    } catch (err: any) {
-      notify(err.message, "warning");
-    } finally {
-      setMigrating(false);
-    }
-  };
-
-  return (
-    <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
-      <h3 className="mb-2 font-display font-bold text-neutral-900 dark:text-white">Ferramenta de Migração</h3>
-      <Button onClick={runMigration} disabled={migrating}><Terminal className="h-4 w-4" /> {migrating ? 'Migrando...' : 'Executar Migração'}</Button>
     </div>
   );
 }
