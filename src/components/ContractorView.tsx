@@ -56,8 +56,8 @@ export function ContractorView() {
   };
 
   const origin = useGps && gpsLat != null && gpsLng != null
-    ? { cep: '', street: '', number: '', neighborhood: '', city: useGps ? 'GPS Atual' : me.address.city, state: me.address.state, lat: gpsLat, lng: gpsLng }
-    : me.address;
+    ? { cep: '', street: '', number: '', neighborhood: '', city: useGps ? 'GPS Atual' : (me.address?.city || ''), state: (me.address?.state || ''), lat: gpsLat, lng: gpsLng }
+    : (me.address || { cep: '', street: '', number: '', neighborhood: '', city: 'Pitangueiras', state: 'SP', lat: -21.01, lng: -48.22 });
 
   const filtered = useMemo(() => {
     let list = data.users.filter((f) => {
@@ -123,7 +123,7 @@ export function ContractorView() {
               <h1 className="font-display text-xl font-extrabold drop-shadow sm:text-2xl">{me.name}</h1>
               <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm">
                 <Rating value={me.rating ?? 0} count={me.reviewsCount ?? 0} />
-                <span className="text-white/80">{me.establishmentType} · {me.address.city} - {me.address.state}</span>
+                <span className="text-white/80">{me.establishmentType} · {me.address?.city} - {me.address?.state}</span>
               </div>
             </div>
           </div>
@@ -164,8 +164,8 @@ export function ContractorView() {
               <h2 className="font-display text-lg font-bold text-neutral-900 dark:text-white">Profissionais na sua região</h2>
               <p className="text-xs text-neutral-400">
                 {isUnlimited 
-                  ? 'Filtrando por: Km Livre (Atendimento Nacional / Sem Limite de Raio)' 
-                  : `Filtrando por: Raio real de até ${radiusKm} km a partir de ${me.address.city} - ${me.address.state}`}
+                  ? `Filtrando por: Km Livre (Atendimento Nacional / Sem Limite de Raio a partir de ${me.address?.city || 'sua cidade'})` 
+                  : `Filtrando profissionais a até ${radiusKm} km de ${me.address?.city || 'sua cidade'} - ${me.address?.state || 'SP'}`}
               </p>
             </div>
           </div>
