@@ -40,7 +40,7 @@ export interface User {
   // Freelancer-only
   cpf?: string;
   cnpj?: string;
-  gender?: 'Masculino' | 'Feminino' | 'Outro'; // <--- Adicionado aqui
+  gender?: 'Masculino' | 'Feminino' | 'Outro';
   asaasWalletId?: string;
   bio?: string;
   specialties?: string[];
@@ -64,6 +64,7 @@ export interface User {
   estVipTier?: EstTier;
   estVipExpiresAt?: string;
   trialEndsAt?: string;
+  adImages?: string[]; // <--- Armazena as imagens de propaganda do VIP 4 e VIP 5
   // Admin-only
   isAdmin?: boolean;
   adminRole?: 'super' | 'regular';
@@ -119,7 +120,7 @@ export interface EstVipPlan {
   tier: EstTier;
   label: string;
   intermediationFee: number;
-  maxActiveJobs: number; // <--- Limite semanal de vagas configurável por plano
+  maxActiveJobs: number;
   features: string[];
   prices: Record<Period, number>;
 }
