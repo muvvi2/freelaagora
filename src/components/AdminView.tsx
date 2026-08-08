@@ -472,6 +472,108 @@ function MigrationSection() {
   );
 }
 
+function AdminEditUserModal({ user, open, onClose }: { user: User; open: boolean; onClose: () => void }) {
+  const { adminUpdateUser } = useApp();
+  const { notify } = useToast();
+  const [name, setName] = useState(user.name);
+  const [email, setEmail] = useState(user.email);
+  const [phone, setPhone] = useState(user.phone ?? '');
+  const [whatsapp, setWhatsapp] = useState(user.whatsapp ?? '');
+  const [city, setCity] = useState(user.address?.city ?? '');
+  const [state, setState] = useState(user.address?.state ?? 'SP');
+
+  const save = () => {
+    if (!name.trim() || !email.trim()) { notify('Nome e e-mail são obrigatórios', 'warning'); return; }
+    adminUpdateUser(user.id, {
+      name: name.trim(),
+      email: email.trim(),
+      phone,
+      whatsapp: whatsapp || phone,
+      address: { ...user.address, city, state }
+    });
+    notify('Usuário atualizado com sucesso!');
+    onClose();
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title={`Editar — ${user.name}`} size="md"
+      footer={<div className="flex gap-2"><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={save}><Save className="h-4 w-4" /> Salvar</Button></div>}>
+      <div className="space-y-4">
+        <Input label="Nome" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input label="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Telefone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <Input label="WhatsApp" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Cidade" value={city} onChange={(e) => setCity(e.target.value)} />
+          <Select label="Estado" value={state} onChange={(e) => setState(e.target.value)}>
+            {['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map((s) => <option key={s} value={s}>{s}</option>)}
+          </Select>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function AdminEditAdminModal({ adminUser, open, onClose, onSave }: { adminUser: User; open: boolean; onClose: () => void; onSave: (id: string, patch: Partial<User>) => void }) {
+  const { notify } = useToast();
+  const [name, setName] = useState(adminUser.name);
+  const [email, setEmail] = useState(adminUser.email);
+  const [password, setPassword] = useState(adminUser.password);
+  const [adminRole, setAdminRole] = useState<'super' | 'regular'>(adminUser.adminRole ?? 'regular');
+
+  const save = () => {
+    if (!name.trim() || !email.trim()) { notify('Nome e e-mail obrigatórios', 'warning'); return; }
+    onSave(adminUser.id, { name: name.trim(), email: email.trim(), password, adminRole });
+    onClose();
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Editar Administrador" size="sm"
+      footer={<div className="flex gap-2"><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={save}><Save className="h-4 w-4" /> Salvar</Button></div>}>
+      <div className="space-y-4">
+        <div className="flex gap-1.5 rounded-xl border border-neutral-200 bg-neutral-50 p-1 dark:border-neutral-700 dark:bg-neutral-800">
+          {(['regular', 'super'] as const).map((r) => (
+            <button key={r} onClick={() => setAdminRole(r)} className={`flex-1 rounded-lg py-2 text-sm font-semibold transition ${adminRole === r ? 'bg-white text-primary-600 shadow-sm dark:bg-neutral-700 dark:text-primary-400' : 'text-neutral-500'}`}>{r === 'super' ? 'Super Admin' : 'Moderador'}</button>
+          ))}
+        </div>
+        <Input label="Nome" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input label="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Input label="Senha" value={password} onChange={(e) => setPassword(e.target.value)} />
+      </div>
+    </Modal>
+  );
+}
+
+function AdminVipModal({ user, open, onClose }: { user: User; open: boolean; onClose: () => void }) {
+  const { data, setVipTier, setEstVipTier } = useApp();
+  const { notify } = useToast();
+  const isEst = user.accountType === 'establishment';
+  const [tier, setTier] = useState<any>(isEst ? user.estVipTier ?? 'free' : user.vipTier ?? 'free');
+
+  const save = () => {
+    if (isEst) {
+      setEstVipTier(user.id, tier);
+    } else {
+      setVipTier(user.id, tier);
+    }
+    notify('Plano VIP atualizado com sucesso!');
+    onClose();
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title={`Gerenciar VIP — ${user.name}`} size="sm"
+      footer={<div className="flex gap-2"><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={save}><Crown className="h-4 w-4" /> Salvar</Button></div>}>
+      <div className="space-y-4">
+        <Select label="Plano VIP" value={tier} onChange={(e) => setTier(e.target.value)}>
+          {isEst ? data.estVipPlans.map((p) => <option key={p.tier} value={p.tier}>{p.label}</option>) : data.vipPlans.map((p) => <option key={p.tier} value={p.tier}>{p.label}</option>)}
+        </Select>
+      </div>
+    </Modal>
+  );
+}
+
 function FinancialCard({ icon: Icon, label, value, tone, desc }: { icon: typeof Wallet; label: string; value: string; tone: 'warning' | 'primary' | 'success'; desc: string }) {
   const toneClass = { warning: 'from-warning-500 to-warning-700', primary: 'from-primary-500 to-primary-700', success: 'from-success-500 to-success-700' }[tone];
   return (
@@ -516,7 +618,7 @@ function AdminStat({ icon: Icon, label, value, tone }: { icon: typeof Users; lab
 }
 
 function AdminCreateUserModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { adminCreateUser, data } = useApp();
+  const { adminCreateUser } = useApp();
   const { notify } = useToast();
   const [accountType, setAccountType] = useState<AccountType>('freelancer');
   const [name, setName] = useState('');
@@ -534,11 +636,10 @@ function AdminCreateUserModal({ open, onClose }: { open: boolean; onClose: () =>
   const [state, setState] = useState('SP');
   const [establishmentType, setEstablishmentType] = useState('');
   const [vipTier, setVipTier] = useState<Tier>('free');
-  const [estVipTier, setEstVipTier] = useState<EstTier>('free');
   const [showPassword, setShowPassword] = useState(false);
 
   const reset = () => {
-    setAccountType('freelancer'); setName(''); setNickname(''); setEmail(''); setPassword('123456'); setPhone(''); setWhatsapp(''); setPhoto(''); setCep(''); setStreet(''); setNumber(''); setNeighborhood(''); setCity(''); setState('SP'); setEstablishmentType(''); setVipTier('free'); setEstVipTier('free');
+    setAccountType('freelancer'); setName(''); setNickname(''); setEmail(''); setPassword('123456'); setPhone(''); setWhatsapp(''); setPhoto(''); setCep(''); setStreet(''); setNumber(''); setNeighborhood(''); setCity(''); setState('SP'); setEstablishmentType(''); setVipTier('free');
   };
 
   const create = () => {
@@ -549,7 +650,7 @@ function AdminCreateUserModal({ open, onClose }: { open: boolean; onClose: () =>
       accountType, name: name.trim(), nickname: nickname.trim() || undefined, email: email.trim(), password, phone, whatsapp: whatsapp || phone, photo: photo.trim() || `https://images.pexels.com/photos/804009/pexels-photo-804009.jpeg?auto=compress&cs=tinysrgb&h=650&w=940`,
       address: { cep, street, number, neighborhood, city, state },
     };
-    const extra = accountType === 'freelancer' ? { vipTier } : { establishmentType, estVipTier };
+    const extra = accountType === 'freelancer' ? { vipTier } : { establishmentType };
     const result = adminCreateUser({ ...base, ...extra } as any);
     if (result.ok) { notify(`${accountType === 'freelancer' ? 'Freelancer' : 'Estabelecimento'} criado com sucesso!`); reset(); onClose(); }
     else notify(result.error ?? 'Erro ao criar usuário', 'warning');
@@ -618,79 +719,6 @@ function AdminBroadcastModal({ open, onClose }: { open: boolean; onClose: () => 
         <Input label="Título" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Manutenção programada" />
         <div><label className="mb-1 block text-xs font-semibold text-neutral-500">Mensagem</label><textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100" placeholder="No dia 15/08 das 03h às 05h a plataforma ficará indisponível..." /></div>
         <p className="text-xs text-neutral-400">Todos os usuários (freelancers e estabelecimentos) receberão esta notificação instantaneamente.</p>
-      </div>
-    </Modal>
-  );
-}
-
-export function AdminProfileModal({ open, onClose, admin, onSave }: { open: boolean; onClose: () => void; admin: User; onSave: (id: string, patch: Partial<User>) => void }) {
-  const { notify } = useToast();
-  const [email, setEmail] = useState(admin.email);
-  const [password, setPassword] = useState(admin.password);
-  const [photo, setPhoto] = useState(admin.photo ?? '');
-  const [showPassword, setShowPassword] = useState(false);
-
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { notify('Imagem muito grande (máx 5MB)', 'warning'); return; }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const max = 256;
-        let { width, height } = img;
-        if (width > height && width > max) { height = Math.round(height * max / width); width = max; }
-        else if (height > max) { width = Math.round(width * max / height); height = max; }
-        canvas.width = width; canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
-        setPhoto(canvas.toDataURL('image/jpeg', 0.85));
-      };
-      img.src = reader.result as string;
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const save = () => {
-    if (!email.trim() || !password.trim()) { notify('E-mail e senha são obrigatórios', 'warning'); return; }
-    onSave(admin.id, { email: email.trim(), password, photo: photo.trim() || undefined });
-    onClose();
-    notify('Perfil do administrador atualizado');
-  };
-
-  return (
-    <Modal open={open} onClose={onClose} title="Editar perfil do Admin" size="sm"
-      footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={onClose}>Cancelar</Button><Button fullWidth onClick={save}><Save className="h-4 w-4" /> Salvar</Button></div>}>
-      <div className="space-y-4">
-        <div className="flex items-center gap-3 rounded-xl bg-neutral-50 p-3 dark:bg-neutral-800/50">
-          <Avatar src={photo || admin.photo} alt={admin.name} size={48} ring="vip" />
-          <div><p className="font-semibold text-neutral-900 dark:text-white">{admin.name}</p><p className="text-xs text-neutral-400">Conta administrador</p></div>
-        </div>
-        <div>
-          <label className="mb-1.5 block text-xs font-semibold text-neutral-500">Foto do perfil</label>
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Avatar src={photo || admin.photo} alt="Preview" size={56} />
-              <label htmlFor="admin-photo-upload" className="absolute -bottom-1 -right-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-primary-500 text-white shadow-lg transition hover:bg-primary-600">
-                <Camera className="h-3 w-3" />
-              </label>
-              <input id="admin-photo-upload" type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
-            </div>
-            <div className="flex-1">
-              <Input label="" value={photo} onChange={(e) => setPhoto(e.target.value)} placeholder="URL da foto ou faça upload" />
-            </div>
-          </div>
-        </div>
-        <Input label="E-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <div>
-          <label className="mb-1 block text-xs font-semibold text-neutral-500">Senha</label>
-          <div className="relative">
-            <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 pr-10 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100" />
-            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
-          </div>
-        </div>
       </div>
     </Modal>
   );
