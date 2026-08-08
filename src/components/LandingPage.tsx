@@ -1,16 +1,33 @@
 import { useState } from 'react';
-import { LogIn, UserPlus, Shield, Wallet, Calendar, MapPin, Check, Eye, EyeOff, ChefHat, Store, Fingerprint, AlertCircle, ExternalLink, Info } from 'lucide-react';
+import { LogIn, UserPlus, Shield, Wallet, Calendar, MapPin, Check, Eye, EyeOff, ChefHat, Store, Fingerprint, AlertCircle, ExternalLink, Info, Tags, Crown } from 'lucide-react';
 import { useApp } from '@/AppContext';
 import { useToast } from './ui/Toast';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Input, Select } from './ui/Field';
 import { emailValid, maskCPF, maskCNPJ, maskPhone, maskCEP, validateCPF, validateCNPJ } from '@/utils';
-import { LEGAL_VERSION } from '@/mockData';
+import { LEGAL_VERSION, MACRO_CATEGORIES, CATEGORIES } from '@/mockData';
 import { ASAAS_REFERRAL_LINK } from '@/services/paymentService';
 import type { AccountType, User, Address, TermsAcceptance } from '@/types';
 
 const STATES = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
+
+const ESTABLISHMENT_TYPES = [
+  // Alimentação & Gastronomia
+  'Bar & Restaurante', 'Restaurante', 'Bar', 'Lanchonete / Fast Food', 'Buffet & Eventos', 'Padaria & Confeitaria', 'Pizzaria', 'Churrascaria', 'Cafeteria & Barista', 'Cervejaria & Choperia', 'Sorveteria & Gelateria', 'Cozinha Industrial / Coletiva',
+  // Hotelaria & Turismo
+  'Hotel', 'Pousada', 'Resort', 'Hostel', 'Casa de Shows & Eventos', 'Espaço de Festas',
+  // Comércio & Varejo
+  'Supermercado & Hipermercado', 'Loja de Shopping / Varejo', 'Farmácia & Perfumaria', 'Comércio de Hortifrúti', 'Loja de E-commerce / Centro de Distribuição', 'Posto de Combustíveis & Conveniência',
+  // Saúde, Clínicas & Bem-Estar
+  'Clínica Médica / Home Care', 'Clínica Odontológica', 'Salão de Beleza & Barbearia', 'Estúdio de Estética & Spa', 'Academia & Centro Esportivo', 'Clínica Veterinária & Pet Shop',
+  // Construção, Reformas & Imobiliário
+  'Construtora & Incorporadora', 'Empresa de Engenharia & Arquitetura', 'Loja de Materiais de Construção', 'Condomínio Residencial / Predial', 'Administradora de Imóveis',
+  // Escritórios & Serviços Profissionais
+  'Escritório de Advocacia', 'Escritório de Contabilidade', 'Agência de Marketing & Publicidade', 'Empresa de TI / Tecnologia', 'Consultoria & Gestão',
+  // Logística, Indústria & Agronegócio
+  'Empresa de Logística & Transportes', 'Indústria & Fábrica', 'Fazenda & Produtor Rural', 'Cooperativa Agrícola', 'Oficina Mecânica & Estética Automotiva', 'Outros / Geral'
+];
 
 export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void }) {
   const [authModal, setAuthModal] = useState<null | 'login' | 'register'>(null);
@@ -39,7 +56,7 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
             <span className="bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent">Chame aqui!</span>
           </h1>
           <p className="mt-6 max-w-xl text-base text-neutral-400 sm:text-lg">
-            O marketplace de contratação emergencial de freelancers para bares, restaurantes, buffets e eventos. Garçom, churrasqueiro, bartender — encontre quem precisa em minutos.
+            O marketplace de contratação emergencial de freelancers para bares, restaurantes, buffets, eventos, serviços gerais, saúde, oficinas e logística.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Button size="lg" onClick={() => setAuthModal('login')} className="bg-primary-500 text-white hover:bg-primary-600 shadow-glow"><LogIn className="h-5 w-5" /> Entrar</Button>
@@ -138,6 +155,47 @@ function RegisterForm({ onClose, onSwitch, onNavigateTerms }: { onClose: () => v
   const [termsOpen, setTermsOpen] = useState(false);
   const [error, setError] = useState('');
 
+  // Seleção de Profissões / Categorias (Free = Max 2)
+  const [selectedMacro, setSelectedMacro] = useState<string>('all');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+
+  const handleCepChange = async (value: string) => {
+    const masked = maskCEP(value);
+    setAddr((prev) => ({ ...prev, cep: masked }));
+
+    const cleanCep = masked.replace(/\D/g, '');
+    if (cleanCep.length === 8) {
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+        const data = await response.json();
+        if (!data.erro) {
+          setAddr((prev) => ({
+            ...prev,
+            street: data.logradouro || prev.street,
+            neighborhood: data.bairro || prev.neighborhood,
+            city: data.localidade || prev.city,
+            state: data.uf || prev.state,
+          }));
+          notify('Endereço encontrado!', 'success');
+        }
+      } catch (err) {
+        // silencioso
+      }
+    }
+  };
+
+  const toggleCategorySelection = (catId: string) => {
+    if (selectedCategories.includes(catId)) {
+      setSelectedCategories(selectedCategories.filter((id) => id !== catId));
+    } else {
+      if (selectedCategories.length >= 2) {
+        notify('Plano Gratuito: limite de 2 categorias no cadastro inicial. Faça upgrade para VIP para mais!', 'warning');
+        return;
+      }
+      setSelectedCategories([...selectedCategories, catId]);
+    }
+  };
+
   const submit = () => {
     if (!name.trim()) { setError('Informe seu nome.'); return; }
     if (!emailValid(email)) { setError('Informe um e-mail válido.'); return; }
@@ -148,6 +206,7 @@ function RegisterForm({ onClose, onSwitch, onNavigateTerms }: { onClose: () => v
     if (accountType === 'freelancer') {
       if (!cpf) { setError('Informe seu CPF.'); return; }
       if (!validateCPF(cpf)) { setError('CPF ou CNPJ inválido'); return; }
+      if (selectedCategories.length === 0) { setError('Selecione pelo menos 1 categoria / profissão.'); return; }
       if (!asaasWalletId.trim()) { setError('Informe seu ID da Conta Asaas para receber repasses via Split de Pagamento.'); return; }
     } else {
       if (!cnpj) { setError('Informe seu CNPJ.'); return; }
@@ -165,7 +224,7 @@ function RegisterForm({ onClose, onSwitch, onNavigateTerms }: { onClose: () => v
 
     const base = { accountType, name: name.trim(), nickname: nickname.trim() || undefined, email, password, photo: defaultPhoto(accountType), phone, whatsapp: whatsapp || phone, address: addr, termsAcceptance: acceptance };
     const extra = accountType === 'freelancer'
-      ? { cpf, asaasWalletId: asaasWalletId.trim(), bio: '', specialties: [], dailyRate: 0, hourlyRate: 0, pixKey: '', serviceRadiusKm: Number(serviceRadius) || 25, acceptsInterstate: interstate }
+      ? { cpf, asaasWalletId: asaasWalletId.trim(), bio: '', categories: selectedCategories, dailyRate: 0, hourlyRate: 0, pixKey: '', serviceRadiusKm: Number(serviceRadius) || 25, acceptsInterstate: interstate }
       : { cnpj, establishmentType };
     const res = register({ ...base, ...extra } as User);
     if (!res.ok) { setError(res.error ?? 'Erro ao cadastrar.'); return; }
@@ -199,11 +258,11 @@ function RegisterForm({ onClose, onSwitch, onNavigateTerms }: { onClose: () => v
         <Input label="WhatsApp" value={whatsapp} onChange={(e) => setWhatsapp(maskPhone(e.target.value))} placeholder="(11) 99999-9999" hint="Oculto até escrow" />
       </div>
 
-      {/* Address block */}
+      {/* Address block com busca por CEP */}
       <div className="mt-5 rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800/50">
         <p className="mb-3 text-xs font-bold uppercase tracking-wide text-neutral-500">Endereço Completo</p>
         <div className="grid gap-3 sm:grid-cols-3">
-          <Input label="CEP" value={addr.cep} onChange={(e) => setAddr({ ...addr, cep: maskCEP(e.target.value) })} placeholder="00000-000" />
+          <Input label="CEP" value={addr.cep} onChange={(e) => handleCepChange(e.target.value)} placeholder="00000-000" />
           <div className="sm:col-span-2"><Input label="Logradouro (Rua)" value={addr.street} onChange={(e) => setAddr({ ...addr, street: e.target.value })} /></div>
           <Input label="Número" value={addr.number} onChange={(e) => setAddr({ ...addr, number: e.target.value })} />
           <Input label="Complemento" value={addr.complement ?? ''} onChange={(e) => setAddr({ ...addr, complement: e.target.value })} />
@@ -214,6 +273,72 @@ function RegisterForm({ onClose, onSwitch, onNavigateTerms }: { onClose: () => v
           </Select>
         </div>
       </div>
+
+      {/* Seleção de Especialidades / Profissões (Apenas para Freelancers) */}
+      {accountType === 'freelancer' && (
+        <div className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800/50">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300">
+              <Tags className="h-4 w-4 text-primary-500" /> Suas Profissões / Especialidades ({selectedCategories.length}/2 selecionadas)
+            </p>
+            <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400">Plano Free: máx. 2</span>
+          </div>
+
+          {/* Filtro por Macro Categoria */}
+          <div className="no-scrollbar mb-3 flex gap-1.5 overflow-x-auto py-1">
+            <button
+              type="button"
+              onClick={() => setSelectedMacro('all')}
+              className={`rounded-lg px-2.5 py-1 text-xs font-semibold whitespace-nowrap transition ${
+                selectedMacro === 'all' ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' : 'bg-neutral-200/70 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300'
+              }`}
+            >
+              Todas
+            </button>
+            {MACRO_CATEGORIES.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setSelectedMacro(m.id)}
+                className={`rounded-lg px-2.5 py-1 text-xs font-semibold whitespace-nowrap transition ${
+                  selectedMacro === m.id ? 'bg-primary-600 text-white' : 'bg-neutral-200/70 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300'
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Grid de categorias em Chips clicáveis */}
+          <div className="max-h-48 overflow-y-auto rounded-lg border border-neutral-200 bg-white p-2 dark:border-neutral-700 dark:bg-neutral-900">
+            <div className="flex flex-wrap gap-1.5">
+              {CATEGORIES.filter((c) => selectedMacro === 'all' || c.macro === selectedMacro).map((c) => {
+                const selected = selectedCategories.includes(c.id);
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => toggleCategorySelection(c.id)}
+                    className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition ${
+                      selected
+                        ? 'bg-primary-500 text-white shadow-sm'
+                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
+                    }`}
+                  >
+                    {selected && <Check className="h-3 w-3" />}
+                    {c.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mt-2.5 flex items-center gap-1.5 text-xs text-neutral-500">
+            <Crown className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+            <span>Precisa atender em mais áreas? Após o cadastro, assine o <strong>Plano VIP</strong> para escolher mais categorias!</span>
+          </div>
+        </div>
+      )}
 
       {/* Geo preferences (freelancers only) */}
       {accountType === 'freelancer' && (
@@ -242,7 +367,7 @@ function RegisterForm({ onClose, onSwitch, onNavigateTerms }: { onClose: () => v
           <>
             <Input label="CNPJ" value={cnpj} onChange={(e) => { setCnpj(maskCNPJ(e.target.value)); setError(''); }} placeholder="00.000.000/0000-00" hint="Validação algorítmica" />
             <Select label="Tipo de estabelecimento" value={establishmentType} onChange={(e) => setEstablishmentType(e.target.value)}>
-              {['Bar & Restaurante', 'Buffet & Eventos', 'Restaurante', 'Bar', 'Lanchonete', 'Padaria', 'Casa de Shows', 'Hotel'].map((t) => <option key={t} value={t}>{t}</option>)}
+              {ESTABLISHMENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
             </Select>
           </>
         )}
