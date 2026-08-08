@@ -89,8 +89,8 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
             O marketplace de contratação emergencial de freelancers para bares, restaurantes, buffets, eventos, serviços gerais, saúde, oficinas e logística.
           </p>
 
-          {/* Carrossel de Anúncios Integrado na Home */}
-          <div className="w-full max-w-5xl my-4">
+          {/* Carrossel de Anúncios Integrado na Home com Altura Ajustada */}
+          <div className="w-full max-w-6xl my-4">
             <VipEstablishmentsCarousel />
           </div>
 
@@ -111,7 +111,7 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
   );
 }
 
-// Carrossel de Loop Infinito corrigido para exibir os anúncios cadastrados
+// Carrossel de Loop Infinito com altura expandida e visual aprimorado
 function VipEstablishmentsCarousel() {
   const { data } = useApp();
   const activeAds: { establishmentName: string; imageUrl: string; city: string; state: string }[] = [];
@@ -157,21 +157,21 @@ function VipEstablishmentsCarousel() {
   const visibleAds = getVisibleAds();
 
   return (
-    <div className="w-full max-w-5xl mx-auto overflow-hidden rounded-2xl border border-amber-500/30 bg-neutral-900/90 p-3 backdrop-blur shadow-xl">
-      <div className="flex items-center justify-between mb-2 px-1">
-        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-amber-400 bg-amber-500/20 px-2.5 py-0.5 rounded-full">
-          <Crown className="h-3 w-3" /> Vitrine de Estabelecimentos VIP
+    <div className="w-full max-w-6xl mx-auto overflow-hidden rounded-2xl border border-amber-500/30 bg-neutral-900/90 p-4 backdrop-blur shadow-xl">
+      <div className="flex items-center justify-between mb-3 px-1">
+        <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-400 bg-amber-500/20 px-3 py-1 rounded-full">
+          <Crown className="h-3.5 w-3.5" /> Vitrine de Estabelecimentos VIP
         </span>
         <span className="text-xs text-neutral-400">Destaques da região</span>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 transition-all duration-500">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 transition-all duration-500">
         {visibleAds.map((ad, idx) => (
-          <div key={idx} className="relative overflow-hidden h-36 sm:h-44 rounded-xl bg-neutral-950 border border-white/10 flex items-center justify-center shadow-md">
-            <img src={ad.imageUrl} alt={ad.establishmentName} className="h-full w-full object-cover transition-all duration-500 hover:scale-105" />
-            <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2.5 text-left flex justify-between items-end">
-              <span className="text-xs font-bold text-white drop-shadow truncate pr-2">{ad.establishmentName}</span>
-              <span className="text-[10px] text-amber-300 whitespace-nowrap">{ad.city} - {ad.state}</span>
+          <div key={idx} className="relative overflow-hidden h-64 sm:h-80 rounded-xl bg-neutral-950 border border-white/10 flex items-center justify-center shadow-lg group">
+            <img src={ad.imageUrl} alt={ad.establishmentName} className="h-full w-full object-cover transition-all duration-500 group-hover:scale-105" />
+            <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 text-left flex justify-between items-end">
+              <span className="text-sm font-bold text-white drop-shadow truncate pr-2">{ad.establishmentName}</span>
+              <span className="text-xs text-amber-300 whitespace-nowrap">{ad.city} - {ad.state}</span>
             </div>
           </div>
         ))}
