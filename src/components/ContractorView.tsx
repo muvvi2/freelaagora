@@ -55,12 +55,13 @@ export function ContractorView() {
     );
   };
 
-  const origin = useGps && gpsLat != null && gpsLng != null
-    ? { cep: '', street: '', number: '', neighborhood: '', city: 'GPS Atual', state: me.address?.state || 'SP', lat: gpsLat, lng: gpsLng }
-    : (me.address || { cep: '', street: '', number: '', neighborhood: '', city: 'São Paulo', state: 'SP', lat: -23.56, lng: -46.65 });
+  // Pega direto do endereço cadastrado/editado pelo CEP do estabelecimento
+  const establishmentCity = me.address?.city || 'Pitangueiras';
+  const establishmentState = me.address?.state || 'SP';
 
-  const establishmentCity = origin.city;
-  const establishmentState = origin.state;
+  const origin = useGps && gpsLat != null && gpsLng != null
+    ? { cep: '', street: '', number: '', neighborhood: '', city: 'GPS Atual', state: establishmentState, lat: gpsLat, lng: gpsLng }
+    : (me.address || { cep: '', street: '', number: '', neighborhood: '', city: establishmentCity, state: establishmentState, lat: -21.01, lng: -48.22 });
 
   const filtered = useMemo(() => {
     let list = data.users.filter((f) => {
