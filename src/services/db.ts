@@ -236,18 +236,18 @@ const STATUS_FROM_DB: Record<string, string> = {
 };
 
 const VIP_TIER_MAP: Record<string, number> = { free: 1, vip1: 2, vip2: 3, vip3: 4, vip4: 5, vip5: 6, vip6: 7 };
-const VIP_ID_TO_TIER: Record<number, Tier> = { 1: 'free', 2: 'vip1', 3: 'vip2', 4: 'vip3', 5: 'vip4', 6: 'vip5', 7: 'vip6' };
-const EST_VIP_ID_TO_TIER: Record<number, EstTier> = { 1: 'free', 2: 'vip1', 3: 'vip2', 4: 'vip3', 5: 'vip4', 6: 'vip5', 7: 'vip6' };
 
+// Mapeamento dinâmico baseado inteiramente no mockData
 function categorySlugToId(slug: string): number | null {
-  const cat = CATEGORIES.find((c) => c.id === slug);
-  if (!cat) return null;
-  const idx = CATEGORIES.indexOf(cat) + 1;
-  return idx;
+  const index = CATEGORIES.findIndex((c) => c.id === slug);
+  if (index === -1) return 1; // Fallback para a primeira categoria se não encontrar
+  return index + 1;
 }
 
 function categoryIdToSlug(id: number): string {
-  if (id >= 1 && id <= CATEGORIES.length) return CATEGORIES[id - 1].id;
+  if (id >= 1 && id <= CATEGORIES.length) {
+    return CATEGORIES[id - 1].id;
+  }
   return 'geral';
 }
 
