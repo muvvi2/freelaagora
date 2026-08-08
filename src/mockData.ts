@@ -341,17 +341,17 @@ export const VIP_PLANS: VipPlan[] = [
 ];
 
 // ============================================================
-// ESTABLISHMENT VIP PLANS (INCLUINDO VIP 4, VIP 5 E VIP 6)
+// ESTABLISHMENT VIP PLANS (COM CONTROLE DE ANÚNCIOS E QUANTIDADE)
 // ============================================================
 export const EST_VIP_PLANS: EstVipPlan[] = [
-  { tier: 'free', label: 'Plano Gratuito', intermediationFee: 15.0, maxActiveJobs: 2, features: ['Até 2 vagas por semana', 'Taxa de intermediação de 15,0%', 'Gratuito', 'Acesso completo ao marketplace'], prices: { monthly: 0, semestral: 0, annual: 0 } },
-  { tier: 'trial', label: 'Teste Gratuito (15 dias)', intermediationFee: 7.5, maxActiveJobs: 10, features: ['Até 10 vagas por semana durante o teste', 'Taxa reduzida de 7,5%', 'Sem compromisso'], prices: { monthly: 0, semestral: 0, annual: 0 } },
-  { tier: 'vip1', label: 'Plano VIP 1', intermediationFee: 7.5, maxActiveJobs: 5, features: ['Até 5 vagas por semana', 'Taxa reduzida de 7,5%', 'Prioridade no suporte'], prices: { monthly: 29.90, semestral: 149.90, annual: 249.90 } },
-  { tier: 'vip2', label: 'Plano VIP 2', intermediationFee: 5.0, maxActiveJobs: 20, features: ['Até 20 vagas por semana', 'Taxa reduzida de 5,0%', 'Prioridade no suporte', 'Destaque nas buscas'], prices: { monthly: 59.90, semestral: 299.90, annual: 499.90 } },
-  { tier: 'vip3', label: 'Plano VIP 3', intermediationFee: 0.0, maxActiveJobs: 999, features: ['Vagas ilimitadas por semana', 'Isenção total (0%) de taxas', 'Suporte prioritário VIP', 'Destaque máximo'], prices: { monthly: 119.90, semestral: 549.00, annual: 949.00 } },
-  { tier: 'vip4', label: 'Plano VIP 4', intermediationFee: 0.0, maxActiveJobs: 999, features: ['Vagas ilimitadas', 'Isenção total de taxas', 'Destaque máximo', 'Anúncios ativos'], prices: { monthly: 149.90, semestral: 699.00, annual: 1199.00 }, allowAds: true },
-  { tier: 'vip5', label: 'Plano VIP 5', intermediationFee: 0.0, maxActiveJobs: 999, features: ['Vagas ilimitadas', 'Isenção total', 'Super Destaque', 'Anúncios ativos'], prices: { monthly: 199.90, semestral: 899.00, annual: 1499.00 }, allowAds: true },
-  { tier: 'vip6', label: 'Plano VIP 6', intermediationFee: 0.0, maxActiveJobs: 999, features: ['Vagas ilimitadas', 'Isenção total', 'Destaque Global', 'Anúncios ativos'], prices: { monthly: 249.90, semestral: 1099.00, annual: 1899.00 }, allowAds: true },
+  { tier: 'free', label: 'Plano Gratuito', intermediationFee: 15.0, maxActiveJobs: 2, allowAds: false, maxAds: 0, features: ['Até 2 vagas por semana', 'Taxa de intermediação de 15,0%', 'Gratuito', 'Acesso completo ao marketplace'], prices: { monthly: 0, semestral: 0, annual: 0 } },
+  { tier: 'trial', label: 'Teste Gratuito (15 dias)', intermediationFee: 7.5, maxActiveJobs: 10, allowAds: false, maxAds: 0, features: ['Até 10 vagas por semana durante o teste', 'Taxa reduzida de 7,5%', 'Sem compromisso'], prices: { monthly: 0, semestral: 0, annual: 0 } },
+  { tier: 'vip1', label: 'Plano VIP 1', intermediationFee: 7.5, maxActiveJobs: 5, allowAds: false, maxAds: 0, features: ['Até 5 vagas por semana', 'Taxa reduzida de 7,5%', 'Prioridade no suporte'], prices: { monthly: 29.90, semestral: 149.90, annual: 249.90 } },
+  { tier: 'vip2', label: 'Plano VIP 2', intermediationFee: 5.0, maxActiveJobs: 20, allowAds: false, maxAds: 0, features: ['Até 20 vagas por semana', 'Taxa reduzida de 5,0%', 'Prioridade no suporte', 'Destaque nas buscas'], prices: { monthly: 59.90, semestral: 299.90, annual: 499.90 } },
+  { tier: 'vip3', label: 'Plano VIP 3', intermediationFee: 0.0, maxActiveJobs: 999, allowAds: false, maxAds: 0, features: ['Vagas ilimitadas por semana', 'Isenção total (0%) de taxas', 'Suporte prioritário VIP', 'Destaque máximo'], prices: { monthly: 119.90, semestral: 549.00, annual: 949.00 } },
+  { tier: 'vip4', label: 'Plano VIP 4', intermediationFee: 0.0, maxActiveJobs: 999, allowAds: true, maxAds: 1, features: ['Vagas ilimitadas', 'Isenção total de taxas', 'Até 1 anúncio ativo'], prices: { monthly: 149.90, semestral: 699.00, annual: 1199.00 } },
+  { tier: 'vip5', label: 'Plano VIP 5', intermediationFee: 0.0, maxActiveJobs: 999, allowAds: true, maxAds: 3, features: ['Vagas ilimitadas', 'Isenção total', 'Até 3 anúncios ativos'], prices: { monthly: 199.90, semestral: 899.00, annual: 1499.00 } },
+  { tier: 'vip6', label: 'Plano VIP 6', intermediationFee: 0.0, maxActiveJobs: 999, allowAds: true, maxAds: 5, features: ['Vagas ilimitadas', 'Isenção total', 'Até 5 anúncios ativos'], prices: { monthly: 249.90, semestral: 1099.00, annual: 1899.00 } },
 ];
 
 export const LEGAL_VERSION = 'v1.9';
