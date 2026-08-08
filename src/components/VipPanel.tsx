@@ -259,7 +259,7 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
         </div>
       )}
 
-      {/* Painel de Gerenciamento de Anúncios Dinâmico e 100% configurado pelo Painel Admin */}
+      {/* Painel de Gerenciamento de Anúncios Dinâmico (Com Link e Upload de Arquivos) */}
       {accountType === 'establishment' && (
         (() => {
           const activeEstPlan = data.estVipPlans.find(p => p.tier === (currentUser?.estVipTier ?? 'free'));
@@ -303,19 +303,43 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
                           <span className="text-[10px] text-neutral-400">Sem imagem</span>
                         )}
                       </div>
-                      <div className="flex-1 w-full space-y-1">
-                        <label className="text-xs font-semibold text-neutral-600 dark:text-neutral-300">URL da Imagem do Anúncio #{index + 1}</label>
-                        <input 
-                          type="text" 
-                          placeholder="Cole o link da imagem (ex: https://site.com/banner.jpg)"
-                          value={imageUrl}
-                          onChange={(e) => {
-                            const newImages = [...currentImages];
-                            newImages[index] = e.target.value;
-                            updateUser(userId, { adImages: newImages });
-                          }}
-                          className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs text-neutral-800 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-                        />
+                      <div className="flex-1 w-full space-y-1.5">
+                        <label className="text-xs font-semibold text-neutral-600 dark:text-neutral-300">Imagem do Anúncio #{index + 1}</label>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <input 
+                            type="text" 
+                            placeholder="Cole o link da imagem (URL)"
+                            value={imageUrl.startsWith('data:') ? '[Arquivo carregado do dispositivo]' : imageUrl}
+                            disabled={imageUrl.startsWith('data:')}
+                            onChange={(e) => {
+                              const newImages = [...currentImages];
+                              newImages[index] = e.target.value;
+                              updateUser(userId, { adImages: newImages });
+                            }}
+                            className="flex-1 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs text-neutral-800 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
+                          />
+                          <label className="cursor-pointer inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-medium transition shadow-sm whitespace-nowrap">
+                            <Upload className="h-3.5 w-3.5" />
+                            <span>Carregar Arquivo</span>
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              className="hidden" 
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                  const newImages = [...currentImages];
+                                  newImages[index] = reader.result as string;
+                                  updateUser(userId, { adImages: newImages });
+                                  notify(`Anúncio #${index + 1} carregado com sucesso!`);
+                                };
+                                reader.readAsDataURL(file);
+                              }} 
+                            />
+                          </label>
+                        </div>
                       </div>
                     </div>
                   );
