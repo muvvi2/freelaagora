@@ -21,6 +21,7 @@ import type { Contract, User, Tier, EstTier, ContractStatus, ShiftSlot, Period, 
 
 type Tab = 'overview' | 'freelancers' | 'establishments' | 'contracts' | 'jobs' | 'reviews' | 'coupons' | 'audit' | 'wallet' | 'vip' | 'admins';
 
+// Cores exclusivas e sofisticadas para cada nível VIP (destacando a partir do VIP 4)
 const getPlanTierColor = (tier: string) => {
   if (tier === 'vip6') return 'text-rose-500';
   if (tier === 'vip5') return 'text-purple-500';
@@ -28,6 +29,7 @@ const getPlanTierColor = (tier: string) => {
   if (tier === 'vip3') return 'text-warning-500';
   if (tier === 'vip2') return 'text-secondary-500';
   if (tier === 'vip1') return 'text-primary-500';
+  if (tier === 'trial') return 'text-accent-500';
   return 'text-neutral-400';
 };
 
