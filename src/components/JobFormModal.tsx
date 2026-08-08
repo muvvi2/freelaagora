@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Check } from 'lucide-react';
 import type { Job, Urgency, User } from '@/types';
-import { uid, urgencyLabel } from '@/utils';
+import { uid, urgencyLabel, getEstPlan } from '@/utils';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Input, Textarea, Select } from './ui/Field';
@@ -32,6 +32,22 @@ export function JobFormModal({ open, onClose, editing, establishment }: { open: 
       notify('Vaga atualizada');
       onClose();
     } else {
+      // 1. Pega o plano atual do estabelecimento
+      const plan = getEstPlan(currentEstablishment.estVipTier ?? 'free', data.estVipPlans);
+
+      // 2. Verifica período de teste (Trial) — limitando a 10 vagas no trial
+      const isOnTrial = currentEstablishment.trialEndsAt && new Date(currentEstablishment.trialEndsAt) > new Date();
+      const effectiveMaxJobs = isOnTrial ? 10 : plan.maxActiveJobs;
+
+      // 3. Conta rigorosamente quantas vagas ativas o estabelecimento possui
+      const activeJobsCount = data.jobs.filter((j) => j.establishmentId === currentEstablishment.id && j.status !== 'closed').length;
+
+      // 4. BLOQUEIO IMEDIATO NO MODAL
+      if (activeJobsCount >= effectiveMaxJobs) {
+        notify(`Limite atingido! ${isOnTrial ? 'Seu período de teste permite até 10 vagas ativas.' : `Seu plano atual permite até ${effectiveMaxJobs} vagas ativas.`} Faça um upgrade para o VIP para publicar mais.`, 'error');
+        return; // Para aqui, exibe o erro e mantém o modal aberto
+      }
+
       const job: Job = {
         id: uid('job'),
         establishmentId: currentEstablishment.id,
@@ -52,13 +68,7 @@ export function JobFormModal({ open, onClose, editing, establishment }: { open: 
         createdAt: new Date().toISOString(),
       };
 
-      // Valida a resposta da função addJob global
-      const result = addJob(job);
-      if (result && !result.ok) {
-        notify(result.error ?? 'Limite de vagas atingido para o seu plano.', 'error');
-        return; // Interrompe e mantém o modal aberto
-      }
-
+      addJob(job);
       notify('Vaga urgente publicada no feed!');
       onClose();
     }
