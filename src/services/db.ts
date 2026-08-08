@@ -249,11 +249,11 @@ function freelancerTierToId(tier: string): number {
   }
 }
 
-// Mapeamento ID Fixo por Tiers para Estabelecimento
+// Mapeamento ID Fixo por Tiers para Estabelecimento (Trial integrado ao ID 3)
 function establishmentTierToId(tier: string): number {
   switch (tier) {
+    case 'trial': return 3;
     case 'free': return 4;
-    case 'trial': return 999; // Trial gerido via app, não vai para tabela
     case 'vip1': return 5;
     case 'vip2': return 6;
     case 'vip3': return 7;
@@ -627,7 +627,6 @@ export async function dbDeleteVipPlan(tier: Tier): Promise<void> {
 
 export async function dbUpsertEstVipPlan(plan: EstVipPlan): Promise<void> {
   const planId = establishmentTierToId(plan.tier);
-  if (planId === 999) return;
   const { error } = await supabase.from('vip_plans_establishment').upsert({
     id: planId,
     name: plan.label,
@@ -647,7 +646,6 @@ export async function dbUpsertEstVipPlan(plan: EstVipPlan): Promise<void> {
 
 export async function dbDeleteEstVipPlan(tier: EstTier): Promise<void> {
   const planId = establishmentTierToId(tier);
-  if (planId === 999) return;
   const { error } = await supabase.from('vip_plans_establishment').delete().eq('id', planId);
   if (error) {
     console.error('Erro ao deletar plano de estabelecimento:', error.message);
@@ -803,7 +801,6 @@ export async function loadAllData(): Promise<AppData> {
 
   const estVipPlans: EstVipPlan[] = EST_VIP_PLANS.map(plan => {
     const targetId = establishmentTierToId(plan.tier);
-    if (targetId === 999) return plan; // Mantém o Trial original limpo e isolado
     const dbPlan = vipEsRes.data?.find((p: any) => p.id === targetId);
     if (dbPlan) {
       return {
