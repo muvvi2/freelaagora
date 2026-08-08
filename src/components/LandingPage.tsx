@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { LogIn, UserPlus, Shield, Wallet, Calendar, MapPin, Check, Eye, EyeOff, ChefHat, Store, Fingerprint, AlertCircle, ExternalLink, Info, Tags, Crown } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { LogIn, UserPlus, Shield, Wallet, Calendar, MapPin, Check, Eye, EyeOff, ChefHat, Store, Fingerprint, AlertCircle, ExternalLink, Info, Tags, Crown, Download } from 'lucide-react';
 import { useApp } from '@/AppContext';
 import { useToast } from './ui/Toast';
 import { Modal } from './ui/Modal';
@@ -7,30 +7,49 @@ import { Button } from './ui/Button';
 import { Input, Select } from './ui/Field';
 import { emailValid, maskCPF, maskCNPJ, maskPhone, maskCEP, validateCPF, validateCNPJ } from '@/utils';
 import { LEGAL_VERSION, MACRO_CATEGORIES, CATEGORIES } from '@/mockData';
-import { ASAAS_REFERRAL_LINK } from '@/services/paymentService';
 import type { AccountType, User, Address, TermsAcceptance } from '@/types';
 
 const STATES = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
 
 const ESTABLISHMENT_TYPES = [
-  // Alimentação & Gastronomia
   'Bar & Restaurante', 'Restaurante', 'Bar', 'Lanchonete / Fast Food', 'Buffet & Eventos', 'Padaria & Confeitaria', 'Pizzaria', 'Churrascaria', 'Cafeteria & Barista', 'Cervejaria & Choperia', 'Sorveteria & Gelateria', 'Cozinha Industrial / Coletiva',
-  // Hotelaria & Turismo
   'Hotel', 'Pousada', 'Resort', 'Hostel', 'Casa de Shows & Eventos', 'Espaço de Festas',
-  // Comércio & Varejo
   'Supermercado & Hipermercado', 'Loja de Shopping / Varejo', 'Farmácia & Perfumaria', 'Comércio de Hortifrúti', 'Loja de E-commerce / Centro de Distribuição', 'Posto de Combustíveis & Conveniência',
-  // Saúde, Clínicas & Bem-Estar
   'Clínica Médica / Home Care', 'Clínica Odontológica', 'Salão de Beleza & Barbearia', 'Estúdio de Estética & Spa', 'Academia & Centro Esportivo', 'Clínica Veterinária & Pet Shop',
-  // Construção, Reformas & Imobiliário
   'Construtora & Incorporadora', 'Empresa de Engenharia & Arquitetura', 'Loja de Materiais de Construção', 'Condomínio Residencial / Predial', 'Administradora de Imóveis',
-  // Escritórios & Serviços Profissionais
   'Escritório de Advocacia', 'Escritório de Contabilidade', 'Agência de Marketing & Publicidade', 'Empresa de TI / Tecnologia', 'Consultoria & Gestão',
-  // Logística, Indústria & Agronegócio
   'Empresa de Logística & Transportes', 'Indústria & Fábrica', 'Fazenda & Produtor Rural', 'Cooperativa Agrícola', 'Oficina Mecânica & Estética Automotiva', 'Outros / Geral'
 ];
 
 export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void }) {
   const [authModal, setAuthModal] = useState<null | 'login' | 'register'>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBtn, setShowInstallBtn] = useState(false);
+  const { notify } = useToast();
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBtn(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) {
+      notify('Para instalar no celular, abra o menu do navegador (3 pontinhos ou Compartilhar) e selecione "Adicionar à Tela Inicial".', 'info');
+      return;
+    }
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      notify('Aplicativo instalado com sucesso!');
+    }
+    setDeferredPrompt(null);
+    setShowInstallBtn(false);
+  };
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-neutral-950 text-white">
@@ -39,37 +58,48 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
       <div className="absolute -right-32 bottom-1/4 h-96 w-96 rounded-full bg-secondary-500/15 blur-3xl" />
 
       <div className="relative z-10 flex min-h-screen flex-col">
-        <nav className="flex items-center justify-between px-5 py-5 sm:px-8">
-          <div className="flex items-center gap-2.5">
-            <img src="/image.png" alt="FreelaAgora" className="h-16 w-auto max-w-[260px] object-contain sm:h-20 sm:max-w-[320px]" />
+        {/* Header Responsivo (PC e Mobile) */}
+        <nav className="flex items-center justify-between px-4 py-3 sm:px-8">
+          <div className="flex items-center gap-2">
+            <img src="/image.png" alt="FreelaAgora" className="h-10 w-auto max-w-[160px] object-contain sm:h-16 sm:max-w-[260px]" />
           </div>
-          <button onClick={onNavigateTerms} className="text-sm font-medium text-neutral-400 transition hover:text-white">Termos de Uso</button>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+            {showInstallBtn && (
+              <Button size="sm" variant="outline" onClick={handleInstallClick} className="border-accent-400/50 bg-accent-500/10 text-accent-300 hover:bg-accent-500/20 text-xs">
+                <Download className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Instalar App</span>
+              </Button>
+            )}
+            <button onClick={onNavigateTerms} className="text-xs sm:text-sm font-medium text-neutral-400 transition hover:text-white">Termos</button>
+            <Button size="sm" onClick={() => setAuthModal('login')} className="bg-primary-500 text-white hover:bg-primary-600 shadow-glow text-xs sm:text-sm"><LogIn className="h-3.5 w-3.5" /> Entrar</Button>
+            <Button size="sm" variant="outline" onClick={() => setAuthModal('register')} className="border-white/20 text-white hover:bg-white/10 text-xs sm:text-sm"><UserPlus className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Cadastrar-se</span></Button>
+          </div>
         </nav>
 
-        <main className="flex flex-1 flex-col items-center justify-center px-5 py-12 text-center sm:px-8">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium text-neutral-300 backdrop-blur">
+        {/* Main otimizado */}
+        <main className="flex flex-1 flex-col items-center justify-start px-4 pt-2 pb-12 text-center sm:px-8">
+          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-neutral-300 backdrop-blur">
             <Shield className="h-3.5 w-3.5 text-secondary-400" />
             Pagamento seguro com garantia (escrow)
           </div>
-          <h1 className="font-display text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-6xl md:text-7xl">
+          <h1 className="font-display text-3xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl md:text-6xl">
             Precisa de alguém?<br />
             <span className="bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent">Chame aqui!</span>
           </h1>
-          <p className="mt-6 max-w-xl text-base text-neutral-400 sm:text-lg">
+          <p className="mt-2 max-w-lg text-xs text-neutral-400 sm:text-sm">
             O marketplace de contratação emergencial de freelancers para bares, restaurantes, buffets, eventos, serviços gerais, saúde, oficinas e logística.
           </p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Button size="lg" onClick={() => setAuthModal('login')} className="bg-primary-500 text-white hover:bg-primary-600 shadow-glow"><LogIn className="h-5 w-5" /> Entrar</Button>
-            <Button size="lg" variant="outline" onClick={() => setAuthModal('register')} className="border-white/20 text-white hover:bg-white/10"><UserPlus className="h-5 w-5" /> Cadastrar-se</Button>
-          </div>
-          <div className="mt-16 grid w-full max-w-3xl grid-cols-1 gap-4 sm:grid-cols-3">
+
+          {/* Carrossel de Loop Infinito com Múltiplas Fotos/Anúncios */}
+          <VipEstablishmentsCarousel />
+
+          <div className="mt-6 grid w-full max-w-4xl grid-cols-1 gap-3 sm:grid-cols-3">
             <FeatureCard icon={Wallet} title="Garantia (Escrow)" desc="Pagamento retido até a conclusão do serviço. Segurança para os dois lados." />
             <FeatureCard icon={Calendar} title="Agenda de turnos" desc="Freelancers definem disponibilidade por manhã, tarde e noite." />
             <FeatureCard icon={MapPin} title="Busca por proximidade" desc="Só aparecem profissionais da sua cidade e região metropolitana." />
           </div>
         </main>
 
-        <footer className="px-5 py-6 text-center text-xs text-neutral-500 sm:px-8">
+        <footer className="px-5 py-4 text-center text-xs text-neutral-500 sm:px-8">
           FreelaAgora · Plataforma fintech de freelancers · {new Date().getFullYear()}
         </footer>
       </div>
@@ -79,12 +109,83 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
   );
 }
 
+// Carrossel de Loop Infinito com múltiplos anúncios simultâneos
+function VipEstablishmentsCarousel() {
+  const { data } = useApp();
+  const activeAds: { establishmentName: string; imageUrl: string; city: string; state: string }[] = [];
+  
+  data.users.forEach((u) => {
+    if (u.accountType === 'establishment' && ['vip4', 'vip5'].includes(u.estVipTier ?? '') && u.adImages && u.adImages.length > 0) {
+      u.adImages.forEach((img) => {
+        if (img && img.trim() !== '') {
+          activeAds.push({
+            establishmentName: u.name,
+            imageUrl: img,
+            city: u.address?.city || '',
+            state: u.address?.state || '',
+          });
+        }
+      });
+    }
+  });
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    if (activeAds.length <= 1) return;
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % activeAds.length);
+    }, 3500);
+    return () => clearInterval(timer);
+  }, [activeAds.length]);
+
+  if (activeAds.length === 0) return null;
+
+  // Seleciona múltiplos itens para exibir lado a lado (ex: 3 no desktop, 1 no mobile)
+  const getVisibleAds = () => {
+    if (activeAds.length === 0) return [];
+    const items = [];
+    const count = window.innerWidth >= 768 ? Math.min(3, activeAds.length) : 1;
+    for (let i = 0; i < count; i++) {
+      const idx = (currentIndex + i) % activeAds.length;
+      items.push(activeAds[idx]);
+    }
+    return items;
+  };
+
+  const visibleAds = getVisibleAds();
+
+  return (
+    <div className="mt-4 w-full max-w-5xl mx-auto overflow-hidden rounded-2xl border border-amber-500/30 bg-neutral-900/90 p-3 backdrop-blur shadow-xl">
+      <div className="flex items-center justify-between mb-2 px-1">
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-amber-400 bg-amber-500/20 px-2.5 py-0.5 rounded-full">
+          <Crown className="h-3 w-3" /> Vitrine de Estabelecimentos VIP (Loop Infinito)
+        </span>
+        <span className="text-xs text-neutral-400">Exibindo destaques</span>
+      </div>
+      
+      {/* Grid responsivo simulando o carrossel contínuo */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 transition-all duration-500">
+        {visibleAds.map((ad, idx) => (
+          <div key={idx} className="relative overflow-hidden h-36 sm:h-44 rounded-xl bg-neutral-950 border border-white/10 flex items-center justify-center shadow-md">
+            <img src={ad.imageUrl} alt={ad.establishmentName} className="h-full w-full object-cover transition-all duration-500 hover:scale-105" />
+            <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2.5 text-left flex justify-between items-end">
+              <span className="text-xs font-bold text-white drop-shadow truncate pr-2">{ad.establishmentName}</span>
+              <span className="text-[10px] text-amber-300 whitespace-nowrap">{ad.city} - {ad.state}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function FeatureCard({ icon: Icon, title, desc }: { icon: typeof Shield; title: string; desc: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-left backdrop-blur transition hover:border-white/20">
-      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-primary-500/15"><Icon className="h-5 w-5 text-primary-400" /></div>
-      <h3 className="font-display font-bold text-white">{title}</h3>
-      <p className="mt-1 text-sm text-neutral-400">{desc}</p>
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-3.5 text-left backdrop-blur transition hover:border-white/20">
+      <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-xl bg-primary-500/15"><Icon className="h-4 w-4 text-primary-400" /></div>
+      <h3 className="font-display font-bold text-xs sm:text-sm text-white">{title}</h3>
+      <p className="mt-1 text-[11px] sm:text-xs text-neutral-400">{desc}</p>
     </div>
   );
 }
@@ -143,6 +244,7 @@ function RegisterForm({ onClose, onSwitch, onNavigateTerms }: { onClose: () => v
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
+  const [gender, setGender] = useState<'Masculino' | 'Feminino' | 'Outro'>('Masculino');
   const [addr, setAddr] = useState<Address>(emptyAddr());
   const [cpf, setCpf] = useState('');
   const [cnpj, setCnpj] = useState('');
@@ -155,7 +257,6 @@ function RegisterForm({ onClose, onSwitch, onNavigateTerms }: { onClose: () => v
   const [termsOpen, setTermsOpen] = useState(false);
   const [error, setError] = useState('');
 
-  // Seleção de Profissões / Categorias (Free = Max 2)
   const [selectedMacro, setSelectedMacro] = useState<string>('all');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
@@ -224,7 +325,7 @@ function RegisterForm({ onClose, onSwitch, onNavigateTerms }: { onClose: () => v
 
     const base = { accountType, name: name.trim(), nickname: nickname.trim() || undefined, email, password, photo: defaultPhoto(accountType), phone, whatsapp: whatsapp || phone, address: addr, termsAcceptance: acceptance };
     const extra = accountType === 'freelancer'
-      ? { cpf, asaasWalletId: asaasWalletId.trim(), bio: '', categories: selectedCategories, dailyRate: 0, hourlyRate: 0, pixKey: '', serviceRadiusKm: Number(serviceRadius) || 25, acceptsInterstate: interstate }
+      ? { cpf, gender, asaasWalletId: asaasWalletId.trim(), bio: '', categories: selectedCategories, dailyRate: 0, hourlyRate: 0, pixKey: '', serviceRadiusKm: Number(serviceRadius) || 25, acceptsInterstate: interstate }
       : { cnpj, establishmentType };
     const res = register({ ...base, ...extra } as User);
     if (!res.ok) { setError(res.error ?? 'Erro ao cadastrar.'); return; }
@@ -251,14 +352,22 @@ function RegisterForm({ onClose, onSwitch, onNavigateTerms }: { onClose: () => v
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2"><Input label={accountType === 'freelancer' ? 'Nome completo' : 'Nome do estabelecimento'} value={name} onChange={(e) => { setName(e.target.value); setError(''); }} /></div>
-        {accountType === 'freelancer' && <Input label="Apelido / Nickname" value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="Ex: Tigrão" />}
+        {accountType === 'freelancer' && (
+          <>
+            <Input label="Apelido / Nickname" value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="Ex: Tigrão" />
+            <Select label="Sexo / Gênero" value={gender} onChange={(e) => setGender(e.target.value as any)}>
+              <option value="Masculino">Masculino</option>
+              <option value="Feminino">Feminino</option>
+              <option value="Outro">Outro</option>
+            </Select>
+          </>
+        )}
         <Input label="E-mail" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setError(''); }} />
         <Input label="Senha (mín. 6 caracteres)" type="password" value={password} onChange={(e) => { setPassword(e.target.value); setError(''); }} />
         <Input label="Telefone de contato" value={phone} onChange={(e) => setPhone(maskPhone(e.target.value))} placeholder="(11) 99999-9999" />
         <Input label="WhatsApp" value={whatsapp} onChange={(e) => setWhatsapp(maskPhone(e.target.value))} placeholder="(11) 99999-9999" hint="Oculto até escrow" />
       </div>
 
-      {/* Address block com busca por CEP */}
       <div className="mt-5 rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800/50">
         <p className="mb-3 text-xs font-bold uppercase tracking-wide text-neutral-500">Endereço Completo</p>
         <div className="grid gap-3 sm:grid-cols-3">
@@ -274,7 +383,6 @@ function RegisterForm({ onClose, onSwitch, onNavigateTerms }: { onClose: () => v
         </div>
       </div>
 
-      {/* Seleção de Especialidades / Profissões (Apenas para Freelancers) */}
       {accountType === 'freelancer' && (
         <div className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800/50">
           <div className="mb-2 flex items-center justify-between">
@@ -284,7 +392,6 @@ function RegisterForm({ onClose, onSwitch, onNavigateTerms }: { onClose: () => v
             <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400">Plano Free: máx. 2</span>
           </div>
 
-          {/* Filtro por Macro Categoria */}
           <div className="no-scrollbar mb-3 flex gap-1.5 overflow-x-auto py-1">
             <button
               type="button"
@@ -309,7 +416,6 @@ function RegisterForm({ onClose, onSwitch, onNavigateTerms }: { onClose: () => v
             ))}
           </div>
 
-          {/* Grid de categorias em Chips clicáveis */}
           <div className="max-h-48 overflow-y-auto rounded-lg border border-neutral-200 bg-white p-2 dark:border-neutral-700 dark:bg-neutral-900">
             <div className="flex flex-wrap gap-1.5">
               {CATEGORIES.filter((c) => selectedMacro === 'all' || c.macro === selectedMacro).map((c) => {
@@ -340,7 +446,6 @@ function RegisterForm({ onClose, onSwitch, onNavigateTerms }: { onClose: () => v
         </div>
       )}
 
-      {/* Geo preferences (freelancers only) */}
       {accountType === 'freelancer' && (
         <div className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800/50">
           <p className="mb-3 text-xs font-bold uppercase tracking-wide text-neutral-500">Área de Atendimento</p>
@@ -356,7 +461,6 @@ function RegisterForm({ onClose, onSwitch, onNavigateTerms }: { onClose: () => v
         </div>
       )}
 
-      {/* Document */}
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         {accountType === 'freelancer' ? (
           <>
@@ -373,7 +477,6 @@ function RegisterForm({ onClose, onSwitch, onNavigateTerms }: { onClose: () => v
         )}
       </div>
 
-      {/* Asaas wallet ID — freelancers only */}
       {accountType === 'freelancer' && (
         <div className="mt-4 space-y-3">
           <Input
@@ -403,7 +506,6 @@ function RegisterForm({ onClose, onSwitch, onNavigateTerms }: { onClose: () => v
         </div>
       )}
 
-      {/* Terms acceptance with scroll-to-bottom enforcement */}
       <div className="mt-4 rounded-xl border border-neutral-200 dark:border-neutral-700">
         <button
           type="button"
