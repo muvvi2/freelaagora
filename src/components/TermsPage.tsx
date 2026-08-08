@@ -93,18 +93,21 @@ function DynamicEstablishmentPlansList() {
   const { data } = useApp();
   return (
     <div className="space-y-3 ml-2">
-      {data.estVipPlans.map((plan: EstVipPlan) => (
-        <div key={plan.tier}>
-          <p className="font-semibold text-neutral-900 dark:text-white">
-            {plan.label} {plan.intermediationFee === 0 ? '(Isenção total - 0% de taxa)' : `(taxa de ${plan.intermediationFee}% somada ao valor total)`} — Limite de {plan.maxActiveJobs >= 999 ? 'vagas ilimitadas' : `${plan.maxActiveJobs} vagas por semana`}:
-          </p>
-          <ul className="mt-1 list-disc list-inside space-y-1 ml-2">
-            {plan.features.map((f: string, i: number) => (
-              <li key={i}>{f}</li>
-            ))}
-          </ul>
-        </div>
-      ))}
+      {data.estVipPlans.map((plan: EstVipPlan) => {
+        const jobsLimit = plan.maxActiveJobs ?? (plan.tier === 'free' ? 2 : plan.tier === 'vip1' ? 5 : plan.tier === 'vip2' ? 20 : 999);
+        return (
+          <div key={plan.tier}>
+            <p className="font-semibold text-neutral-900 dark:text-white">
+              {plan.label} {plan.intermediationFee === 0 ? '(Isenção total - 0% de taxa)' : `(taxa de ${plan.intermediationFee}% somada ao valor total)`} — Limite de {jobsLimit >= 999 ? 'vagas ilimitadas' : `${jobsLimit} vagas por semana`}:
+            </p>
+            <ul className="mt-1 list-disc list-inside space-y-1 ml-2">
+              {plan.features.map((f: string, i: number) => (
+                <li key={i}>{f}</li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
     </div>
   );
 }
