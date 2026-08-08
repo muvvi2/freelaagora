@@ -595,7 +595,7 @@ function mapJobToDbRow(j: Job): Partial<DbJob> {
 }
 
 // ============================================================
-// VIP PLANS DB OPERATIONS
+// VIP PLANS DB OPERATIONS (Com Tratamento de Erros Explícito)
 // ============================================================
 export async function dbUpsertVipPlan(plan: VipPlan): Promise<void> {
   const planId = freelancerTierToId(plan.tier);
@@ -610,13 +610,19 @@ export async function dbUpsertVipPlan(plan: VipPlan): Promise<void> {
     badge_type: plan.badge || null,
   } as never, { onConflict: 'id' });
 
-  if (error) console.error('Erro ao salvar plano freelancer:', error.message);
+  if (error) {
+    console.error('Erro ao salvar plano freelancer:', error.message);
+    throw new Error(`Erro ao salvar plano freelancer: ${error.message}`);
+  }
 }
 
 export async function dbDeleteVipPlan(tier: Tier): Promise<void> {
   const planId = freelancerTierToId(tier);
   const { error } = await supabase.from('vip_plans_freelancer').delete().eq('id', planId);
-  if (error) console.error('Erro ao deletar plano freelancer:', error.message);
+  if (error) {
+    console.error('Erro ao deletar plano freelancer:', error.message);
+    throw new Error(`Erro ao deletar plano freelancer: ${error.message}`);
+  }
 }
 
 export async function dbUpsertEstVipPlan(plan: EstVipPlan): Promise<void> {
@@ -633,14 +639,20 @@ export async function dbUpsertEstVipPlan(plan: EstVipPlan): Promise<void> {
     max_ads: plan.maxAds ?? 0,
   } as never, { onConflict: 'id' });
 
-  if (error) console.error('Erro ao salvar plano de estabelecimento:', error.message);
+  if (error) {
+    console.error('Erro ao salvar plano de estabelecimento:', error.message);
+    throw new Error(`Erro ao salvar plano de estabelecimento: ${error.message}`);
+  }
 }
 
 export async function dbDeleteEstVipPlan(tier: EstTier): Promise<void> {
   const planId = establishmentTierToId(tier);
   if (planId === 999) return;
   const { error } = await supabase.from('vip_plans_establishment').delete().eq('id', planId);
-  if (error) console.error('Erro ao deletar plano de estabelecimento:', error.message);
+  if (error) {
+    console.error('Erro ao deletar plano de estabelecimento:', error.message);
+    throw new Error(`Erro ao deletar plano de estabelecimento: ${error.message}`);
+  }
 }
 
 // ============================================================
