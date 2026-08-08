@@ -45,6 +45,17 @@ export function FreelancerView() {
     { id: 'wallet' as const, label: 'Carteira', icon: Wallet },
   ];
 
+  // Se a aba selecionada for 'vip', renderiza a página inteira dedicada ao Plano VIP
+  if (tab === 'vip') {
+    return (
+      <VipPanel 
+        userId={me.id} 
+        accountType="freelancer" 
+        onBack={() => setTab('opportunities')} 
+      />
+    );
+  }
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
       {/* Profile header */}
@@ -137,7 +148,6 @@ export function FreelancerView() {
               <AvailabilityCalendar dateAvailability={me.dateAvailability} editable onToggle={(dateKey: string, shift: ShiftSlot) => toggleDateShift(me.id, dateKey, shift)} />
             </section>
           )}
-          {tab === 'vip' && <VipPanel userId={me.id} accountType="freelancer" />}
           {tab === 'wallet' && <WalletPanel userId={me.id} />}
 
           {tab === 'agenda' && reviewsAboutMe.length > 0 && (
@@ -153,9 +163,8 @@ export function FreelancerView() {
           )}
         </div>
 
-        {/* Sidebar: Widget VIP 4/5 + Contracts */}
+        {/* Sidebar: Widget VIP + Contracts */}
         <aside className="space-y-4">
-          {/* Widget Quadrado de Anúncios VIP 4/5 (Atualiza a cada 10s) */}
           <VipSquareWidget />
 
           {myContracts.length > 0 && (
