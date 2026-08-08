@@ -337,10 +337,11 @@ export const VIP_PLANS: VipPlan[] = [
   { tier: 'vip1', label: 'VIP 1', maxCategories: 4, features: ['Até 4 categorias ativas', 'Impulso leve nas buscas'], prices: { monthly: 14.90, semestral: 59.90, annual: 99.90 }, boost: 'light' },
   { tier: 'vip2', label: 'VIP 2', maxCategories: 5, features: ['Até 5 categorias ativas', 'Selo verificado', 'Ranking superior nas buscas'], prices: { monthly: 24.90, semestral: 99.90, annual: 169.90 }, badge: 'verified', boost: 'top' },
   { tier: 'vip3', label: 'VIP 3', maxCategories: 999, features: ['Categorias ilimitadas', 'Destaque visual máximo', 'Suporte prioritário', 'Ranking máximo'], prices: { monthly: 39.90, semestral: 159.90, annual: 279.90 }, badge: 'diamond', boost: 'max' },
+  { tier: 'vip4', label: 'VIP 4', maxCategories: 999, features: ['Categorias ilimitadas', 'Destaque total', 'Prioridade máxima'], prices: { monthly: 59.90, semestral: 229.90, annual: 399.90 }, badge: 'diamond', boost: 'max' },
 ];
 
 // ============================================================
-// ESTABLISHMENT VIP PLANS (COM O VIP 4 ADICIONADO)
+// ESTABLISHMENT VIP PLANS (INCLUINDO VIP 4, VIP 5 E VIP 6)
 // ============================================================
 export const EST_VIP_PLANS: EstVipPlan[] = [
   { tier: 'free', label: 'Plano Gratuito', intermediationFee: 15.0, maxActiveJobs: 2, features: ['Até 2 vagas por semana', 'Taxa de intermediação de 15,0%', 'Gratuito', 'Acesso completo ao marketplace'], prices: { monthly: 0, semestral: 0, annual: 0 } },
@@ -348,13 +349,15 @@ export const EST_VIP_PLANS: EstVipPlan[] = [
   { tier: 'vip1', label: 'Plano VIP 1', intermediationFee: 7.5, maxActiveJobs: 5, features: ['Até 5 vagas por semana', 'Taxa reduzida de 7,5%', 'Prioridade no suporte'], prices: { monthly: 29.90, semestral: 149.90, annual: 249.90 } },
   { tier: 'vip2', label: 'Plano VIP 2', intermediationFee: 5.0, maxActiveJobs: 20, features: ['Até 20 vagas por semana', 'Taxa reduzida de 5,0%', 'Prioridade no suporte', 'Destaque nas buscas'], prices: { monthly: 59.90, semestral: 299.90, annual: 499.90 } },
   { tier: 'vip3', label: 'Plano VIP 3', intermediationFee: 0.0, maxActiveJobs: 999, features: ['Vagas ilimitadas por semana', 'Isenção total (0%) de taxas', 'Suporte prioritário VIP', 'Destaque máximo'], prices: { monthly: 119.90, semestral: 549.00, annual: 949.00 } },
-  { tier: 'vip4', label: 'Plano VIP 4', intermediationFee: 0.0, maxActiveJobs: 999, features: ['Vagas ilimitadas por semana', 'Isenção total (0%) de taxas', 'Suporte VIP exclusivo', 'Anúncios ativos'], prices: { monthly: 149.90, semestral: 699.00, annual: 1199.00 }, allowAds: true },
+  { tier: 'vip4', label: 'Plano VIP 4', intermediationFee: 0.0, maxActiveJobs: 999, features: ['Vagas ilimitadas', 'Isenção total de taxas', 'Destaque máximo', 'Anúncios ativos'], prices: { monthly: 149.90, semestral: 699.00, annual: 1199.00 }, allowAds: true },
+  { tier: 'vip5', label: 'Plano VIP 5', intermediationFee: 0.0, maxActiveJobs: 999, features: ['Vagas ilimitadas', 'Isenção total', 'Super Destaque', 'Anúncios ativos'], prices: { monthly: 199.90, semestral: 899.00, annual: 1499.00 }, allowAds: true },
+  { tier: 'vip6', label: 'Plano VIP 6', intermediationFee: 0.0, maxActiveJobs: 999, features: ['Vagas ilimitadas', 'Isenção total', 'Destaque Global', 'Anúncios ativos'], prices: { monthly: 249.90, semestral: 1099.00, annual: 1899.00 }, allowAds: true },
 ];
 
 export const LEGAL_VERSION = 'v1.9';
 
-export const tierLabel: Record<string, string> = { free: 'Free', vip1: 'VIP 1', vip2: 'VIP 2', vip3: 'VIP 3', vip4: 'VIP 4' };
-export const estTierLabel: Record<string, string> = { free: 'Gratuito', trial: 'Teste Gratuito', vip1: 'VIP 1', vip2: 'VIP 2', vip3: 'VIP 3', vip4: 'VIP 4' };
+export const tierLabel: Record<string, string> = { free: 'Free', vip1: 'VIP 1', vip2: 'VIP 2', vip3: 'VIP 3', vip4: 'VIP 4', vip5: 'VIP 5', vip6: 'VIP 6' };
+export const estTierLabel: Record<string, string> = { free: 'Gratuito', trial: 'Teste Gratuito', vip1: 'VIP 1', vip2: 'VIP 2', vip3: 'VIP 3', vip4: 'VIP 4', vip5: 'VIP 5', vip6: 'VIP 6' };
 
 // ============================================================
 // METRO MAP — São Paulo
