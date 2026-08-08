@@ -3,7 +3,7 @@ import {
   Users, Store, Briefcase, Percent, TrendingUp, Shield,
   RotateCcw, Trash2, Pencil, Megaphone, Wallet, Ban, CheckCircle2, Crown, AlertCircle,
   User as UserIcon, MapPin, Tags, Calendar, Save, Ticket, Terminal, RotateCcw as RefundIcon, Plus,
-  Search, Star, UserPlus, Eye, EyeOff, UserCog, Camera, Lock, DollarSign, MoreVertical,
+  Search, Star, UserPlus, Eye, EyeOff, UserCog, Camera, Lock, DollarSign, MoreVertical, Image as ImageIcon,
 } from 'lucide-react';
 import { useApp } from '@/AppContext';
 import { useToast } from './ui/Toast';
@@ -116,34 +116,6 @@ export function AdminView() {
           </div>
 
           <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
-            <h3 className="mb-4 flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white"><UserPlus className="h-5 w-5 text-primary-500" /> Painel de Criação de Contas e Acessos</h3>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <button onClick={() => setShowAddUser(true)} className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-left transition hover:border-primary-300 dark:border-neutral-700 dark:bg-neutral-800/50">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-500/15"><UserPlus className="h-5 w-5" /></div>
-                <div><p className="font-semibold text-neutral-900 dark:text-white">Adicionar usuário</p><p className="text-xs text-neutral-400">Criar freelancer ou estabelecimento</p></div>
-              </button>
-              {isSuperAdmin ? (
-                <button onClick={() => setShowAddAdmin(true)} className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-left transition hover:border-primary-300 dark:border-neutral-700 dark:bg-neutral-800/50">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-warning-100 text-warning-600 dark:bg-warning-500/15"><UserCog className="h-5 w-5" /></div>
-                  <div><p className="font-semibold text-neutral-900 dark:text-white">Adicionar admin</p><p className="text-xs text-neutral-400">Criar novo administrador</p></div>
-                </button>
-              ) : (
-                <div className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 opacity-50 dark:border-neutral-700 dark:bg-neutral-800/50">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-200 text-neutral-500 dark:bg-neutral-700"><Lock className="h-5 w-5" /></div>
-                  <div><p className="font-semibold text-neutral-900 dark:text-white">Adicionar admin</p><p className="text-xs text-neutral-400">Exclusivo para Super Admins</p></div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-1">
-            <button onClick={() => setShowBroadcast(true)} className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white p-4 text-left transition hover:border-primary-300 dark:border-neutral-800 dark:bg-neutral-900">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-100 text-accent-600 dark:bg-accent-500/15"><Megaphone className="h-5 w-5" /></div>
-              <div><p className="font-semibold text-neutral-900 dark:text-white">Enviar comunicado</p><p className="text-xs text-neutral-400">Broadcast para todos os usuários</p></div>
-            </button>
-          </div>
-
-          <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
             <h3 className="mb-3 flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white"><AlertCircle className="h-5 w-5 text-warning-500" /> Escrows pendentes</h3>
             <div className="space-y-2">
               {data.contracts.filter((c) => c.status !== 'completed' && c.status !== 'cancelled').length === 0 && <p className="text-sm text-neutral-400">Nenhum escrow pendente.</p>}
@@ -154,11 +126,6 @@ export function AdminView() {
                 </div>
               ))}
             </div>
-          </div>
-
-          <div className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
-            <div><p className="font-semibold text-neutral-900 dark:text-white">Restaurar dados de demonstração</p><p className="text-sm text-neutral-400">Volta todos os dados aos valores iniciais.</p></div>
-            <Button variant="outline" onClick={() => setConfirmReset(true)}><RotateCcw className="h-4 w-4" /> Resetar</Button>
           </div>
         </div>
       )}
@@ -831,7 +798,7 @@ function VipPlansTab({ vipPlans, estVipPlans, onUpdateVipPlan, onAddVipPlan, onR
     const tierNum = estVipPlans.length;
     const newTier = `vip${tierNum}` as EstTier;
     if (estVipPlans.some((p) => p.tier === newTier)) { notify('Já existe um plano com esse nível', 'warning'); return; }
-    onAddEstVipPlan({ tier: newTier, label: `VIP ${tierNum}`, prices: { monthly: 99.9, semestral: 499.9, annual: 899.9 }, intermediationFee: 5, maxActiveJobs: 5, features: ['Novo plano'] });
+    onAddEstVipPlan({ tier: newTier, label: `VIP ${tierNum}`, prices: { monthly: 99.9, semestral: 499.9, annual: 899.9 }, intermediationFee: 5, maxActiveJobs: 5, allowAds: false, features: ['Novo plano'] });
     notify('Plano adicionado');
   };
 
@@ -863,7 +830,7 @@ function VipPlansTab({ vipPlans, estVipPlans, onUpdateVipPlan, onAddVipPlan, onR
         </div>
       )}
 
-      <p className="text-xs text-neutral-400">Alterações nos preços, taxas e limites são aplicadas imediatamente. Remover um plano reverte todos os usuários nele para o plano Gratuito.</p>
+      <p className="text-xs text-neutral-400">Alterações nos preços, taxas e limites são aplicadas imediatamente e sincronizadas com o Supabase.</p>
     </div>
   );
 }
@@ -877,6 +844,7 @@ function VipPlanEditor({ plan, onUpdate, onRemove, isEst }: {
   const { notify } = useToast();
   const [expanded, setExpanded] = useState(false);
   const canDelete = plan.tier !== 'free' && plan.tier !== 'trial';
+  const estPlan = isEst ? (plan as EstVipPlan) : null;
 
   return (
     <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
@@ -885,6 +853,7 @@ function VipPlanEditor({ plan, onUpdate, onRemove, isEst }: {
           <Crown className={`h-4 w-4 ${plan.tier === 'vip3' ? 'text-warning-500' : plan.tier === 'vip2' ? 'text-secondary-500' : plan.tier === 'vip1' ? 'text-primary-500' : 'text-neutral-400'}`} />
           <span className="font-semibold text-neutral-900 dark:text-white">{plan.label}</span>
           <Badge tone={plan.tier === 'free' ? 'neutral' : 'vip'}>{plan.tier.toUpperCase()}</Badge>
+          {isEst && estPlan?.allowAds && <Badge tone="success"><ImageIcon className="h-3 w-3" /> Anúncios Ativos na Home/Widgets</Badge>}
         </button>
         <div className="flex items-center gap-1.5">
           <Button size="sm" variant="ghost" onClick={() => setExpanded(!expanded)}><Pencil className="h-3.5 w-3.5" /></Button>
@@ -904,6 +873,29 @@ function VipPlanEditor({ plan, onUpdate, onRemove, isEst }: {
               </>
             )}
           </div>
+
+          {/* Opção para ativar o Carrossel Home e Widgets nas páginas de Estabelecimentos e Freelancers */}
+          {isEst && (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 dark:bg-amber-500/10">
+              <label className="flex cursor-pointer items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold text-neutral-900 dark:text-white flex items-center gap-1.5">
+                    <ImageIcon className="h-4 w-4 text-amber-500" /> Permitir Anúncios / Propagandas (Carrossel Home e Widgets)
+                  </p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                    Ao ativar, os estabelecimentos deste plano poderão cadastrar imagens de propaganda que aparecerão no loop infinito da home e nas barras laterais de todas as páginas.
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={estPlan?.allowAds ?? false}
+                  onChange={(e) => onUpdate({ allowAds: e.target.checked } as Partial<EstVipPlan>)}
+                  className="h-5 w-5 rounded border-neutral-300 text-amber-500 focus:ring-amber-400"
+                />
+              </label>
+            </div>
+          )}
+
           <div className="grid gap-3 sm:grid-cols-3">
             <Input label="Preço mensal (R$)" type="number" value={String(plan.prices.monthly)} onChange={(e) => onUpdate({ prices: { ...plan.prices, monthly: Number(e.target.value) || 0 } })} />
             <Input label="Preço semestral (R$)" type="number" value={String(plan.prices.semestral)} onChange={(e) => onUpdate({ prices: { ...plan.prices, semestral: Number(e.target.value) || 0 } })} />
