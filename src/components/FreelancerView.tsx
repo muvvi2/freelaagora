@@ -260,16 +260,46 @@ function PersonalTab({ me, onSave }: { me: import('@/types').User; onSave: (patc
 }
 
 // ============================================================
-// TAB 2: Endereço Completo
+// TAB 2: Endereço Completo com Busca Automática por CEP
 // ============================================================
 function AddressTab({ me, onSave }: { me: import('@/types').User; onSave: (addr: Address) => void }) {
   const [addr, setAddr] = useState<Address>(me.address);
+  const { notify } = useToast();
+
+  const handleCepChange = async (value: string) => {
+    const masked = maskCEP(value);
+    const cleanCep = masked.replace(/\D/g, '');
+    
+    setAddr((prev) => ({ ...prev, cep: masked }));
+
+    if (cleanCep.length === 8) {
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+        const data = await response.json();
+
+        if (!data.erro) {
+          setAddr((prev) => ({
+            ...prev,
+            street: data.logradouro || prev.street,
+            neighborhood: data.bairro || prev.neighborhood,
+            city: data.localidade || prev.city,
+            state: data.uf || prev.state,
+          }));
+          notify('Endereço encontrado e preenchido!', 'success');
+        } else {
+          notify('CEP não encontrado.', 'warning');
+        }
+      } catch (error) {
+        notify('Erro ao buscar CEP.', 'error');
+      }
+    }
+  };
 
   return (
     <section className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
       <h2 className="mb-4 flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white"><MapPin className="h-5 w-5 text-primary-500" /> Endereço Completo</h2>
       <div className="grid gap-4 sm:grid-cols-3">
-        <Input label="CEP" value={addr.cep} onChange={(e) => setAddr({ ...addr, cep: maskCEP(e.target.value) })} placeholder="00000-000" />
+        <Input label="CEP" value={addr.cep} onChange={(e) => handleCepChange(e.target.value)} placeholder="00000-000" />
         <div className="sm:col-span-2"><Input label="Logradouro (Rua)" value={addr.street} onChange={(e) => setAddr({ ...addr, street: e.target.value })} /></div>
         <Input label="Número" value={addr.number} onChange={(e) => setAddr({ ...addr, number: e.target.value })} />
         <Input label="Complemento" value={addr.complement ?? ''} onChange={(e) => setAddr({ ...addr, complement: e.target.value })} />
