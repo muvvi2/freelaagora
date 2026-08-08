@@ -32,20 +32,20 @@ export function JobFormModal({ open, onClose, editing, establishment }: { open: 
       notify('Vaga atualizada');
       onClose();
     } else {
-      // 1. Pega o plano atual do estabelecimento
+      // 1. Descobre o plano atual do estabelecimento
       const plan = getEstPlan(currentEstablishment.estVipTier ?? 'free', data.estVipPlans);
 
-      // 2. Verifica período de teste (Trial) — limitando a 10 vagas no trial
+      // 2. Verifica se está no período de teste (Trial) — limitando estritamente a 10 vagas no trial
       const isOnTrial = currentEstablishment.trialEndsAt && new Date(currentEstablishment.trialEndsAt) > new Date();
       const effectiveMaxJobs = isOnTrial ? 10 : plan.maxActiveJobs;
 
-      // 3. Conta rigorosamente quantas vagas ativas o estabelecimento possui
+      // 3. Conta quantas vagas ativas o estabelecimento já possui (tudo que não estiver fechado)
       const activeJobsCount = data.jobs.filter((j) => j.establishmentId === currentEstablishment.id && j.status !== 'closed').length;
 
-      // 4. BLOQUEIO IMEDIATO NO MODAL
+      // 4. BLOQUEIO LOCAL NO MODAL
       if (activeJobsCount >= effectiveMaxJobs) {
         notify(`Limite atingido! ${isOnTrial ? 'Seu período de teste permite até 10 vagas ativas.' : `Seu plano atual permite até ${effectiveMaxJobs} vagas ativas.`} Faça um upgrade para o VIP para publicar mais.`, 'error');
-        return; // Para aqui, exibe o erro e mantém o modal aberto
+        return; // Interrompe a execução e mantém o modal aberto
       }
 
       const job: Job = {
