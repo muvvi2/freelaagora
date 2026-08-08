@@ -21,9 +21,8 @@ import type { Contract, User, Tier, EstTier, ContractStatus, ShiftSlot, Period, 
 type Tab = 'overview' | 'freelancers' | 'establishments' | 'contracts' | 'jobs' | 'reviews' | 'coupons' | 'audit' | 'wallet' | 'vip' | 'admins';
 
 export function AdminView() {
-  const { data, currentUser, isSuperAdmin, setDefaultFeePercent, overrideContractStatus, forceRefund, resetData, banUser, unbanUser, deleteEntity, adminWalletTxs, coupons, addCoupon, toggleCoupon, deleteCoupon, auditLogs, deleteReview, broadcastNotification, deleteJob, updateJob, updateVipPlan, addVipPlan, removeVipPlan, updateEstVipPlan, addEstVipPlan, removeEstVipPlan, adminTab: tab, adminRemoveAdmin, adminUpdateAdmin } = useApp();
+  const { data, currentUser, isSuperAdmin, overrideContractStatus, forceRefund, resetData, banUser, unbanUser, deleteEntity, adminWalletTxs, coupons, addCoupon, toggleCoupon, deleteCoupon, auditLogs, deleteReview, broadcastNotification, deleteJob, updateJob, updateVipPlan, addVipPlan, removeVipPlan, updateEstVipPlan, addEstVipPlan, removeEstVipPlan, adminTab: tab, adminRemoveAdmin, adminUpdateAdmin } = useApp();
   const { notify } = useToast();
-  const [feeDraft, setFeeDraft] = useState(String(data.config.defaultFeePercent));
   const [confirmReset, setConfirmReset] = useState(false);
   const [escrowContract, setEscrowContract] = useState<Contract | null>(null);
   const [editUser, setEditUser] = useState<User | null>(null);
@@ -31,10 +30,9 @@ export function AdminView() {
   const [banTarget, setBanTarget] = useState<User | null>(null);
   const [refundTarget, setRefundTarget] = useState<Contract | null>(null);
   
-  // Estados para cupons com limite e validade
+  // Estados para cupons com validade
   const [newCouponCode, setNewCouponCode] = useState('');
   const [newCouponPct, setNewCouponPct] = useState('');
-  const [newCouponMaxUses, setNewCouponMaxUses] = useState('');
   const [newCouponExpiresAt, setNewCouponExpiresAt] = useState('');
 
   const [search, setSearch] = useState('');
@@ -117,34 +115,35 @@ export function AdminView() {
             <AdminStat icon={Briefcase} label="Contratos" value={String(data.contracts.length)} tone="neutral" />
           </div>
 
-          <div className={`rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 ${!isSuperAdmin ? 'opacity-50' : ''}`}>
-            <h3 className="flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white"><Percent className="h-5 w-5 text-primary-500" /> Taxa de intermediação padrão {!isSuperAdmin && <Lock className="h-3.5 w-3.5 text-neutral-400" />}</h3>
-            <div className="mt-4 flex items-end gap-3">
-              <div className="flex-1">
-                <label className="mb-1 block text-xs font-semibold text-neutral-500">Percentual padrão (%) — aplicado a novos estabelecimentos</label>
-                <input type="number" min={0} max={50} value={feeDraft} onChange={(e) => setFeeDraft(e.target.value)} disabled={!isSuperAdmin} className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 disabled:cursor-not-allowed" />
-              </div>
-              <Button onClick={() => { const n = Math.min(50, Math.max(0, Number(feeDraft) || 0)); setDefaultFeePercent(n); setFeeDraft(String(n)); notify(`Taxa padrão atualizada para ${n}%`); }} disabled={!isSuperAdmin}><Save className="h-4 w-4" /> Aplicar</Button>
+          {/* Painel unificado de Criação de Contas (substituindo a antiga aba de configurações de API de pagamentos) */}
+          <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
+            <h3 className="mb-4 flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white">
+              <UserPlus className="h-5 w-5 text-primary-500" /> Painel de Criação de Contas e Acessos
+            </h3>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button onClick={() => setShowAddUser(true)} className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-left transition hover:border-primary-300 dark:border-neutral-700 dark:bg-neutral-800/50">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-500/15"><UserPlus className="h-5 w-5" /></div>
+                <div><p className="font-semibold text-neutral-900 dark:text-white">Adicionar usuário</p><p className="text-xs text-neutral-400">Criar freelancer ou estabelecimento</p></div>
+              </button>
+              {isSuperAdmin ? (
+                <button onClick={() => setShowAddAdmin(true)} className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-left transition hover:border-primary-300 dark:border-neutral-700 dark:bg-neutral-800/50">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-warning-100 text-warning-600 dark:bg-warning-500/15"><UserCog className="h-5 w-5" /></div>
+                  <div><p className="font-semibold text-neutral-900 dark:text-white">Adicionar admin</p><p className="text-xs text-neutral-400">Criar novo administrador</p></div>
+                </button>
+              ) : (
+                <div className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 opacity-50 dark:border-neutral-700 dark:bg-neutral-800/50">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-200 text-neutral-500 dark:bg-neutral-700"><Lock className="h-5 w-5" /></div>
+                  <div><p className="font-semibold text-neutral-900 dark:text-white">Adicionar admin</p><p className="text-xs text-neutral-400">Exclusivo para Super Admins</p></div>
+                </div>
+              )}
             </div>
-            <p className="mt-2 text-xs text-neutral-400">A taxa real por contratação depende do plano VIP do estabelecimento: Gratuito = 15%, VIP 1 = 7,5%, VIP 2 = 5%, VIP 3 = 0%.</p>
-            {!isSuperAdmin && <p className="mt-2 text-xs text-warning-500">Apenas Super Admin pode alterar a taxa de intermediação.</p>}
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <button onClick={() => setShowAddUser(true)} className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white p-4 text-left transition hover:border-primary-300 dark:border-neutral-800 dark:bg-neutral-900">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-500/15"><UserPlus className="h-5 w-5" /></div>
-              <div><p className="font-semibold text-neutral-900 dark:text-white">Adicionar usuário</p><p className="text-xs text-neutral-400">Criar freelancer ou estabelecimento</p></div>
-            </button>
+          <div className="grid gap-3 sm:grid-cols-1">
             <button onClick={() => setShowBroadcast(true)} className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white p-4 text-left transition hover:border-primary-300 dark:border-neutral-800 dark:bg-neutral-900">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-100 text-accent-600 dark:bg-accent-500/15"><Megaphone className="h-5 w-5" /></div>
               <div><p className="font-semibold text-neutral-900 dark:text-white">Enviar comunicado</p><p className="text-xs text-neutral-400">Broadcast para todos os usuários</p></div>
             </button>
-            {isSuperAdmin && (
-              <button onClick={() => setShowAddAdmin(true)} className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white p-4 text-left transition hover:border-primary-300 dark:border-neutral-800 dark:bg-neutral-900">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-warning-100 text-warning-600 dark:bg-warning-500/15"><UserCog className="h-5 w-5" /></div>
-                <div><p className="font-semibold text-neutral-900 dark:text-white">Adicionar admin</p><p className="text-xs text-neutral-400">Criar novo administrador</p></div>
-              </button>
-            )}
           </div>
 
           <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
@@ -308,10 +307,9 @@ export function AdminView() {
         <div className="space-y-4">
           <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
             <h3 className="mb-4 flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white"><Ticket className="h-5 w-5 text-primary-500" /> Gerenciar Cupons de Desconto</h3>
-            <div className="grid gap-3 sm:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-3">
               <Input label="Código do cupom" value={newCouponCode} onChange={(e) => setNewCouponCode(e.target.value.toUpperCase())} placeholder="PROMO25" />
               <Input label="Desconto (%)" type="number" value={newCouponPct} onChange={(e) => setNewCouponPct(e.target.value)} placeholder="25" />
-              <Input label="Limite de usos (vazio = ilimitado)" type="number" value={newCouponMaxUses} onChange={(e) => setNewCouponMaxUses(e.target.value)} placeholder="Ex: 50" />
               <Input label="Validade (opcional)" type="date" value={newCouponExpiresAt} onChange={(e) => setNewCouponExpiresAt(e.target.value)} />
             </div>
             <div className="mt-3 flex justify-end">
@@ -320,13 +318,11 @@ export function AdminView() {
                 addCoupon({ 
                   code: newCouponCode.trim(), 
                   discountPercentage: Math.min(100, Math.max(1, Number(newCouponPct) || 0)), 
-                  maxUses: newCouponMaxUses ? Number(newCouponMaxUses) : undefined,
                   expiresAt: newCouponExpiresAt ? new Date(newCouponExpiresAt).toISOString() : undefined,
                   isActive: true 
                 }); 
                 setNewCouponCode(''); 
                 setNewCouponPct(''); 
-                setNewCouponMaxUses('');
                 setNewCouponExpiresAt('');
                 notify('Cupom criado com sucesso!'); 
               }}><Plus className="h-4 w-4" /> Criar Cupom</Button>
@@ -342,7 +338,7 @@ export function AdminView() {
                     <div>
                       <p className="font-display font-bold text-neutral-900 dark:text-white">{cp.code}</p>
                       <p className="text-xs text-neutral-400">
-                        {cp.discountPercentage}% de desconto · Usos: {cp.timesUsed ?? 0} {cp.maxUses ? `/ ${cp.maxUses}` : '(ilimitado)'}
+                        {cp.discountPercentage}% de desconto · Usos totais: {cp.usedBy?.length ?? 0} (1 por usuário)
                         {cp.expiresAt ? ` · Expira em: ${formatDate(cp.expiresAt)}` : ''}
                       </p>
                     </div>
