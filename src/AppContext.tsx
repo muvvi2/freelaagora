@@ -219,28 +219,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const est = data.users.find((u) => u.id === j.establishmentId);
     if (!est) return { ok: false, error: 'Estabelecimento não encontrado.' };
 
-    // Mapeamento direto e seguro dos limites de vagas por plano de estabelecimento
-    const tierMaxJobs: Record<string, number> = {
+    // Mapeamento dos limites de publicações por semana (VIP 2 atualizado para 20 vagas)
+    const tierMaxJobsPerWeek: Record<string, number> = {
       free: 2,
       vip1: 5,
-      vip2: 10,
+      vip2: 20,
       vip3: 999,
     };
 
     const currentTier = est.estVipTier ?? 'free';
-    const planMaxJobs = tierMaxJobs[currentTier] ?? 2;
+    const planMaxJobs = tierMaxJobsPerWeek[currentTier] ?? 2;
 
     const isOnTrial = est.trialEndsAt ? new Date(est.trialEndsAt) > new Date() : false;
     const effectiveMaxJobs = isOnTrial ? 10 : planMaxJobs;
 
-    const activeJobsCount = data.jobs.filter((job) => job.establishmentId === est.id && job.status !== 'closed').length;
+    // Janela semanal: últimos 7 dias a partir de agora
+    const oneWeekAgo = Date.now() - 7 * 86400000;
 
-    console.log(`🔒 [TRAVA DE VAGAS] Estabelecimento: ${est.name} | Tier: ${currentTier} | Em Trial: ${isOnTrial} | Ativas: ${activeJobsCount} | Limite: ${effectiveMaxJobs}`);
+    // Conta TODAS as vagas criadas nos últimos 7 dias (mesmo preenchidas ou fechadas)
+    const jobsThisWeekCount = data.jobs.filter((job) => {
+      if (job.establishmentId !== est.id) return false;
+      const jobDate = new Date(job.createdAt).getTime();
+      return jobDate >= oneWeekAgo;
+    }).length;
 
-    if (activeJobsCount >= effectiveMaxJobs) {
+    console.log(`🔒 [TRAVA SEMANAL] Estabelecimento: ${est.name} | Tier: ${currentTier} | Publicadas nos últimos 7 dias: ${jobsThisWeekCount} | Limite Semanal: ${effectiveMaxJobs}`);
+
+    if (jobsThisWeekCount >= effectiveMaxJobs) {
       return { 
         ok: false, 
-        error: `Limite atingido! Seu plano (${currentTier.toUpperCase()}) permite até ${effectiveMaxJobs} vagas ativas simultâneas. Faça um upgrade para o VIP para publicar mais.` 
+        error: `Limite semanal atingido! Seu plano (${currentTier.toUpperCase()}) permite publicar no máximo ${effectiveMaxJobs} vagas por semana. Vagas preenchidas ou fechadas continuam contando para o ciclo semanal.` 
       };
     }
 
