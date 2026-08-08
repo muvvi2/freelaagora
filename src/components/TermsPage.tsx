@@ -1,4 +1,4 @@
-import { Shield, ArrowLeft, FileText, ScrollText, Fingerprint, Lock, Scale, Gavel } from 'lucide-react';
+import { Shield, ArrowLeft, FileText, ScrollText, Fingerprint, Lock, Scale, Gavel, ExternalLink } from 'lucide-react';
 import { useApp } from '@/AppContext';
 import type { VipPlan, EstVipPlan } from '@/types';
 
@@ -41,18 +41,29 @@ export function TermsPage({ onBack }: { onBack?: () => void }) {
             </Clause>
 
             <Clause icon={Lock} title="CLÁUSULA TERCEIRA – PRIVACIDADE">
-              <p><strong>3.1.</strong> Dados de contato permanecem ocultos até a confirmação do pagamento de custódia pelo gateway parceiro.</p>
+              <p><strong>3.1.</strong> Dados de contato permanecem ocultos até a confirmação do pagamento de custódia pelo gateway parceiro (<a href="https://www.asaas.com/r/7efd51e9-dd93-4c9c-8450-7be9873f6653" target="_blank" rel="noopener noreferrer" className="text-primary-500 hover:underline inline-flex items-center gap-1 font-semibold">Asaas <ExternalLink className="h-3 w-3" /></a>).</p>
             </Clause>
 
-            <Clause icon={Scale} title="CLÁUSULA QUARTA – DOS PLANOS DE ASSINATURA, RECURSOS E TAXAS">
-              <p><strong>4.1.</strong> Parametrização Dinâmica: mensalidades, taxas de intermediação, limites de categorias e níveis de destaque são definidos e alterados dinamicamente via Painel Administrativo, integrando-se automaticamente a este contrato conforme os valores vigentes no ato da transação.</p>
-              <p className="mt-2"><strong>4.2.</strong> O desbloqueio de contatos exige a compensação bancária integral pelo gateway.</p>
-              <p className="mt-2"><strong>4.3.</strong> Cancelamentos por falta do Freelancer geram estorno integral na carteira do Estabelecimento em até 24h úteis.</p>
-              <p className="mt-2"><strong>4.4.</strong> Tentativas de burlar o sistema de pagamentos geram bloqueio imediato e multa.</p>
-              <p className="mt-2"><strong>4.5.</strong> A plataforma é isenta de responsabilidade por falhas técnicas, instabilidades ou atrasos operados pelo gateway de pagamento.</p>
-              <div className="mt-4">
-                <DynamicPlansTable />
+            <Clause icon={Scale} title="CLÁUSULA QUARTA – DA TAXA DE INTERMEDIAÇÃO E LIQUIDAÇÃO">
+              <p><strong>4.1.</strong> O Estabelecimento concorda em pagar uma taxa de intermediação calculada sobre o valor total bruto da diária. Esta taxa será integralmente ADICIONADA ao valor bruto cobrado pelo profissional, garantindo que o valor integral do freelancer não sofra descontos ou deduções da plataforma.</p>
+              <p className="mt-2"><strong>4.2.</strong> O percentual da taxa aditiva do Estabelecimento é definido pelo plano de assinatura corporativa ativo no ato da reserva:</p>
+              <ul className="mt-1 list-disc list-inside space-y-1 ml-2">
+                <li>Plano Gratuito: taxa de 15,0% somada ao valor total.</li>
+                <li>Plano VIP 1: taxa de 7,5% somada ao valor total.</li>
+                <li>Plano VIP 2: taxa de 5,0% somada ao valor total.</li>
+                <li>Plano VIP 3: Isenção total (0% de taxa de intermediação adicionada).</li>
+              </ul>
+              
+              <div className="mt-3">
+                <p><strong>4.3.</strong> Planos e Benefícios Dinâmicos dos Freelancers:</p>
+                <p className="text-xs text-neutral-500 mb-2">Os benefícios e limites de categorias dos freelancers refletem em tempo real as configurações ativas no Painel Administrativo:</p>
+                <DynamicFreelancerPlans />
               </div>
+
+              <p className="mt-3"><strong>4.4.</strong> O desbloqueio de dados de contato e a validação da reserva ficam estritamente condicionados à confirmação de compensação bancária enviada pelo gateway de pagamento.</p>
+              <p className="mt-2"><strong>4.5.</strong> Em caso de cancelamento por falta de disponibilidade do Freelancer, os valores da diária e taxas serão integralmente estornados para a carteira do Estabelecimento no prazo de 24h úteis.</p>
+              <p className="mt-2"><strong>4.6.</strong> Tentativas de burlar o sistema de pagamento geram bloqueio imediato da conta e aplicação de multa.</p>
+              <p className="mt-2"><strong>4.7.</strong> O FreelaAgora atua apenas como interface tecnológica, não sendo responsável por eventuais instabilidades, atrasos na compensação ou falhas técnicas operadas pelo gateway (<a href="https://www.asaas.com/r/7efd51e9-dd93-4c9c-8450-7be9873f6653" target="_blank" rel="noopener noreferrer" className="text-primary-500 hover:underline inline-flex items-center gap-1 font-semibold">Asaas <ExternalLink className="h-3 w-3" /></a>), cabendo ao usuário verificar o status de sua transação junto à instituição processadora.</p>
             </Clause>
 
             <Clause icon={Shield} title="CLÁUSULA QUINTA – ISENÇÃO DE RESPONSABILIDADE TRABALHISTA E CIVIL">
@@ -81,46 +92,20 @@ export function TermsPage({ onBack }: { onBack?: () => void }) {
   );
 }
 
-function DynamicPlansTable() {
+function DynamicFreelancerPlans() {
   const { data } = useApp();
   return (
-    <div className="mt-8 border-t border-neutral-200 pt-6 dark:border-neutral-800">
-      <h3 className="font-display text-lg font-bold mb-4 text-neutral-900 dark:text-white">TABELA VIGENTE DE BENEFÍCIOS E PLANOS</h3>
-      <p className="text-xs text-neutral-500 mb-6">
-        Os benefícios abaixo são carregados em tempo real conforme a configuração ativa no Painel Administrativo.
-      </p>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="bg-neutral-50 dark:bg-neutral-800/40 p-5 rounded-lg border border-neutral-200 dark:border-neutral-800">
-          <h4 className="font-display text-base font-bold text-primary-600 dark:text-primary-400 mb-3">Freelancers</h4>
-          <div className="space-y-4">
-            {data.vipPlans.map((plan: VipPlan) => (
-              <div key={plan.tier} className="p-3 bg-white dark:bg-neutral-900 rounded border border-neutral-200 dark:border-neutral-800 shadow-sm">
-                <p className="font-bold text-neutral-900 dark:text-white">{plan.label}</p>
-                <ul className="text-sm text-neutral-600 dark:text-neutral-400 mt-1 list-disc list-inside space-y-1">
-                  {plan.features.map((f: string, i: number) => (
-                    <li key={i}>{f}</li>
-                  ))}
-                </ul>
-              </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+      {data.vipPlans.map((plan: VipPlan) => (
+        <div key={plan.tier} className="p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-800">
+          <p className="font-bold text-neutral-900 dark:text-white text-xs uppercase tracking-wide">{plan.label}</p>
+          <ul className="text-xs text-neutral-600 dark:text-neutral-400 mt-1 list-disc list-inside space-y-0.5">
+            {plan.features.map((f: string, i: number) => (
+              <li key={i}>{f}</li>
             ))}
-          </div>
+          </ul>
         </div>
-        <div className="bg-neutral-50 dark:bg-neutral-800/40 p-5 rounded-lg border border-neutral-200 dark:border-neutral-800">
-          <h4 className="font-display text-base font-bold text-primary-600 dark:text-primary-400 mb-3">Estabelecimentos</h4>
-          <div className="space-y-4">
-            {data.estVipPlans.map((plan: EstVipPlan) => (
-              <div key={plan.tier} className="p-3 bg-white dark:bg-neutral-900 rounded border border-neutral-200 dark:border-neutral-800 shadow-sm">
-                <p className="font-bold text-neutral-900 dark:text-white">{plan.label}</p>
-                <ul className="text-sm text-neutral-600 dark:text-neutral-400 mt-1 list-disc list-inside space-y-1">
-                  {plan.features.map((f: string, i: number) => (
-                    <li key={i}>{f}</li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      ))}
     </div>
   );
 }
