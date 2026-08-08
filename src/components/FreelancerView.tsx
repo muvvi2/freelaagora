@@ -11,6 +11,7 @@ import { AvailabilityCalendar } from './AvailabilityCalendar';
 import { VipPanel } from './VipPanel';
 import { WalletPanel } from './WalletPanel';
 import { JobCard } from './JobCard';
+import { VipSquareWidget } from './VipSquareWidget';
 import { EscrowFlowModal } from './EscrowFlowModal';
 import { ReviewModal } from './ReviewModal';
 
@@ -152,7 +153,11 @@ export function FreelancerView() {
           )}
         </div>
 
+        {/* Sidebar: Widget VIP 4/5 + Contracts */}
         <aside className="space-y-4">
+          {/* Widget Quadrado de Anúncios VIP 4/5 (Atualiza a cada 10s) */}
+          <VipSquareWidget />
+
           {myContracts.length > 0 && (
             <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
               <h3 className="mb-3 font-display font-bold text-neutral-900 dark:text-white">Suas contratações</h3>
