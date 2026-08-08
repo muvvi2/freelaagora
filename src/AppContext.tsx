@@ -126,7 +126,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ...user, id, email: user.email.toLowerCase().trim(), createdAt: new Date().toISOString(),
       walletBalance: 0, rating: user.accountType === 'freelancer' ? 5 : 0, reviewsCount: 0, completedShifts: 0,
       vipTier: user.accountType === 'freelancer' ? 'free' : undefined,
-      estVipTier: user.accountType === 'establishment' ? 'free' : undefined,
+      estVipTier: user.accountType === 'establishment' ? 'trial' : undefined,
       trialEndsAt: user.accountType === 'establishment' ? new Date(Date.now() + 15 * 86400000).toISOString() : undefined,
       categories: user.accountType === 'freelancer' ? (user.categories ?? []) : undefined,
       availability: user.accountType === 'freelancer' ? (user.availability ?? emptyAvailability()) : undefined,
@@ -170,7 +170,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setEstVipTier = useCallback((id: string, tier: EstTier, period: Period = 'monthly') => {
     setData((d) => {
       const price = getEstPlan(tier, d.estVipPlans).prices[period];
-      const expiry = tier === 'free' ? undefined : new Date(Date.now() + (period === 'annual' ? 365 : period === 'semestral' ? 180 : 30) * 86400000).toISOString();
+      const expiry = (tier === 'free' || tier === 'trial') ? undefined : new Date(Date.now() + (period === 'annual' ? 365 : period === 'semestral' ? 180 : 30) * 86400000).toISOString();
       const newTxs: WalletTx[] = price > 0 ? [{ id: uid('wt'), userId: id, type: 'vip_charge_est', amount: -price, description: `Assinatura ${getEstPlan(tier, d.estVipPlans).label} (${period})`, date: new Date().toISOString() }] : [];
       return {
         ...d,
@@ -219,14 +219,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const est = data.users.find((u) => u.id === j.establishmentId);
     if (!est) return { ok: false, error: 'Estabelecimento não encontrado.' };
 
-    const currentTier = est.estVipTier ?? 'free';
+    const isOnTrial = est.trialEndsAt ? new Date(est.trialEndsAt) > new Date() : false;
+    const currentTier = isOnTrial ? 'trial' : (est.estVipTier ?? 'free');
 
     // Busca o limite de vagas diretamente do plano cadastrado no Admin (estVipPlans)
     const matchedPlan = data.estVipPlans?.find((p) => p.tier === currentTier);
-    const planMaxJobs = matchedPlan?.maxActiveJobs ?? (currentTier === 'free' ? 2 : currentTier === 'vip1' ? 5 : currentTier === 'vip2' ? 20 : 999);
-
-    const isOnTrial = est.trialEndsAt ? new Date(est.trialEndsAt) > new Date() : false;
-    const effectiveMaxJobs = isOnTrial ? 10 : planMaxJobs;
+    const effectiveMaxJobs = matchedPlan?.maxActiveJobs ?? (currentTier === 'trial' ? 10 : currentTier === 'free' ? 2 : 20);
 
     // Janela semanal: últimos 7 dias a partir de agora
     const oneWeekAgo = Date.now() - 7 * 86400000;
@@ -238,12 +236,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return jobDate >= oneWeekAgo;
     }).length;
 
-    console.log(`🔒 [TRAVA SEMANAL] Estabelecimento: ${est.name} | Tier: ${currentTier} | Publicadas nos últimos 7 dias: ${jobsThisWeekCount} | Limite Semanal: ${effectiveMaxJobs}`);
+    console.log(`🔒 [TRAVA SEMANAL] Estabelecimento: ${est.name} | Tier: ${currentTier} | Em Trial: ${isOnTrial} | Publicadas nos últimos 7 dias: ${jobsThisWeekCount} | Limite Semanal: ${effectiveMaxJobs}`);
 
     if (jobsThisWeekCount >= effectiveMaxJobs) {
       return { 
         ok: false, 
-        error: `Limite semanal atingido! Seu plano (${currentTier.toUpperCase()}) permite publicar no máximo ${effectiveMaxJobs} vagas por semana. Vagas preenchidas ou fechadas continuam contando para o ciclo semanal.` 
+        error: `Limite semanal atingido! Seu plano (${currentTier === 'trial' ? 'TESTE GRATUITO' : currentTier.toUpperCase()}) permite publicar no máximo ${effectiveMaxJobs} vagas por semana. Vagas preenchidas ou fechadas continuam contando para o ciclo semanal.` 
       };
     }
 
@@ -417,7 +415,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       users: d.users.map((u) => {
         if (u.id !== userId) return u;
         if (accountType === 'freelancer') { const expiry = tier === 'free' ? undefined : new Date(Date.now() + (period === 'annual' ? 365 : period === 'semestral' ? 180 : 30) * 86400000).toISOString(); return { ...u, vipTier: tier as Tier, vipExpiresAt: expiry, walletBalance: Math.max(0, (u.walletBalance ?? 0) - discounted) }; }
-        const expiry = tier === 'free' ? undefined : new Date(Date.now() + (period === 'annual' ? 365 : period === 'semestral' ? 180 : 30) * 86400000).toISOString(); return { ...u, estVipTier: tier as EstTier, estVipExpiresAt: expiry, walletBalance: Math.max(0, (u.walletBalance ?? 0) - discounted) };
+        const expiry = (tier === 'free' || tier === 'trial') ? undefined : new Date(Date.now() + (period === 'annual' ? 365 : period === 'semestral' ? 180 : 30) * 86400000).toISOString(); return { ...u, estVipTier: tier as EstTier, estVipExpiresAt: expiry, walletBalance: Math.max(0, (u.walletBalance ?? 0) - discounted) };
       }),
       walletTxs: [
         { id: uid('wt'), userId, type: 'vip_charge', amount: -discounted, description: `Assinatura ${plan.label} (${period}) com cupom ${coupon.code}`, date: new Date().toISOString() },
