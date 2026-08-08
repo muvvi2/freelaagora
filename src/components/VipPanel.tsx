@@ -19,25 +19,45 @@ const BILLING_OPTIONS: { id: BillingType; label: string; icon: typeof QrCode }[]
   { id: 'CREDIT_CARD', label: 'Cartão', icon: CreditCard },
 ];
 
-const tierIcon: Record<Tier, typeof Crown> = { free: Sparkles, vip1: Star, vip2: ShieldCheck, vip3: Diamond, vip4: Diamond, vip5: Diamond, vip6: Diamond };
+const tierIcon: Record<Tier, typeof Crown> = { 
+  free: Sparkles, 
+  vip1: Star, 
+  vip2: ShieldCheck, 
+  vip3: Diamond, 
+  vip4: Crown, 
+  vip5: Crown, 
+  vip6: Crown 
+};
+
 const tierTone: Record<Tier, string> = {
   free: 'border-neutral-200 dark:border-neutral-700',
   vip1: 'border-primary-300 dark:border-primary-500/40 shadow-glow',
   vip2: 'border-secondary-300 dark:border-secondary-500/40 shadow-glow',
   vip3: 'border-warning-300 dark:border-warning-500/40 shadow-glow-vip',
-  vip4: 'border-warning-300 dark:border-warning-500/40 shadow-glow-vip',
-  vip5: 'border-warning-300 dark:border-warning-500/40 shadow-glow-vip',
-  vip6: 'border-warning-300 dark:border-warning-500/40 shadow-glow-vip',
+  vip4: 'border-amber-400 dark:border-amber-500/60 shadow-glow-vip',
+  vip5: 'border-purple-400 dark:border-purple-500/60 shadow-glow-vip',
+  vip6: 'border-rose-400 dark:border-rose-500/60 shadow-glow-vip',
 };
+
 const estTierTone: Record<EstTier, string> = {
   free: 'border-neutral-200 dark:border-neutral-700',
   trial: 'border-accent-300 dark:border-accent-500/40 shadow-glow',
   vip1: 'border-primary-300 dark:border-primary-500/40 shadow-glow',
   vip2: 'border-secondary-300 dark:border-secondary-500/40 shadow-glow',
   vip3: 'border-warning-300 dark:border-warning-500/40 shadow-glow-vip',
-  vip4: 'border-warning-300 dark:border-warning-500/40 shadow-glow-vip',
-  vip5: 'border-warning-300 dark:border-warning-500/40 shadow-glow-vip',
-  vip6: 'border-warning-300 dark:border-warning-500/40 shadow-glow-vip',
+  vip4: 'border-amber-400 dark:border-amber-500/60 shadow-glow-vip',
+  vip5: 'border-purple-400 dark:border-purple-500/60 shadow-glow-vip',
+  vip6: 'border-rose-400 dark:border-rose-500/60 shadow-glow-vip',
+};
+
+const getTierColor = (tier: string) => {
+  if (tier === 'vip6') return 'text-rose-500';
+  if (tier === 'vip5') return 'text-purple-500';
+  if (tier === 'vip4') return 'text-amber-500';
+  if (tier === 'vip3') return 'text-warning-500';
+  if (tier === 'vip2') return 'text-secondary-500';
+  if (tier === 'vip1') return 'text-primary-500';
+  return 'text-neutral-400';
 };
 
 export function VipPanel({ userId, accountType }: { userId: string; accountType: 'freelancer' | 'establishment' }) {
@@ -130,14 +150,11 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
         });
 
         const rawText = await res.text();
-        console.log("STATUS HTTP:", res.status);
-        console.log("TEXTO BRUTO RETORNADO PELA EDGE FUNCTION:", rawText);
-
         let responseData;
         try {
           responseData = JSON.parse(rawText);
         } catch (e) {
-          throw new Error(`A Edge Function retornou HTML/Texto inválido (Status ${res.status}): ${rawText.substring(0, 100)}...`);
+          throw new Error(`A Edge Function retornou resposta inválida (Status ${res.status}): ${rawText.substring(0, 100)}...`);
         }
 
         if (!res.ok || !responseData.success) {
@@ -199,7 +216,7 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
               <div key={plan.tier} className={`relative rounded-xl border-2 p-4 transition ${tierTone[plan.tier]} ${active ? 'ring-2 ring-primary-400/40' : ''}`}>
                 {active && <div className="absolute -top-2 left-3"><Badge tone="primary">Atual</Badge></div>}
                 <div className="mb-2 flex items-center gap-2">
-                  <Icon className={`h-5 w-5 ${plan.tier === 'vip3' ? 'text-warning-500' : plan.tier === 'vip2' ? 'text-secondary-500' : plan.tier === 'vip1' ? 'text-primary-500' : 'text-neutral-400'}`} />
+                  <Icon className={`h-5 w-5 ${getTierColor(plan.tier)}`} />
                   <span className="font-display font-bold text-neutral-900 dark:text-white">{plan.label}</span>
                   {plan.badge === 'verified' && <ShieldCheck className="h-4 w-4 text-secondary-500" />}
                   {plan.badge === 'diamond' && <Diamond className="h-4 w-4 text-warning-500" />}
@@ -225,7 +242,7 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
                 <div key={plan.tier} className={`relative rounded-xl border-2 p-4 transition ${estTierTone[plan.tier]} ${active ? 'ring-2 ring-primary-400/40' : ''}`}>
                   {active && <div className="absolute -top-2 left-3"><Badge tone="primary">Atual</Badge></div>}
                   <div className="mb-2 flex items-center gap-1.5">
-                    <Store className={`h-4 w-4 ${plan.tier === 'vip3' ? 'text-warning-500' : plan.tier === 'vip2' ? 'text-secondary-500' : plan.tier === 'vip1' ? 'text-primary-500' : plan.tier === 'trial' ? 'text-accent-500' : 'text-neutral-400'}`} />
+                    <Store className={`h-4 w-4 ${getTierColor(plan.tier)}`} />
                     <span className="font-display text-sm font-bold text-neutral-900 dark:text-white">{plan.label}</span>
                   </div>
                   <p className="font-display text-xl font-extrabold text-neutral-900 dark:text-white">{price === 0 ? 'Grátis' : <>{appliedCoupon && <span className="mr-1 text-xs text-neutral-400 line-through">{formatCurrency(price)}</span>}{formatCurrency(priceFor(price))}</>}{price > 0 && <span className="text-[10px] font-medium text-neutral-400">/{periodLabel(period).toLowerCase()}</span>}</p>
@@ -242,58 +259,64 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
         </div>
       )}
 
-      {/* Painel de Gerenciamento de Anúncios para Estabelecimentos VIP 4 e VIP 5 */}
-      {accountType === 'establishment' && ['vip4', 'vip5'].includes(currentUser?.estVipTier ?? '') && (
-        <div className="mt-6 rounded-2xl border border-amber-500/40 bg-amber-500/5 p-5 dark:border-amber-500/30 dark:bg-amber-500/10">
-          <div className="flex items-center gap-2 mb-2">
-            <Crown className="h-5 w-5 text-amber-500" />
-            <h3 className="font-display font-bold text-neutral-900 dark:text-white">Gerenciamento de Anúncios ({currentUser?.estVipTier?.toUpperCase()})</h3>
-          </div>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-4">
-            {currentUser?.estVipTier === 'vip4' 
-              ? 'Seu plano VIP 4 dá direito a 1 anúncio ativo em nossa rede global.' 
-              : 'Seu plano VIP 5 dá direito a até 3 anúncios ativos simultâneos em todas as páginas (exceto painel admin).'}
-          </p>
+      {/* Painel de Gerenciamento de Anúncios para Estabelecimentos com permissão de anúncios (ex: VIP 4 / VIP 5 ou planos com allowAds) */}
+      {accountType === 'establishment' && (
+        (() => {
+          const activeEstPlan = data.estVipPlans.find(p => p.tier === (currentUser?.estVipTier ?? 'free'));
+          const canAdvertise = activeEstPlan?.allowAds || ['vip4', 'vip5', 'vip6'].includes(currentUser?.estVipTier ?? '');
+          if (!canAdvertise) return null;
 
-          <div className="mb-4 rounded-xl bg-amber-500/10 p-3 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300 space-y-1">
-            <p className="font-bold">📐 Dimensões Exatas Recomendadas para as Imagens:</p>
-            <p>• <strong>Banner Paisagem (Carrossel Home):</strong> Exatamente 1200 x 600 pixels (Proporção 2:1).</p>
-            <p>• <strong>Banner Quadrado (Widgets Laterais):</strong> Exatamente 800 x 800 pixels (Proporção 1:1).</p>
-          </div>
+          return (
+            <div className="mt-6 rounded-2xl border border-amber-500/40 bg-amber-500/5 p-5 dark:border-amber-500/30 dark:bg-amber-500/10">
+              <div className="flex items-center gap-2 mb-2">
+                <Crown className="h-5 w-5 text-amber-500" />
+                <h3 className="font-display font-bold text-neutral-900 dark:text-white">Gerenciamento de Anúncios ({currentUser?.estVipTier?.toUpperCase()})</h3>
+              </div>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-4">
+                Seu plano atual dá direito a publicar anúncios publicitários em nossa rede de exibições (carrossel e widgets).
+              </p>
 
-          <div className="space-y-3">
-            {Array.from({ length: currentUser?.estVipTier === 'vip5' ? 3 : 1 }).map((_, index) => {
-              const currentImages = currentUser?.adImages || [];
-              const imageUrl = currentImages[index] || '';
+              <div className="mb-4 rounded-xl bg-amber-500/10 p-3 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300 space-y-1">
+                <p className="font-bold">📐 Dimensões Exatas Recomendadas para as Imagens:</p>
+                <p>• <strong>Banner Paisagem (Carrossel Home):</strong> Exatamente 1200 x 600 pixels (Proporção 2:1).</p>
+                <p>• <strong>Banner Quadrado (Widgets Laterais):</strong> Exatamente 800 x 800 pixels (Proporção 1:1).</p>
+              </div>
 
-              return (
-                <div key={index} className="flex flex-col sm:flex-row items-center gap-3 rounded-xl border border-neutral-200 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-800">
-                  <div className="h-16 w-24 shrink-0 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 flex items-center justify-center">
-                    {imageUrl ? (
-                      <img src={imageUrl} alt={`Anúncio ${index + 1}`} className="h-full w-full object-cover" />
-                    ) : (
-                      <span className="text-[10px] text-neutral-400">Sem imagem</span>
-                    )}
-                  </div>
-                  <div className="flex-1 w-full space-y-1">
-                    <label className="text-xs font-semibold text-neutral-600 dark:text-neutral-300">URL da Imagem do Anúncio #{index + 1}</label>
-                    <input 
-                      type="text" 
-                      placeholder="Cole o link da imagem (ex: https://site.com/banner.jpg)"
-                      value={imageUrl}
-                      onChange={(e) => {
-                        const newImages = [...currentImages];
-                        newImages[index] = e.target.value;
-                        updateUser(userId, { adImages: newImages });
-                      }}
-                      className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs text-neutral-800 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+              <div className="space-y-3">
+                {Array.from({ length: currentUser?.estVipTier === 'vip5' || currentUser?.estVipTier === 'vip6' ? 3 : 1 }).map((_, index) => {
+                  const currentImages = currentUser?.adImages || [];
+                  const imageUrl = currentImages[index] || '';
+
+                  return (
+                    <div key={index} className="flex flex-col sm:flex-row items-center gap-3 rounded-xl border border-neutral-200 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-800">
+                      <div className="h-16 w-24 shrink-0 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 flex items-center justify-center">
+                        {imageUrl ? (
+                          <img src={imageUrl} alt={`Anúncio ${index + 1}`} className="h-full w-full object-cover" />
+                        ) : (
+                          <span className="text-[10px] text-neutral-400">Sem imagem</span>
+                        )}
+                      </div>
+                      <div className="flex-1 w-full space-y-1">
+                        <label className="text-xs font-semibold text-neutral-600 dark:text-neutral-300">URL da Imagem do Anúncio #{index + 1}</label>
+                        <input 
+                          type="text" 
+                          placeholder="Cole o link da imagem (ex: https://site.com/banner.jpg)"
+                          value={imageUrl}
+                          onChange={(e) => {
+                            const newImages = [...currentImages];
+                            newImages[index] = e.target.value;
+                            updateUser(userId, { adImages: newImages });
+                          }}
+                          className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs text-neutral-800 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()
       )}
 
       <Modal open={!!confirmTier} onClose={() => setConfirmTier(null)} title="Confirmar assinatura" size="sm"
