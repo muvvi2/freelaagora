@@ -33,6 +33,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         
         if (!cancelled && row?.data && Object.keys(row.data).length > 0) {
           const loadedData = row.data as AppData;
+
+          // 🛡️ Blindagem de Pagamentos: Se o banco veio sem paymentSettings configurado ou vazio, injeta o do initialData para não sumir com os meios de pagamento
+          if (!loadedData.paymentSettings || !loadedData.paymentSettings.configs || Object.keys(loadedData.paymentSettings.configs).length === 0) {
+            loadedData.paymentSettings = initialData.paymentSettings;
+          }
+
           // Restaura o usuário logado da sessão atual (sessionStorage) se existir
           const savedUserId = sessionStorage.getItem(SESSION_KEY);
           if (savedUserId && loadedData.users.some(u => u.id === savedUserId)) {
