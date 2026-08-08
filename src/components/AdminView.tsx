@@ -16,6 +16,7 @@ import { Input, Select } from './ui/Field';
 import { EscrowFlowModal } from './EscrowFlowModal';
 import { AvailabilityCalendar } from './AvailabilityCalendar';
 import { formatCurrency, formatDate, formatDateTime, contractStatusLabel, getPlan, getEstPlan, maskCEP, maskDocumentDisplay, periodLabel } from '@/utils';
+import { supabase } from '@/lib/supabase';
 import type { Contract, User, Tier, EstTier, ContractStatus, ShiftSlot, Period, AccountType, VipPlan, EstVipPlan } from '@/types';
 
 type Tab = 'overview' | 'freelancers' | 'establishments' | 'contracts' | 'jobs' | 'reviews' | 'coupons' | 'audit' | 'wallet' | 'vip' | 'admins';
@@ -90,6 +91,9 @@ export function AdminView() {
             <FinancialCard icon={CheckCircle2} label="Repasses Concluídos" value={formatCurrency(stats.completedRepasses)} tone="success" desc="Liberações para freelancers" />
           </div>
 
+          {/* Componente integrado de Migração de Dados (Passo 2) */}
+          <MigrationSection />
+
           <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
             <h3 className="mb-4 flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white"><TrendingUp className="h-5 w-5 text-primary-500" /> Receita Total por Fonte</h3>
             <div className="grid gap-4 sm:grid-cols-3">
@@ -115,7 +119,7 @@ export function AdminView() {
             <AdminStat icon={Briefcase} label="Contratos" value={String(data.contracts.length)} tone="neutral" />
           </div>
 
-          {/* Painel unificado de Criação de Contas (substituindo a antiga aba de configurações de API de pagamentos) */}
+          {/* Painel unificado de Criação de Contas */}
           <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
             <h3 className="mb-4 flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white">
               <UserPlus className="h-5 w-5 text-primary-500" /> Painel de Criação de Contas e Acessos
@@ -441,6 +445,78 @@ export function AdminView() {
         footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={() => setConfirmReset(false)}>Cancelar</Button><Button variant="danger" fullWidth onClick={() => { resetData(); setConfirmReset(false); notify('Dados restaurados', 'info'); }}><RotateCcw className="h-4 w-4" /> Resetar</Button></div>}>
         <p className="text-sm text-neutral-600 dark:text-neutral-300">Todas as alterações serão perdidas e os dados voltarão ao estado inicial.</p>
       </Modal>
+    </div>
+  );
+}
+
+// Seção de migração integrada
+function MigrationSection() {
+  const { data } = useApp();
+  const { notify } = useToast();
+  const [migrating, setMigrating] = useState(false);
+
+  const runMigration = async () => {
+    if (!confirm("Deseja transferir os dados do app_state atual para as tabelas relacionais do Supabase?")) return;
+    setMigrating(true);
+
+    try {
+      if (data.users && data.users.length > 0) {
+        const usersPayload = data.users.map((u) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          account_type: u.accountType,
+          wallet_balance: u.walletBalance ?? 0,
+          is_admin: !!u.isAdmin,
+          admin_role: u.adminRole ?? null,
+          created_at: u.createdAt || new Date().toISOString()
+        }));
+        const { error: userErr } = await supabase.from('users').upsert(usersPayload);
+        if (userErr) throw userErr;
+      }
+
+      if (data.coupons && data.coupons.length > 0) {
+        const couponsPayload = data.coupons.map((cp) => ({
+          id: cp.id,
+          code: cp.code,
+          discount_percentage: cp.discountPercentage,
+          is_active: cp.isActive,
+          used_by: cp.usedBy ?? [],
+          expires_at: cp.expiresAt ? new Date(cp.expiresAt).toISOString() : null
+        }));
+        const { error: couponErr } = await supabase.from('coupons').upsert(couponsPayload);
+        if (couponErr) throw couponErr;
+      }
+
+      if (data.jobs && data.jobs.length > 0) {
+        const jobsPayload = data.jobs.map((j) => ({
+          id: j.id,
+          title: j.title,
+          status: j.status,
+          establishment_id: j.establishmentId,
+          value: j.value,
+          created_at: j.createdAt || new Date().toISOString()
+        }));
+        const { error: jobErr } = await supabase.from('jobs').upsert(jobsPayload);
+        if (jobErr) throw jobErr;
+      }
+
+      notify("Migração para as tabelas concluída com sucesso!");
+    } catch (err: any) {
+      console.error(err);
+      notify(err.message || "Erro ao executar a migração.", "warning");
+    } finally {
+      setMigrating(false);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
+      <h3 className="mb-2 font-display font-bold text-neutral-900 dark:text-white">Ferramenta de Migração de Dados</h3>
+      <p className="mb-4 text-xs text-neutral-400">Transfere os registros atuais do arquivo JSON central para as tabelas relacionais do Supabase.</p>
+      <Button onClick={runMigration} disabled={migrating}>
+        <Terminal className="h-4 w-4" /> {migrating ? 'Migrando...' : 'Executar Migração para as Tabelas'}
+      </Button>
     </div>
   );
 }
@@ -938,7 +1014,7 @@ function VipPlansTab({ vipPlans, estVipPlans, onUpdateVipPlan, onAddVipPlan, onR
   );
 }
 
-export function AdminProfileModal({ open, onClose, admin, onSave }: { open: boolean; onClose: () => void; admin: User; onSave: (id: string, patch: Partial<User>) => void }) {
+function AdminProfileModal({ open, onClose, admin, onSave }: { open: boolean; onClose: () => void; admin: User; onSave: (id: string, patch: Partial<User>) => void }) {
   const { notify } = useToast();
   const [email, setEmail] = useState(admin.email);
   const [password, setPassword] = useState(admin.password);
