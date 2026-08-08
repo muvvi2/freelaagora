@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Crown, Check, Sparkles, ShieldCheck, Diamond, Star, Store, Percent, Ticket, QrCode, CreditCard, FileText, Wallet, AlertCircle, Copy } from 'lucide-react';
+import { Crown, Check, Sparkles, ShieldCheck, Diamond, Star, Store, Percent, Ticket, QrCode, CreditCard, FileText, Wallet, AlertCircle, Copy, Upload } from 'lucide-react';
 import { useApp } from '@/AppContext';
 import { supabase } from '@/lib/supabase';
 import { useToast } from './ui/Toast';
@@ -41,7 +41,7 @@ const estTierTone: Record<EstTier, string> = {
 };
 
 export function VipPanel({ userId, accountType }: { userId: string; accountType: 'freelancer' | 'establishment' }) {
-  const { currentUser, data, setVipTier, setEstVipTier, validateCoupon, applyCouponToPurchase } = useApp();
+  const { currentUser, data, setVipTier, setEstVipTier, validateCoupon, applyCouponToPurchase, updateUser } = useApp();
   const { notify } = useToast();
   const [period, setPeriod] = useState<Period>('monthly');
   const [confirmTier, setConfirmTier] = useState<Tier | null>(null);
@@ -235,6 +235,60 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
                   <ul className="mt-3 space-y-1.5">{plan.features.map((f) => <li key={f} className="flex items-start gap-2 text-xs text-neutral-600 dark:text-neutral-300"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success-500" /> {f}</li>)}</ul>
                   {!active && plan.tier !== 'trial' && <Button size="sm" fullWidth className="mt-3" variant={plan.tier === 'free' ? 'outline' : 'warning'} onClick={() => setConfirmEstTier(plan.tier)}>{plan.tier === 'free' ? 'Voltar para Free' : 'Assinar'}</Button>}
                   {active && <p className="mt-3 text-center text-xs font-semibold text-neutral-400">Plano ativo</p>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Painel de Gerenciamento de Anúncios para Estabelecimentos VIP 4 e VIP 5 */}
+      {accountType === 'establishment' && ['vip4', 'vip5'].includes(currentUser?.estVipTier ?? '') && (
+        <div className="mt-6 rounded-2xl border border-amber-500/40 bg-amber-500/5 p-5 dark:border-amber-500/30 dark:bg-amber-500/10">
+          <div className="flex items-center gap-2 mb-2">
+            <Crown className="h-5 w-5 text-amber-500" />
+            <h3 className="font-display font-bold text-neutral-900 dark:text-white">Gerenciamento de Anúncios ({currentUser?.estVipTier?.toUpperCase()})</h3>
+          </div>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-4">
+            {currentUser?.estVipTier === 'vip4' 
+              ? 'Seu plano VIP 4 dá direito a 1 anúncio ativo em nossa rede global.' 
+              : 'Seu plano VIP 5 dá direito a até 3 anúncios ativos simultâneos em todas as páginas (exceto painel admin).'}
+          </p>
+
+          <div className="mb-4 rounded-xl bg-amber-500/10 p-3 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300 space-y-1">
+            <p className="font-bold">📐 Dimensões Exatas Recomendadas para as Imagens:</p>
+            <p>• <strong>Banner Paisagem (Carrossel Home):</strong> Exatamente 1200 x 600 pixels (Proporção 2:1).</p>
+            <p>• <strong>Banner Quadrado (Widgets Laterais):</strong> Exatamente 800 x 800 pixels (Proporção 1:1).</p>
+          </div>
+
+          <div className="space-y-3">
+            {Array.from({ length: currentUser?.estVipTier === 'vip5' ? 3 : 1 }).map((_, index) => {
+              const currentImages = currentUser?.adImages || [];
+              const imageUrl = currentImages[index] || '';
+
+              return (
+                <div key={index} className="flex flex-col sm:flex-row items-center gap-3 rounded-xl border border-neutral-200 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-800">
+                  <div className="h-16 w-24 shrink-0 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 flex items-center justify-center">
+                    {imageUrl ? (
+                      <img src={imageUrl} alt={`Anúncio ${index + 1}`} className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-[10px] text-neutral-400">Sem imagem</span>
+                    )}
+                  </div>
+                  <div className="flex-1 w-full space-y-1">
+                    <label className="text-xs font-semibold text-neutral-600 dark:text-neutral-300">URL da Imagem do Anúncio #{index + 1}</label>
+                    <input 
+                      type="text" 
+                      placeholder="Cole o link da imagem (ex: https://site.com/banner.jpg)"
+                      value={imageUrl}
+                      onChange={(e) => {
+                        const newImages = [...currentImages];
+                        newImages[index] = e.target.value;
+                        updateUser(userId, { adImages: newImages });
+                      }}
+                      className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs text-neutral-800 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                    />
+                  </div>
                 </div>
               );
             })}
