@@ -119,13 +119,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return { ok: true };
   }, [data?.users, setData]);
 
-  // Cadastro robusto sincronizado com o Supabase (JSON + tabelas relacionais)
+  // Cadastro robusto com tratamento e exibição de erros do Supabase
   const register = useCallback(async (user: Omit<User, 'id' | 'createdAt' | 'walletBalance' | 'rating' | 'reviewsCount' | 'completedShifts'> & Partial<User>): Promise<{ ok: boolean; error?: string }> => {
     if (!data) return { ok: false, error: 'Sistema ainda carregando.' };
     if (data.users.some((u) => u.email.toLowerCase() === user.email.toLowerCase().trim())) {
       return { ok: false, error: 'Este e-mail já está cadastrado.' };
     }
-    const id = uid(user.accountType === 'freelancer' ? 'fl' : 'es');
+
+    // Gera um UUID válido para o Supabase aceitar na coluna uuid
+    const id = crypto.randomUUID();
+    
     const newUser: User = {
       ...user, id, email: user.email.toLowerCase().trim(), createdAt: new Date().toISOString(),
       walletBalance: 0, rating: user.accountType === 'freelancer' ? 5 : 0, reviewsCount: 0, completedShifts: 0,
@@ -147,7 +150,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           rating_average: 0,
           reviews_count: 0
         }]);
-        if (estError) console.error("⚠️ Erro ao inserir em establishment_profiles:", estError.message);
+        if (estError) {
+          console.error("❌ Erro Supabase establishment_profiles:", estError);
+          return { ok: false, error: `Erro no banco (Estabelecimento): ${estError.message}` };
+        }
       } else if (user.accountType === 'freelancer') {
         const { error: flError } = await supabase.from('freelancer_profiles').insert([{
           user_id: id,
@@ -160,15 +166,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
           reviews_count: 0,
           completed_shifts: 0
         }]);
-        if (flError) console.error("⚠️ Erro ao inserir em freelancer_profiles:", flError.message);
+        if (flError) {
+          console.error("❌ Erro Supabase freelancer_profiles:", flError);
+          return { ok: false, error: `Erro no banco (Freelancer): ${flError.message}` };
+        }
       }
-    } catch (err) {
-      console.error("⚠️ Exceção ao salvar nas tabelas relacionais:", err);
+    } catch (err: any) {
+      console.error("❌ Exceção ao salvar no Supabase:", err);
+      return { ok: false, error: `Exceção ao conectar com o banco: ${err.message || err}` };
     }
     
     sessionStorage.setItem(SESSION_KEY, id);
     
-    // 2. Atualiza o estado global e persiste no Supabase
+    // 2. Atualiza o estado global e persiste no Supabase (app_state)
     setData((d) => {
       const nextData = { ...d, users: [...d.users, newUser], currentUserId: id };
       void persist(nextData);
