@@ -831,7 +831,7 @@ function VipPlansTab({ vipPlans, estVipPlans, onUpdateVipPlan, onAddVipPlan, onR
     const tierNum = estVipPlans.length;
     const newTier = `vip${tierNum}` as EstTier;
     if (estVipPlans.some((p) => p.tier === newTier)) { notify('Já existe um plano com esse nível', 'warning'); return; }
-    onAddEstVipPlan({ tier: newTier, label: `VIP ${tierNum}`, prices: { monthly: 99.9, semestral: 499.9, annual: 899.9 }, intermediationFee: 5, features: ['Novo plano'] });
+    onAddEstVipPlan({ tier: newTier, label: `VIP ${tierNum}`, prices: { monthly: 99.9, semestral: 499.9, annual: 899.9 }, intermediationFee: 5, maxActiveJobs: 5, features: ['Novo plano'] });
     notify('Plano adicionado');
   };
 
@@ -863,7 +863,7 @@ function VipPlansTab({ vipPlans, estVipPlans, onUpdateVipPlan, onAddVipPlan, onR
         </div>
       )}
 
-      <p className="text-xs text-neutral-400">Alterações nos preços e benefícios são aplicadas imediatamente. Remover um plano reverte todos os usuários nele para o plano Gratuito.</p>
+      <p className="text-xs text-neutral-400">Alterações nos preços, taxas e limites são aplicadas imediatamente. Remover um plano reverte todos os usuários nele para o plano Gratuito.</p>
     </div>
   );
 }
@@ -897,7 +897,12 @@ function VipPlanEditor({ plan, onUpdate, onRemove, isEst }: {
           <div className="grid gap-3 sm:grid-cols-2">
             <Input label="Nome do plano" value={plan.label} onChange={(e) => onUpdate({ label: e.target.value })} />
             {!isEst && <Input label="Máx. categorias (999 = ilimitado)" type="number" value={String((plan as VipPlan).maxCategories)} onChange={(e) => onUpdate({ maxCategories: Number(e.target.value) || 0 } as Partial<VipPlan>)} />}
-            {isEst && <Input label="Taxa de intermediação (%)" type="number" step="0.5" value={String((plan as EstVipPlan).intermediationFee)} onChange={(e) => onUpdate({ intermediationFee: Number(e.target.value) || 0 } as Partial<EstVipPlan>)} />}
+            {isEst && (
+              <>
+                <Input label="Taxa de intermediação (%)" type="number" step="0.5" value={String((plan as EstVipPlan).intermediationFee)} onChange={(e) => onUpdate({ intermediationFee: Number(e.target.value) || 0 } as Partial<EstVipPlan>)} />
+                <Input label="Máx. vagas ativas (999 = ilimitado)" type="number" value={String((plan as EstVipPlan).maxActiveJobs ?? 2)} onChange={(e) => onUpdate({ maxActiveJobs: Number(e.target.value) || 0 } as Partial<EstVipPlan>)} />
+              </>
+            )}
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <Input label="Preço mensal (R$)" type="number" value={String(plan.prices.monthly)} onChange={(e) => onUpdate({ prices: { ...plan.prices, monthly: Number(e.target.value) || 0 } })} />
