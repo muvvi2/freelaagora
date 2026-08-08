@@ -7,7 +7,7 @@ import { Button } from './ui/Button';
 import { Input, Textarea, Select } from './ui/Field';
 import { useApp } from '@/AppContext';
 import { useToast } from './ui/Toast';
-import { CATEGORIES } from '@/mockData';
+import { CATEGORIES, MACRO_CATEGORIES } from '@/mockData';
 
 export function JobFormModal({ open, onClose, editing, establishment }: { open: boolean; onClose: () => void; editing: Job | null; establishment: User }) {
   const { data, addJob, updateJob } = useApp();
@@ -23,6 +23,13 @@ export function JobFormModal({ open, onClose, editing, establishment }: { open: 
   const [hours, setHours] = useState(String(editing?.hours ?? 6));
   const [value, setValue] = useState(String(editing?.value ?? 200));
   const [urgency, setUrgency] = useState<Urgency>(editing?.urgency ?? 'hoje');
+
+  // Estado para controlar a macro-categoria selecionada na coluna da esquerda
+  const initialCategoryObj = CATEGORIES.find(c => c.id === (editing?.category ?? 'garcom'));
+  const [selectedMacro, setSelectedMacro] = useState<string>(initialCategoryObj?.macro ?? MACRO_CATEGORIES[0]?.id ?? 'tecnico');
+
+  // Filtra as categorias da coluna da direita com base na macro da esquerda
+  const filteredCategories = CATEGORIES.filter((cat: any) => cat.macro === selectedMacro);
 
   const handleSave = () => {
     if (!title.trim()) { notify('Informe um título para a vaga', 'warning'); return; }
@@ -52,16 +59,13 @@ export function JobFormModal({ open, onClose, editing, establishment }: { open: 
         createdAt: new Date().toISOString(),
       };
 
-      // Envia para o contexto global e captura a resposta de segurança da trava
       const result = addJob(job);
 
       if (result && !result.ok) {
-        // Se a trava global recusar, exibe o erro e BLOQUEIA o fechamento do modal
         notify(result.error ?? 'Limite de vagas atingido para o seu plano.', 'error');
         return; 
       }
 
-      // Só avisa e fecha se o contexto realmente permitiu
       notify('Vaga urgente publicada no feed!');
       onClose();
     }
@@ -73,22 +77,58 @@ export function JobFormModal({ open, onClose, editing, establishment }: { open: 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2"><Input label="Título da vaga" placeholder="Ex: Cobertura de sexta à noite" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
         
-        <Select label="Categoria da Vaga" value={category} onChange={(e) => setCategory(e.target.value)}>
-          {CATEGORIES.map((cat: any) => {
-            if (cat.subcategories) {
-              return (
-                <optgroup key={cat.id || cat.name} label={cat.name || cat.label}>
-                  {cat.subcategories.map((sub: any) => (
-                    <option key={sub.id || sub} value={sub.id || sub}>
-                      {sub.label || sub}
-                    </option>
-                  ))}
-                </optgroup>
-              );
-            }
-            return <option key={cat.id} value={cat.id}>{cat.label}</option>;
-          })}
-        </Select>
+        {/* SELETOR DE CATEGORIAS EM DUAS COLUNAS */}
+        <div className="sm:col-span-2 flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Categoria da Vaga (Selecione o Setor e a Especialidade)</label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 border border-gray-200 dark:border-gray-700 rounded-xl p-3 bg-gray-50/50 dark:bg-gray-900/50 h-72">
+            
+            {/* Coluna da Esquerda: Macro-Categorias */}
+            <div className="flex flex-col gap-1 overflow-y-auto pr-1 border-r border-gray-200 dark:border-gray-700">
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-2 mb-1">1. Setor / Setor Principal</span>
+              {MACRO_CATEGORIES.map((macro) => {
+                const isSelected = selectedMacro === macro.id;
+                return (
+                  <button
+                    key={macro.id}
+                    type="button"
+                    onClick={() => setSelectedMacro(macro.id)}
+                    className={`text-left px-3 py-2.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-between ${
+                      isSelected
+                        ? 'bg-orange-500 text-white shadow-sm'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200/60 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    <span>{macro.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Coluna da Direita: Especialidades Individuais e Combos da Macro */}
+            <div className="flex flex-col gap-1 overflow-y-auto pl-1">
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-2 mb-1">2. Especialidade Específica</span>
+              {filteredCategories.map((cat: any) => {
+                const isSelected = category === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setCategory(cat.id)}
+                    className={`text-left px-3 py-2.5 rounded-lg text-xs transition-colors flex items-center justify-between ${
+                      isSelected
+                        ? 'bg-orange-100 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 font-semibold border border-orange-300 dark:border-orange-800'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200/60 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    <span>{cat.label}</span>
+                    {isSelected && <Check className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400 shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+
+          </div>
+        </div>
 
         <Select label="Urgência" value={urgency} onChange={(e) => setUrgency(e.target.value as Urgency)}>
           {(['hoje', 'amanha', 'esta_semana'] as Urgency[]).map((u) => <option key={u} value={u}>{urgencyLabel(u)}</option>)}
