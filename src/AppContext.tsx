@@ -319,18 +319,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, [setData, currentAdminId]);
 
-  // Coupons
+  // Coupons with 1 use per user enforcement
   const coupons = useMemo(() => data?.coupons ?? [], [data?.coupons]);
-  const validateCoupon = useCallback((code: string): Coupon | null => {
-    if (!data) return null;
+  
+  const validateCoupon = useCallback((code: string, userId?: string): { coupon?: Coupon; error?: string } => {
+    if (!data) return { error: 'Sistema carregando.' };
     const c = data.coupons.find((cp) => cp.code.toUpperCase() === code.toUpperCase().trim() && cp.isActive);
-    if (!c) return null;
-    if (c.expiresAt && new Date(c.expiresAt) < new Date()) return null;
-    return c;
-  }, [data?.coupons]);
+    if (!c) return { error: 'Cupom inválido ou desativado.' };
+    if (c.expiresAt && new Date(c.expiresAt) < new Date()) return { error: 'Este cupom já expirou.' };
+    if (userId && c.usedBy && c.usedBy.includes(userId)) {
+      return { error: 'Você já utilizou este cupom anteriormente.' };
+    }
+    return { coupon: c };
+  }, [data]);
 
   const addCoupon = useCallback((coupon: Omit<Coupon, 'id' | 'createdAt'>) => {
-    setData((d) => ({ ...d, coupons: [{ ...coupon, id: uid('cp'), createdAt: new Date().toISOString() }, ...d.coupons], adminAuditLogs: [{ id: uid('al'), adminId: currentAdminId, action: `Admin criou cupom ${coupon.code} (${coupon.discountPercentage}%)`, createdAt: new Date().toISOString() }, ...d.adminAuditLogs] }));
+    setData((d) => ({ ...d, coupons: [{ ...coupon, id: uid('cp'), usedBy: [], createdAt: new Date().toISOString() }, ...d.coupons], adminAuditLogs: [{ id: uid('al'), adminId: currentAdminId, action: `Admin criou cupom ${coupon.code} (${coupon.discountPercentage}%)`, createdAt: new Date().toISOString() }, ...d.adminAuditLogs] }));
   }, [setData, currentAdminId]);
 
   const toggleCoupon = useCallback((id: string) => {
@@ -343,18 +347,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const applyCouponToPurchase = useCallback((userId: string, tier: Tier | EstTier, period: Period, coupon: Coupon, accountType: 'freelancer' | 'establishment'): { ok: boolean; discountedPrice: number; error?: string } => {
     if (!data) return { ok: false, discountedPrice: 0, error: 'Sistema carregando.' };
+    if (coupon.usedBy?.includes(userId)) {
+      return { ok: false, discountedPrice: 0, error: 'Você já utilizou este cupom.' };
+    }
     const plan = accountType === 'freelancer' ? getPlan(tier as Tier, data.vipPlans) : getEstPlan(tier as EstTier, data.estVipPlans);
     const fullPrice = plan.prices[period];
     const discounted = Math.round(fullPrice * (1 - coupon.discountPercentage / 100) * 100) / 100;
-    setData((d) => ({ ...d, users: d.users.map((u) => {
-      if (u.id !== userId) return u;
-      if (accountType === 'freelancer') { const expiry = tier === 'free' ? undefined : new Date(Date.now() + (period === 'annual' ? 365 : period === 'semestral' ? 180 : 30) * 86400000).toISOString(); return { ...u, vipTier: tier as Tier, vipExpiresAt: expiry, walletBalance: Math.max(0, (u.walletBalance ?? 0) - discounted) }; }
-      const expiry = tier === 'free' ? undefined : new Date(Date.now() + (period === 'annual' ? 365 : period === 'semestral' ? 180 : 30) * 86400000).toISOString(); return { ...u, estVipTier: tier as EstTier, estVipExpiresAt: expiry, walletBalance: Math.max(0, (u.walletBalance ?? 0) - discounted) };
-    }), walletTxs: [
-      { id: uid('wt'), userId, type: 'vip_charge', amount: -discounted, description: `Assinatura ${plan.label} (${period}) com cupom ${coupon.code}`, date: new Date().toISOString() },
-      { id: uid('wt'), userId, type: 'coupon_discount', amount: -(fullPrice - discounted), description: `Desconto do cupom ${coupon.code} (${coupon.discountPercentage}%)`, date: new Date().toISOString() },
-      ...d.walletTxs,
-    ] }));
+    
+    setData((d) => ({
+      ...d,
+      coupons: d.coupons.map((c) => c.id === coupon.id ? { ...c, usedBy: [...(c.usedBy || []), userId] } : c),
+      users: d.users.map((u) => {
+        if (u.id !== userId) return u;
+        if (accountType === 'freelancer') { const expiry = tier === 'free' ? undefined : new Date(Date.now() + (period === 'annual' ? 365 : period === 'semestral' ? 180 : 30) * 86400000).toISOString(); return { ...u, vipTier: tier as Tier, vipExpiresAt: expiry, walletBalance: Math.max(0, (u.walletBalance ?? 0) - discounted) }; }
+        const expiry = tier === 'free' ? undefined : new Date(Date.now() + (period === 'annual' ? 365 : period === 'semestral' ? 180 : 30) * 86400000).toISOString(); return { ...u, estVipTier: tier as EstTier, estVipExpiresAt: expiry, walletBalance: Math.max(0, (u.walletBalance ?? 0) - discounted) };
+      }),
+      walletTxs: [
+        { id: uid('wt'), userId, type: 'vip_charge', amount: -discounted, description: `Assinatura ${plan.label} (${period}) com cupom ${coupon.code}`, date: new Date().toISOString() },
+        { id: uid('wt'), userId, type: 'coupon_discount', amount: -(fullPrice - discounted), description: `Desconto do cupom ${coupon.code} (${coupon.discountPercentage}%)`, date: new Date().toISOString() },
+        ...d.walletTxs,
+      ]
+    }));
     return { ok: true, discountedPrice: discounted };
   }, [data, setData]);
 
