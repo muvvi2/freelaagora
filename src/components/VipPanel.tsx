@@ -31,6 +31,7 @@ const tierTone: Record<Tier, string> = {
 };
 const estTierTone: Record<EstTier, string> = {
   free: 'border-neutral-200 dark:border-neutral-700',
+  trial: 'border-accent-300 dark:border-accent-500/40 shadow-glow',
   vip1: 'border-primary-300 dark:border-primary-500/40 shadow-glow',
   vip2: 'border-secondary-300 dark:border-secondary-500/40 shadow-glow',
   vip3: 'border-warning-300 dark:border-warning-500/40 shadow-glow-vip',
@@ -57,14 +58,16 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
   const applyCoupon = () => {
     if (!couponCode.trim()) { setCouponError('Digite um código.'); return; }
     const c = validateCoupon(couponCode);
-    if (!c) { setCouponError('Cupom inválido ou expirado.'); setAppliedCoupon(null); return; }
-    setAppliedCoupon(c); setCouponError(''); notify(`Cupom ${c.code} aplicado: ${c.discountPercentage}% de desconto!`);
+    if (!c.coupon) { setCouponError(c.error || 'Cupom inválido ou expirado.'); setAppliedCoupon(null); return; }
+    setAppliedCoupon(c.coupon); setCouponError(''); notify(`Cupom ${c.coupon.code} aplicado: ${c.coupon.discountPercentage}% de desconto!`);
   };
 
   const priceFor = (price: number) => appliedCoupon ? Math.round(price * (1 - appliedCoupon.discountPercentage / 100) * 100) / 100 : price;
 
   const currentTier: Tier = currentUser?.vipTier ?? 'free';
-  const currentEstTier: EstTier = currentUser?.estVipTier ?? 'free';
+  const isOnTrial = currentUser?.trialEndsAt ? new Date(currentUser.trialEndsAt) > new Date() : false;
+  const currentEstTier: EstTier = isOnTrial ? 'trial' : (currentUser?.estVipTier ?? 'free');
+  
   const currentPlan = getPlan(currentTier, data.vipPlans);
   const currentEstPlan = getEstPlan(currentEstTier, data.estVipPlans);
 
@@ -99,7 +102,6 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
         
         const token = sessionData?.session?.access_token || supabase.supabaseKey;
 
-        // Prioridade corrigida: Se for estabelecimento pega o CNPJ, senão pega o CPF
         const rawDocument = accountType === 'establishment' 
           ? (currentUser?.cnpj || '') 
           : (currentUser?.cpf || currentUser?.cpfCnpj || '');
@@ -107,7 +109,7 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
         const cleanDocument = rawDocument.replace(/\D/g, '');
         const validCpfCnpj = (cleanDocument.length === 11 || cleanDocument.length === 14) 
           ? cleanDocument 
-          : '47690623000'; // Fallback de teste caso venha vazio
+          : '47690623000';
 
         const res = await fetch(`${supabaseUrl}/functions/v1/asaas-payment`, {
           method: 'POST',
@@ -177,7 +179,7 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-warning-400 to-warning-600"><Crown className="h-5 w-5 text-white" /></div>
         <div>
           <h3 className="font-display font-bold text-neutral-900 dark:text-white">Plano de Destaque</h3>
-          <p className="text-xs text-neutral-400">{accountType === 'freelancer' ? `Plano atual: ${currentPlan.label}` : `Plano atual: ${currentEstPlan.label}`}</p>
+          <p className="text-xs text-neutral-400">{accountType === 'freelancer' ? `Plano atual: ${currentPlan.label}` : `Plano atual: ${currentEstPlan.label}`}{isOnTrial ? ' (Em período de Teste Gratuito)' : ''}</p>
         </div>
       </div>
 
@@ -216,14 +218,14 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
             <Percent className="h-5 w-5 text-secondary-500" />
             <p className="text-sm text-secondary-700 dark:text-secondary-300">Seu plano define a <strong>taxa de intermediação</strong> cobrada em cada contratação. Quanto maior o plano, menor a taxa.</p>
           </div>
-          <div className="grid gap-3 grid-cols-1 md:grid-cols-4">
+          <div className="grid gap-3 grid-cols-1 md:grid-cols-5">
             {data.estVipPlans.map((plan) => {
               const active = currentEstTier === plan.tier; const price = plan.prices[period];
               return (
                 <div key={plan.tier} className={`relative rounded-xl border-2 p-4 transition ${estTierTone[plan.tier]} ${active ? 'ring-2 ring-primary-400/40' : ''}`}>
                   {active && <div className="absolute -top-2 left-3"><Badge tone="primary">Atual</Badge></div>}
                   <div className="mb-2 flex items-center gap-1.5">
-                    <Store className={`h-4 w-4 ${plan.tier === 'vip3' ? 'text-warning-500' : plan.tier === 'vip2' ? 'text-secondary-500' : plan.tier === 'vip1' ? 'text-primary-500' : 'text-neutral-400'}`} />
+                    <Store className={`h-4 w-4 ${plan.tier === 'vip3' ? 'text-warning-500' : plan.tier === 'vip2' ? 'text-secondary-500' : plan.tier === 'vip1' ? 'text-primary-500' : plan.tier === 'trial' ? 'text-accent-500' : 'text-neutral-400'}`} />
                     <span className="font-display text-sm font-bold text-neutral-900 dark:text-white">{plan.label}</span>
                   </div>
                   <p className="font-display text-xl font-extrabold text-neutral-900 dark:text-white">{price === 0 ? 'Grátis' : <>{appliedCoupon && <span className="mr-1 text-xs text-neutral-400 line-through">{formatCurrency(price)}</span>}{formatCurrency(priceFor(price))}</>}{price > 0 && <span className="text-[10px] font-medium text-neutral-400">/{periodLabel(period).toLowerCase()}</span>}</p>
@@ -231,7 +233,7 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
                     <Percent className="h-3 w-3" /> {plan.intermediationFee === 0 ? '0% taxa' : `${plan.intermediationFee}% taxa`}
                   </div>
                   <ul className="mt-3 space-y-1.5">{plan.features.map((f) => <li key={f} className="flex items-start gap-2 text-xs text-neutral-600 dark:text-neutral-300"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success-500" /> {f}</li>)}</ul>
-                  {!active && <Button size="sm" fullWidth className="mt-3" variant={plan.tier === 'free' ? 'outline' : 'warning'} onClick={() => setConfirmEstTier(plan.tier)}>{plan.tier === 'free' ? 'Voltar para Free' : 'Assinar'}</Button>}
+                  {!active && plan.tier !== 'trial' && <Button size="sm" fullWidth className="mt-3" variant={plan.tier === 'free' ? 'outline' : 'warning'} onClick={() => setConfirmEstTier(plan.tier)}>{plan.tier === 'free' ? 'Voltar para Free' : 'Assinar'}</Button>}
                   {active && <p className="mt-3 text-center text-xs font-semibold text-neutral-400">Plano ativo</p>}
                 </div>
               );
