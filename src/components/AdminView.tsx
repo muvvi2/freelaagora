@@ -810,7 +810,7 @@ function VipPlansTab({ vipPlans, estVipPlans, onUpdateVipPlan, onAddVipPlan, onR
     const tierNum = estVipPlans.length;
     const newTier = `vip${tierNum}` as EstTier;
     if (estVipPlans.some((p) => p.tier === newTier)) { notify('Já existe um plano com esse nível', 'warning'); return; }
-    onAddEstVipPlan({ tier: newTier, label: `VIP ${tierNum}`, prices: { monthly: 99.9, semestral: 499.9, annual: 899.9 }, intermediationFee: 5, maxActiveJobs: 5, allowAds: false, features: ['Novo plano'] });
+    onAddEstVipPlan({ tier: newTier, label: `VIP ${tierNum}`, prices: { monthly: 99.9, semestral: 499.9, annual: 899.9 }, intermediationFee: 5, maxActiveJobs: 5, allowAds: false, maxAds: 0, features: ['Novo plano'] });
     notify('Plano adicionado');
   };
 
@@ -865,7 +865,7 @@ function VipPlanEditor({ plan, onUpdate, onRemove, isEst }: {
           <Crown className={`h-4 w-4 ${getPlanTierColor(plan.tier)}`} />
           <span className="font-semibold text-neutral-900 dark:text-white">{plan.label}</span>
           <Badge tone={plan.tier === 'free' ? 'neutral' : 'vip'}>{plan.tier.toUpperCase()}</Badge>
-          {isEst && estPlan?.allowAds && <Badge tone="success"><ImageIcon className="h-3 w-3" /> Anúncios Ativos na Home/Widgets</Badge>}
+          {isEst && estPlan?.allowAds && <Badge tone="success"><ImageIcon className="h-3 w-3" /> Anúncios Ativos ({estPlan.maxAds ?? 0})</Badge>}
         </button>
         <div className="flex items-center gap-1.5">
           <Button size="sm" variant="ghost" onClick={() => setExpanded(!expanded)}><Pencil className="h-3.5 w-3.5" /></Button>
@@ -886,16 +886,16 @@ function VipPlanEditor({ plan, onUpdate, onRemove, isEst }: {
             )}
           </div>
 
-          {/* Opção para ativar o Carrossel Home e Widgets nas páginas de Estabelecimentos e Freelancers */}
+          {/* Opção para ativar anúncios e definir a quantidade limite para estabelecimentos */}
           {isEst && (
-            <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 dark:bg-amber-500/10">
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 dark:bg-amber-500/10 space-y-3">
               <label className="flex cursor-pointer items-center justify-between">
                 <div>
                   <p className="text-sm font-bold text-neutral-900 dark:text-white flex items-center gap-1.5">
                     <ImageIcon className="h-4 w-4 text-amber-500" /> Permitir Anúncios / Propagandas (Carrossel Home e Widgets)
                   </p>
                   <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                    Ao ativar, os estabelecimentos deste plano poderão cadastrar imagens de propaganda que aparecerão no loop infinito da home e nas barras laterais de todas as páginas.
+                    Ao ativar, os estabelecimentos deste plano poderão cadastrar imagens de propaganda no loop infinito da home e widgets.
                   </p>
                 </div>
                 <input
@@ -905,6 +905,17 @@ function VipPlanEditor({ plan, onUpdate, onRemove, isEst }: {
                   className="h-5 w-5 rounded border-neutral-300 text-amber-500 focus:ring-amber-400"
                 />
               </label>
+
+              {estPlan?.allowAds && (
+                <div className="pt-2 border-t border-amber-500/20">
+                  <Input
+                    label="Quantidade máxima de anúncios permitidos neste plano"
+                    type="number"
+                    value={String(estPlan?.maxAds ?? 1)}
+                    onChange={(e) => onUpdate({ maxAds: Number(e.target.value) || 1 } as Partial<EstVipPlan>)}
+                  />
+                </div>
+              )}
             </div>
           )}
 
