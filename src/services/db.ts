@@ -249,7 +249,7 @@ function freelancerTierToId(tier: string): number {
   }
 }
 
-// Mapeamento ID Fixo por Tiers para Estabelecimento (Free=4, VIP1=5, VIP2=6, VIP3=7)
+// Mapeamento ID Fixo por Tiers para Estabelecimento
 function establishmentTierToId(tier: string): number {
   switch (tier) {
     case 'free': return 4;
@@ -629,6 +629,8 @@ export async function dbUpsertEstVipPlan(plan: EstVipPlan): Promise<void> {
     monthly_price: plan.prices.monthly,
     semestral_price: plan.prices.semestral,
     annual_price: plan.prices.annual,
+    allow_ads: plan.allowAds ?? false,
+    max_ads: plan.maxAds ?? 0,
   } as never, { onConflict: 'id' });
 
   if (error) console.error('Erro ao salvar plano de estabelecimento:', error.message);
@@ -801,6 +803,8 @@ export async function loadAllData(): Promise<AppData> {
           semestral: Number(dbPlan.semestral_price ?? plan.prices.semestral),
           annual: Number(dbPlan.annual_price ?? plan.prices.annual),
         },
+        allowAds: Boolean(dbPlan.allow_ads ?? plan.allowAds ?? false),
+        maxAds: Number(dbPlan.max_ads ?? plan.maxAds ?? 0),
       };
     }
     return plan;
