@@ -22,11 +22,20 @@ interface Props {
 }
 
 export function FreelancerCard({ freelancer: f, onHire, onView, showAdminActions, showEdit = true, distanceKm }: Props) {
-  const { updateUser, deleteEntity, data } = useApp();
+  const { updateUser, deleteEntity, data, currentUser } = useApp();
   const { notify } = useToast();
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const plan = getPlan(f.vipTier ?? 'free', data.vipPlans);
+
+  // Verifica se o usuário atual (estabelecimento) possui contrato pago, em serviço ou concluído com este freelancer
+  const hasActiveContract = currentUser ? data.contracts.some(
+    (c) => c.freelancerId === f.id && c.establishmentId === currentUser.id && (c.status === 'paid' || c.status === 'checked_in' || c.status === 'completed')
+  ) : false;
+
+  // Se for o próprio freelancer vendo seu card, ou se for admin, ou se houver contrato pago, mostra a identidade. Caso contrário, oculta.
+  const isSelf = currentUser?.id === f.id;
+  const showIdentity = isSelf || showAdminActions || hasActiveContract;
 
   return (
     <>
@@ -38,15 +47,26 @@ export function FreelancerCard({ freelancer: f, onHire, onView, showAdminActions
         )}
 
         <div className="flex items-start gap-4">
-          <Avatar src={f.photo} alt={f.name} size={64} ring={f.vipTier && f.vipTier !== 'free' ? 'vip' : 'neutral'} vipBadge={f.vipTier === 'vip2' || f.vipTier === 'vip3'} />
+          {showIdentity ? (
+            <Avatar src={f.photo} alt={f.name} size={64} ring={f.vipTier && f.vipTier !== 'free' ? 'vip' : 'neutral'} vipBadge={f.vipTier === 'vip2' || f.vipTier === 'vip3'} />
+          ) : (
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-400">
+              <Lock className="h-6 w-6" />
+            </div>
+          )}
           <div className="min-w-0 flex-1">
-            <h3 className="truncate font-display text-base font-bold text-neutral-900 dark:text-white">{f.name}</h3>
+            <h3 className="truncate font-display text-base font-bold text-neutral-900 dark:text-white">
+              {showIdentity ? f.name : 'Profissional Confidencial'}
+            </h3>
             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
               <Rating value={f.rating ?? 0} count={f.reviewsCount ?? 0} />
               <span className="inline-flex items-center gap-1 text-xs text-neutral-400"><Briefcase className="h-3.5 w-3.5" /> {f.completedShifts ?? 0} turnos</span>
             </div>
             <div className="mt-1.5 flex items-center gap-3 text-xs text-neutral-400">
-              <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {f.address.city}{distanceKm != null && distanceKm < 9999 ? ` · ${distanceKm < 1 ? '<1' : Math.round(distanceKm)}km` : ''}</span>
+              <span className="inline-flex items-center gap-1">
+                <MapPin className="h-3.5 w-3.5" /> 
+                {showIdentity ? `${f.address.city}${distanceKm != null && distanceKm < 9999 ? ` · ${distanceKm < 1 ? '<1' : Math.round(distanceKm)}km` : ''}` : 'Região Metropolitana'}
+              </span>
               <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {countAvailableSlots(f.availability)} horários</span>
             </div>
           </div>
@@ -66,7 +86,7 @@ export function FreelancerCard({ freelancer: f, onHire, onView, showAdminActions
 
         {/* Locked contact preview */}
         <div className="flex items-center gap-2 text-xs text-neutral-400">
-          <Lock className="h-3.5 w-3.5" /> Contato liberado após contratação
+          <Lock className="h-3.5 w-3.5" /> {showIdentity ? 'Contato liberado' : 'Nome e contato liberados após contratação e pagamento'}
         </div>
 
         <div className="mt-auto flex items-end justify-between gap-3 border-t border-neutral-100 pt-4 dark:border-neutral-800">
