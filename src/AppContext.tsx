@@ -10,6 +10,7 @@ export { useApp };
 
 const ADMIN_ID = 'admin1';
 const STATE_ID = 'freelaagora';
+const SESSION_KEY = 'freelaagora_current_user';
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [data, setDataState] = useState<AppData | null>(null);
@@ -31,17 +32,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (error) throw error;
         
         if (!cancelled && row?.data && Object.keys(row.data).length > 0) {
-          setDataState(row.data as AppData);
+          const loadedData = row.data as AppData;
+          // Restaura o usuário logado da sessão atual (sessionStorage) se existir
+          const savedUserId = sessionStorage.getItem(SESSION_KEY);
+          if (savedUserId && loadedData.users.some(u => u.id === savedUserId)) {
+            loadedData.currentUserId = savedUserId;
+          } else {
+            loadedData.currentUserId = null;
+          }
+          setDataState(loadedData);
           console.log("✅ Estado carregado com sucesso do Supabase!");
         } else {
           // Se a tabela estiver vazia, inicializa com o initialData e já salva no banco
-          setDataState(initialData);
+          setDataState({ ...initialData, currentUserId: null });
           await supabase.from('app_state').upsert({ id: STATE_ID, data: initialData as unknown as Record<string, unknown>, updated_at: new Date().toISOString() });
           console.log("📌 Tabela vazia. Inicializado com dados padrão.");
         }
       } catch (e) {
         console.warn("⚠️ Falha ao carregar do Supabase, usando fallback local:", e);
-        setDataState(initialData);
+        setDataState({ ...initialData, currentUserId: null });
       } finally {
         if (!cancelled) setLoaded(true);
       }
@@ -58,9 +67,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Persist to Supabase whenever data changes with clear console feedback
   const persist = useCallback(async (next: AppData) => {
     try {
+      // Remove o currentUserId do objeto salvo no banco global para evitar que o login de uma aba contamine a outra
+      const { currentUserId, ...dataToPersist } = next;
       const { error } = await supabase
         .from('app_state')
-        .upsert({ id: STATE_ID, data: next as unknown as Record<string, unknown>, updated_at: new Date().toISOString() });
+        .upsert({ id: STATE_ID, data: dataToPersist as unknown as Record<string, unknown>, updated_at: new Date().toISOString() });
       
       if (error) {
         console.error("❌ Erro ao salvar no Supabase (app_state):", error.message, error.details);
@@ -82,8 +93,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [persist]);
 
   const resetData = useCallback(() => {
-    setDataState(initialData);
-    void persist(initialData);
+    setDataState({ ...initialData, currentUserId: null });
+    sessionStorage.removeItem(SESSION_KEY);
+    void persist({ ...initialData, currentUserId: null });
   }, [persist]);
 
   const currentUser = useMemo(() => data?.users.find((u) => u.id === data.currentUserId) ?? null, [data?.users, data?.currentUserId]);
@@ -97,6 +109,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return { ok: false, error: 'E-mail não cadastrado.' };
     if (user.password !== password) return { ok: false, error: 'Senha incorreta.' };
     if (user.banned) return { ok: false, error: 'Esta conta foi banida. Contate o suporte.' };
+    
+    // Salva estritamente na sessão da aba atual
+    sessionStorage.setItem(SESSION_KEY, user.id);
     setData((d) => ({ ...d, currentUserId: user.id }));
     return { ok: true };
   }, [data?.users, setData]);
@@ -116,11 +131,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       categories: user.accountType === 'freelancer' ? (user.categories ?? []) : undefined,
       availability: user.accountType === 'freelancer' ? (user.availability ?? emptyAvailability()) : undefined,
     } as User;
+    
+    sessionStorage.setItem(SESSION_KEY, id);
     setData((d) => ({ ...d, users: [...d.users, newUser], currentUserId: id }));
     return { ok: true };
   }, [data?.users, setData]);
 
-  const logout = useCallback(() => setData((d) => ({ ...d, currentUserId: null })), [setData]);
+  const logout = useCallback(() => {
+    sessionStorage.removeItem(SESSION_KEY);
+    setData((d) => ({ ...d, currentUserId: null }));
+  }, [setData]);
 
   const updateUser = useCallback((id: string, patch: Partial<User>) => {
     setData((d) => ({ ...d, users: d.users.map((u) => (u.id === id ? { ...u, ...patch } : u)) }));
