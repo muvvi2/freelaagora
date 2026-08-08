@@ -265,7 +265,7 @@ function RegisterForm({ onClose, onSwitch, onNavigateTerms }: { onClose: () => v
                 O FreelaAgora utiliza repasse automático via Split de Pagamento. Para receber suas diárias, você precisa ter uma conta digital ativa no Asaas.
               </p>
               <a
-                href={https://www.asaas.com/r/7efd51e9-dd93-4c9c-8450-7be9873f6653}
+                href="https://www.asaas.com/r/7efd51e9-dd93-4c9c-8450-7be9873f6653"
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1 text-xs font-bold text-primary-600 hover:underline dark:text-primary-400"
