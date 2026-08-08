@@ -119,8 +119,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return { ok: true };
   }, [data?.users, setData]);
 
-  // Cadastro robusto sincronizado com o banco Supabase
-  const register = useCallback((user: Omit<User, 'id' | 'createdAt' | 'walletBalance' | 'rating' | 'reviewsCount' | 'completedShifts'> & Partial<User>): { ok: boolean; error?: string } => {
+  // Cadastro robusto sincronizado com o Supabase (JSON + tabelas relacionais)
+  const register = useCallback(async (user: Omit<User, 'id' | 'createdAt' | 'walletBalance' | 'rating' | 'reviewsCount' | 'completedShifts'> & Partial<User>): Promise<{ ok: boolean; error?: string }> => {
     if (!data) return { ok: false, error: 'Sistema ainda carregando.' };
     if (data.users.some((u) => u.email.toLowerCase() === user.email.toLowerCase().trim())) {
       return { ok: false, error: 'Este e-mail já está cadastrado.' };
@@ -135,10 +135,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
       categories: user.accountType === 'freelancer' ? (user.categories ?? []) : undefined,
       availability: user.accountType === 'freelancer' ? (user.availability ?? emptyAvailability()) : undefined,
     } as User;
+
+    try {
+      // 1. Grava na tabela relacional específica do Supabase
+      if (user.accountType === 'establishment') {
+        const { error: estError } = await supabase.from('establishment_profiles').insert([{
+          user_id: id,
+          establishment_type: newUser.establishmentType,
+          address: JSON.stringify(newUser.address),
+          wallet_balance: 0,
+          rating_average: 0,
+          reviews_count: 0
+        }]);
+        if (estError) console.error("⚠️ Erro ao inserir em establishment_profiles:", estError.message);
+      } else if (user.accountType === 'freelancer') {
+        const { error: flError } = await supabase.from('freelancer_profiles').insert([{
+          user_id: id,
+          bio: newUser.bio || '',
+          hourly_rate: newUser.hourlyRate || 0,
+          daily_rate: newUser.dailyRate || 0,
+          pix_key: newUser.pixKey || '',
+          wallet_balance: 0,
+          rating_average: 5,
+          reviews_count: 0,
+          completed_shifts: 0
+        }]);
+        if (flError) console.error("⚠️ Erro ao inserir em freelancer_profiles:", flError.message);
+      }
+    } catch (err) {
+      console.error("⚠️ Exceção ao salvar nas tabelas relacionais:", err);
+    }
     
     sessionStorage.setItem(SESSION_KEY, id);
     
-    // Atualiza o estado e força a persistência síncrona/imediata na nuvem
+    // 2. Atualiza o estado global e persiste no Supabase
     setData((d) => {
       const nextData = { ...d, users: [...d.users, newUser], currentUserId: id };
       void persist(nextData);
@@ -146,7 +176,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
     return { ok: true };
-  }, [data?.users, setData, persist]);
+  }, [data, setData, persist]);
 
   const logout = useCallback(() => {
     sessionStorage.removeItem(SESSION_KEY);
