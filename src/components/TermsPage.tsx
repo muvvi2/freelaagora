@@ -54,13 +54,13 @@ export function TermsPage({ onBack }: { onBack?: () => void }) {
                 <li>Plano VIP 3: Isenção total (0% de taxa de intermediação adicionada).</li>
               </ul>
               
-              <div className="mt-3">
+              <div className="mt-4">
                 <p><strong>4.3.</strong> Planos e Benefícios Dinâmicos dos Freelancers:</p>
-                <p className="text-xs text-neutral-500 mb-2">Os benefícios e limites de categorias dos freelancers refletem em tempo real as configurações ativas no Painel Administrativo:</p>
-                <DynamicFreelancerPlans />
+                <p className="text-xs text-neutral-500 mb-3">Os benefícios e limites de categorias dos freelancers refletem em tempo real as configurações ativas no Painel Administrativo:</p>
+                <DynamicFreelancerPlansGrid />
               </div>
 
-              <p className="mt-3"><strong>4.4.</strong> O desbloqueio de dados de contato e a validação da reserva ficam estritamente condicionados à confirmação de compensação bancária enviada pelo gateway de pagamento.</p>
+              <p className="mt-4"><strong>4.4.</strong> O desbloqueio de dados de contato e a validação da reserva ficam estritamente condicionados à confirmação de compensação bancária enviada pelo gateway de pagamento.</p>
               <p className="mt-2"><strong>4.5.</strong> Em caso de cancelamento por falta de disponibilidade do Freelancer, os valores da diária e taxas serão integralmente estornados para a carteira do Estabelecimento no prazo de 24h úteis.</p>
               <p className="mt-2"><strong>4.6.</strong> Tentativas de burlar o sistema de pagamento geram bloqueio imediato da conta e aplicação de multa.</p>
               <p className="mt-2"><strong>4.7.</strong> O FreelaAgora atua apenas como interface tecnológica, não sendo responsável por eventuais instabilidades, atrasos na compensação ou falhas técnicas operadas pelo gateway (<a href="https://www.asaas.com/r/7efd51e9-dd93-4c9c-8450-7be9873f6653" target="_blank" rel="noopener noreferrer" className="text-primary-500 hover:underline inline-flex items-center gap-1 font-semibold">Asaas <ExternalLink className="h-3 w-3" /></a>), cabendo ao usuário verificar o status de sua transação junto à instituição processadora.</p>
@@ -92,14 +92,14 @@ export function TermsPage({ onBack }: { onBack?: () => void }) {
   );
 }
 
-function DynamicFreelancerPlans() {
+function DynamicFreelancerPlansGrid() {
   const { data } = useApp();
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       {data.vipPlans.map((plan: VipPlan) => (
-        <div key={plan.tier} className="p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-800">
-          <p className="font-bold text-neutral-900 dark:text-white text-xs uppercase tracking-wide">{plan.label}</p>
-          <ul className="text-xs text-neutral-600 dark:text-neutral-400 mt-1 list-disc list-inside space-y-0.5">
+        <div key={plan.tier} className="rounded-xl border border-neutral-200 bg-neutral-900/5 dark:border-neutral-800 dark:bg-neutral-800/40 p-4">
+          <p className="font-display text-sm font-extrabold uppercase tracking-wider text-neutral-900 dark:text-white mb-2">{plan.label}</p>
+          <ul className="space-y-1 text-xs text-neutral-600 dark:text-neutral-300 list-disc list-inside">
             {plan.features.map((f: string, i: number) => (
               <li key={i}>{f}</li>
             ))}
