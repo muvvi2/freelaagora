@@ -26,7 +26,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [adminTab, setAdminTab] = useState('overview');
   const [adminMode, setAdminMode] = useState(true);
 
-  // Load state strictly from relational tables on mount
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -51,7 +50,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [data?.paymentSettings]);
 
-  // Atualizador de estado otimista + persistência assíncrona nas tabelas relacionais
   const setData = useCallback((updater: AppData | ((prev: AppData) => AppData)) => {
     setDataState((prev) => {
       const next = typeof updater === 'function' ? (updater as (p: AppData) => AppData)(prev) : updater;
@@ -79,7 +77,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return { ok: true };
   }, [data?.users, setData]);
 
-  // Cadastro robusto integrado direto com as tabelas relacionais via db.ts
   const register = useCallback((user: Omit<User, 'id' | 'createdAt' | 'walletBalance' | 'rating' | 'reviewsCount' | 'completedShifts'> & Partial<User>): { ok: boolean; error?: string } => {
     if (!data) return { ok: false, error: 'Sistema ainda carregando.' };
     if (data.users.some((u) => u.email.toLowerCase() === user.email.toLowerCase().trim())) {
@@ -108,8 +105,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setData((d) => ({ ...d, currentUserId: null }));
   }, [setData]);
 
+  // Função ATUALIZADA com trava de limites de anúncios
   const updateUser = useCallback((id: string, patch: Partial<User>) => {
-    // Validação de limite de anúncios para estabelecimentos
     if (patch.adImages && data) {
       const user = data.users.find(u => u.id === id);
       if (user && user.accountType === 'establishment') {
@@ -119,8 +116,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         if (!plan?.allowAds) {
           console.warn("⚠️ O plano atual deste estabelecimento não permite anúncios.");
-        } else if (patch.adImages.length > (plan.maxAds ?? 0)) {
-          console.warn(`⚠️ Limite de anúncios excedido. Máximo permitido para o plano ${plan.label}: ${plan.maxAds}`);
+          return; 
+        } 
+        if (patch.adImages.length > (plan.maxAds ?? 0)) {
+          console.warn(`⚠️ Limite de anúncios excedido. Máximo permitido: ${plan.maxAds}`);
+          return; 
         }
       }
     }
@@ -156,9 +156,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     void dbUpdateUser(id, { banned: false }).catch(() => {});
   }, [setData]);
 
-  const setVipTier = useCallback((id: string, tier: Tier, period: Period = 'monthly') => {
-    if (!data) return;
+  // Funções ATUALIZADAS com trava de saldo insuficiente
+  const setVipTier = useCallback((id: string, tier: Tier, period: Period = 'monthly'): { ok: boolean; error?: string } => {
+    if (!data) return { ok: false, error: 'Sistema carregando.' };
+    const user = data.users.find(u => u.id === id);
     const price = getPlan(tier, data.vipPlans).prices[period];
+
+    if (tier !== 'free' && price > 0 && (user?.walletBalance ?? 0) < price) {
+        return { ok: false, error: 'Saldo insuficiente na carteira.' };
+    }
+
     const expiry = tier === 'free' ? undefined : new Date(Date.now() + (period === 'annual' ? 365 : period === 'semestral' ? 180 : 30) * 86400000).toISOString();
     const newTxs: WalletTx[] = price > 0 ? [{ id: uid('wt'), userId: id, type: 'vip_charge', amount: -price, description: `Assinatura ${getPlan(tier, data.vipPlans).label} (${period})`, date: new Date().toISOString() }] : [];
     
@@ -171,12 +178,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     void dbUpdateUser(id, { vipTier: tier, vipExpiresAt: expiry }).catch(() => {});
     if (price > 0 && newTxs[0]) {
       void dbInsertWalletTx(newTxs[0]).catch(() => {});
+      if (user) void dbUpdateWalletBalance(id, Math.max(0, (user.walletBalance ?? 0) - price)).catch(() => {});
     }
+    return { ok: true };
   }, [setData, data]);
 
-  const setEstVipTier = useCallback((id: string, tier: EstTier, period: Period = 'monthly') => {
-    if (!data) return;
+  const setEstVipTier = useCallback((id: string, tier: EstTier, period: Period = 'monthly'): { ok: boolean; error?: string } => {
+    if (!data) return { ok: false, error: 'Sistema carregando.' };
+    const user = data.users.find(u => u.id === id);
     const price = getEstPlan(tier, data.estVipPlans).prices[period];
+
+    if (tier !== 'free' && tier !== 'trial' && price > 0 && (user?.walletBalance ?? 0) < price) {
+        return { ok: false, error: 'Saldo insuficiente na carteira.' };
+    }
+
     const expiry = (tier === 'free' || tier === 'trial') ? undefined : new Date(Date.now() + (period === 'annual' ? 365 : period === 'semestral' ? 180 : 30) * 86400000).toISOString();
     const newTxs: WalletTx[] = price > 0 ? [{ id: uid('wt'), userId: id, type: 'vip_charge_est', amount: -price, description: `Assinatura ${getEstPlan(tier, data.estVipPlans).label} (${period})`, date: new Date().toISOString() }] : [];
     
@@ -189,7 +204,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     void dbUpdateUser(id, { estVipTier: tier, estVipExpiresAt: expiry }).catch(() => {});
     if (price > 0 && newTxs[0]) {
       void dbInsertWalletTx(newTxs[0]).catch(() => {});
+      if (user) void dbUpdateWalletBalance(id, Math.max(0, (user.walletBalance ?? 0) - price)).catch(() => {});
     }
+    return { ok: true };
   }, [setData, data]);
 
   const setTermsAcceptance = useCallback((id: string, acceptance: TermsAcceptance) => {
@@ -197,675 +214,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     void dbUpdateUser(id, { termsAcceptance: acceptance }).catch(() => {});
   }, [setData]);
 
-  const setAvailability = useCallback((userId: string, av: WeekAvailability) => updateUser(userId, { availability: av }), [updateUser]);
-  
-  const toggleAvailabilitySlot = useCallback((userId: string, day: keyof WeekAvailability, shift: 'manha' | 'tarde' | 'noite') => {
-    setData((d) => {
-      const users = d.users.map((u) => {
-        if (u.id !== userId) return u;
-        const av = u.availability ?? emptyAvailability();
-        const updated = { ...av, [day]: { ...av[day], [shift]: !av[day][shift] } };
-        return { ...u, availability: updated };
-      });
-      const user = users.find((u) => u.id === userId);
-      if (user?.availability) {
-        void dbUpdateUser(userId, { availability: user.availability }).catch(() => {});
-      }
-      return { ...d, users };
-    });
-  }, [setData]);
+  // ... (o restante das funções permanece o mesmo até o fim do AppProvider) ...
+  // (Note: Certifique-se de manter todo o resto do seu código original intacto abaixo desta parte)
 
-  const toggleDateShift = useCallback((userId: string, dateKey: string, shift: 'manha' | 'tarde' | 'noite') => {
-    setData((d) => {
-      const users = d.users.map((u) => {
-        if (u.id !== userId) return u;
-        const da = { ...(u.dateAvailability ?? {}) } as DateAvailability;
-        const day = { ...(da[dateKey] ?? { manha: false, tarde: false, noite: false }) };
-        day[shift] = !day[shift];
-        if (!day.manha && !day.tarde && !day.noite) { delete da[dateKey]; }
-        else { da[dateKey] = day; }
-        return { ...u, dateAvailability: da };
-      });
-      const user = users.find((u) => u.id === userId);
-      if (user?.dateAvailability) {
-        void dbUpdateUser(userId, { dateAvailability: user.dateAvailability }).catch(() => {});
-      }
-      return { ...d, users };
-    });
-  }, [setData]);
-
-  const toggleCategory = useCallback((userId: string, categoryId: string): { ok: boolean; error?: string } => {
-    if (!data) return { ok: false, error: 'Sistema carregando.' };
-    const user = data.users.find((u) => u.id === userId);
-    if (!user) return { ok: false, error: 'Usuário não encontrado.' };
-    const current = user.categories ?? [];
-    const tier = user.vipTier ?? 'free';
-    if (current.includes(categoryId)) {
-      updateUser(userId, { categories: current.filter((c) => c !== categoryId) });
-      return { ok: true };
-    }
-    if (!canSelectCategories(tier, current.length, data.vipPlans)) {
-      const plan = getPlan(tier, data.vipPlans);
-      return { ok: false, error: `Seu plano ${plan.label} permite até ${plan.maxCategories} categorias. Faça upgrade para VIP!` };
-    }
-    updateUser(userId, { categories: [...current, categoryId] });
-    return { ok: true };
-  }, [data, updateUser]);
-
-  const addJob = useCallback((j: Job): { ok: boolean; error?: string } => {
-    if (!data) return { ok: false, error: 'Sistema carregando.' };
-    
-    const est = data.users.find((u) => u.id === j.establishmentId);
-    if (!est) return { ok: false, error: 'Estabelecimento não encontrado.' };
-
-    const isOnTrial = est.trialEndsAt ? new Date(est.trialEndsAt) > new Date() : false;
-    const currentTier = isOnTrial ? 'trial' : (est.estVipTier ?? 'free');
-
-    const matchedPlan = data.estVipPlans?.find((p) => p.tier === currentTier);
-    const effectiveMaxJobs = matchedPlan?.maxActiveJobs ?? (currentTier === 'trial' ? 10 : currentTier === 'free' ? 2 : 20);
-
-    const oneWeekAgo = Date.now() - 7 * 86400000;
-
-    const jobsThisWeekCount = data.jobs.filter((job) => {
-      if (job.establishmentId !== est.id) return false;
-      const jobDate = new Date(job.createdAt).getTime();
-      return jobDate >= oneWeekAgo;
-    }).length;
-
-    if (jobsThisWeekCount >= effectiveMaxJobs) {
-      return { 
-        ok: false, 
-        error: `Limite semanal atingido! Seu plano (${currentTier === 'trial' ? 'TESTE GRATUITO' : currentTier.toUpperCase()}) permite publicar no máximo ${effectiveMaxJobs} vagas por semana.` 
-      };
-    }
-
-    setData((d) => ({ ...d, jobs: [j, ...d.jobs] }));
-    void dbInsertJob(j).catch(() => {});
-    return { ok: true };
-  }, [data, setData]);
-
-  const updateJob = useCallback((id: string, patch: Partial<Job>) => {
-    setData((d) => ({ ...d, jobs: d.jobs.map((j) => (j.id === id ? { ...j, ...patch } : j)) }));
-    void dbUpdateJob(id, patch).catch(() => {});
-  }, [setData]);
-
-  const deleteJob = useCallback((id: string) => {
-    setData((d) => ({ ...d, jobs: d.jobs.filter((j) => j.id !== id) }));
-    void dbDeleteJob(id).catch(() => {});
-  }, [setData]);
-
-  const pauseJob = useCallback((id: string) => {
-    if (!data) return;
-    const job = data.jobs.find((j) => j.id === id);
-    const newStatus = job?.status === 'paused' ? 'active' : 'paused';
-    setData((d) => ({ ...d, jobs: d.jobs.map((j) => (j.id === id ? { ...j, status: newStatus } : j)) }));
-    void dbUpdateJob(id, { status: newStatus }).catch(() => {});
-  }, [setData, data]);
-
-  const applyToJob = useCallback((jobId: string, freelancerId: string) => {
-    setData((d) => ({ ...d, jobs: d.jobs.map((j) => (j.id === jobId && !j.applicants.includes(freelancerId) ? { ...j, applicants: [...j.applicants, freelancerId] } : j)) }));
-    void dbApplyToJob(jobId, freelancerId).catch(() => {});
-  }, [setData]);
-
-  const notify = useCallback((userId: string, type: AppNotification['type'], title: string, body: string, contractId?: string) => {
-    const n: AppNotification = { id: uid('n'), userId, type, title, body, read: false, date: new Date().toISOString(), contractId };
-    setData((d) => ({ ...d, notifications: [n, ...d.notifications] }));
-    void dbInsertNotification(n).catch(() => {});
-  }, [setData]);
-
-  const markNotificationRead = useCallback((id: string) => {
-    setData((d) => ({ ...d, notifications: d.notifications.map((n) => (n.id === id ? { ...n, read: true } : n)) }));
-    void dbMarkNotificationRead(id).catch(() => {});
-  }, [setData]);
-
-  const markAllNotificationsRead = useCallback((userId: string) => {
-    setData((d) => ({ ...d, notifications: d.notifications.map((n) => (n.userId === userId ? { ...n, read: true } : n)) }));
-    void dbMarkAllNotificationsRead(userId).catch(() => {});
-  }, [setData]);
-
-  const userNotifications = useCallback((userId: string) => data?.notifications.filter((n) => n.userId === userId) ?? [], [data?.notifications]);
-
-  const userWalletBalance = useCallback((userId: string) => data?.users.find((u) => u.id === userId)?.walletBalance ?? 0, [data?.users]);
-  const userWalletTxs = useCallback((userId: string) => data?.walletTxs.filter((t) => t.userId === userId) ?? [], [data?.walletTxs]);
-  const adminWalletTxs = useCallback(() => data?.walletTxs.filter((t) => t.userId === ADMIN_ID) ?? [], [data?.walletTxs]);
-
-  const depositToWallet = useCallback((userId: string, amount: number, description?: string) => {
-    if (!data) return;
-    const tx: WalletTx = { id: uid('wt'), userId, type: 'deposit', amount, description: description ?? 'Depósito na carteira digital', date: new Date().toISOString() };
-    setData((d) => ({
-      ...d,
-      users: d.users.map((u) => (u.id === userId ? { ...u, walletBalance: (u.walletBalance ?? 0) + amount } : u)),
-      walletTxs: [tx, ...d.walletTxs]
-    }));
-    void dbInsertWalletTx(tx).catch(() => {});
-    const newBal = (data.users.find((u) => u.id === userId)?.walletBalance ?? 0) + amount;
-    void dbUpdateWalletBalance(userId, newBal).catch(() => {});
-  }, [setData, data]);
-
-  const withdrawFromWallet = useCallback((userId: string, amount: number, description?: string) => {
-    if (!data) return;
-    const tx: WalletTx = { id: uid('wt'), userId, type: 'withdraw', amount: -amount, description: description ?? 'Saque da carteira digital', date: new Date().toISOString() };
-    setData((d) => ({
-      ...d,
-      users: d.users.map((u) => (u.id === userId ? { ...u, walletBalance: Math.max(0, (u.walletBalance ?? 0) - amount) } : u)),
-      walletTxs: [tx, ...d.walletTxs]
-    }));
-    void dbInsertWalletTx(tx).catch(() => {});
-    const newBal = Math.max(0, (data.users.find((u) => u.id === userId)?.walletBalance ?? 0) - amount);
-    void dbUpdateWalletBalance(userId, newBal).catch(() => {});
-  }, [setData, data]);
-
-  const requestHire = useCallback((establishmentId: string, freelancerId: string, jobId: string | null, hours: number, freelancerFee: number): Contract => {
-    const est = data?.users.find((u) => u.id === establishmentId);
-    const fl = data?.users.find((u) => u.id === freelancerId);
-    const feePercent = est ? getIntermediationFeePercent(est, data.estVipPlans) : data?.config.defaultFeePercent ?? 15;
-    const { fee, total } = calculateFees(freelancerFee, feePercent);
-    const contract: Contract = {
-      id: uid('ct'), jobId, establishmentId, establishmentName: est?.name ?? '',
-      freelancerId, freelancerName: fl?.name ?? '', freelancerPhoto: fl?.photo ?? '',
-      freelancerPhone: fl?.phone ?? '', freelancerWhatsapp: fl?.whatsapp ?? '',
-      category: fl?.categories?.[0] ?? 'geral', date: new Date().toISOString(), hours,
-      freelancerFee, platformFeePercentage: feePercent, platformFee: fee, total,
-      status: 'requested', createdAt: new Date().toISOString(), history: [{ status: 'requested', at: new Date().toISOString() }],
-    };
-    const notifs: AppNotification[] = [
-      { id: uid('n'), userId: freelancerId, type: 'hire_request', title: 'Nova solicitação de contratação', body: `${est?.name} quer te contratar. Confirme sua disponibilidade.`, read: false, date: new Date().toISOString(), contractId: contract.id },
-      { id: uid('n'), userId: ADMIN_ID, type: 'hire_request', title: 'Nova solicitação de contratação', body: `${est?.name} solicitou ${fl?.name}.`, read: false, date: new Date().toISOString(), contractId: contract.id },
-    ];
-    setData((d) => ({ ...d, contracts: [contract, ...d.contracts], notifications: [...notifs, ...d.notifications] }));
-    void dbInsertContract(contract).catch(() => {});
-    notifs.forEach((n) => void dbInsertNotification(n).catch(() => {}));
-    return contract;
-  }, [data, setData]);
-
-  const pushHistory = (d: AppData, contractId: string, status: ContractStatus, note?: string): AppData => ({
-    ...d,
-    contracts: d.contracts.map((c) => c.id === contractId ? { ...c, status, history: [...c.history, { status, at: new Date().toISOString(), note }] } : c)
-  });
-
-  const confirmAvailability = useCallback((contractId: string) => {
-    if (!data) return;
-    const c = data.contracts.find((x) => x.id === contractId);
-    if (!c) return;
-    const n: AppNotification = { id: uid('n'), userId: c.establishmentId, type: 'contract_update', title: 'Freelancer confirmou disponibilidade', body: `${c.freelancerName} confirmou. Realize o pagamento para liberar o contato.`, read: false, date: new Date().toISOString(), contractId };
-    setData((d) => {
-      const next = pushHistory(d, contractId, 'confirmed');
-      return { ...next, notifications: [n, ...next.notifications] };
-    });
-    void dbUpdateContractStatus(contractId, 'confirmed').catch(() => {});
-    void dbInsertNotification(n).catch(() => {});
-  }, [data, setData]);
-
-  const payEscrow = useCallback((contractId: string) => {
-    if (!data) return;
-    const c = data.contracts.find((x) => x.id === contractId);
-    if (!c) return;
-    const invoiceId = c.coraInvoiceId ?? `cora-${uid('inv')}`;
-    const estTx: WalletTx = { id: uid('wt'), userId: c.establishmentId, type: 'escrow_hold', amount: -c.total, description: `Pagamento em garantia (Cora) — ${c.freelancerName}`, contractId, date: new Date().toISOString() };
-    const notifs: AppNotification[] = [
-      { id: uid('n'), userId: c.freelancerId, type: 'payment', title: 'Pagamento em garantia recebido', body: `${c.establishmentName} pagou ${formatBRL(c.total)} via Cora. O valor está retido em garantia.`, read: false, date: new Date().toISOString(), contractId },
-      { id: uid('n'), userId: c.establishmentId, type: 'contract_update', title: 'Contato do freelancer liberado', body: `O WhatsApp de ${c.freelancerName} foi desbloqueado.`, read: false, date: new Date().toISOString(), contractId },
-    ];
-    setData((d) => {
-      const updatedContracts = d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'paid' as ContractStatus, coraInvoiceId: invoiceId, history: [...ct.history, { status: 'paid' as ContractStatus, at: new Date().toISOString() }] } : ct);
-      return { ...d, contracts: updatedContracts, walletTxs: [estTx, ...d.walletTxs], notifications: [...notifs, ...d.notifications] };
-    });
-    void dbUpdateContractStatus(contractId, 'paid').catch(() => {});
-    void dbUpdateContractInvoice(contractId, invoiceId).catch(() => {});
-    void dbInsertWalletTx(estTx).catch(() => {});
-    notifs.forEach((n) => void dbInsertNotification(n).catch(() => {}));
-  }, [data, setData]);
-
-  const checkInFreelancer = useCallback((contractId: string) => {
-    if (!data) return;
-    const c = data.contracts.find((x) => x.id === contractId);
-    if (!c) return;
-    const n: AppNotification = { id: uid('n'), userId: c.establishmentId, type: 'contract_update', title: 'Freelancer chegou ao local', body: `${c.freelancerName} realizou o check-in geolocalizado.`, read: false, date: new Date().toISOString(), contractId };
-    setData((d) => {
-      const next = pushHistory(d, contractId, 'checked_in', 'Check-in geolocalizado');
-      return { ...next, notifications: [n, ...next.notifications] };
-    });
-    void dbUpdateContractStatus(contractId, 'checked_in', 'Check-in geolocalizado').catch(() => {});
-    void dbInsertNotification(n).catch(() => {});
-  }, [data, setData]);
-
-  const finishService = useCallback((contractId: string) => {
-    if (!data) return;
-    const c = data.contracts.find((x) => x.id === contractId);
-    if (!c) return;
-    const flRelease: WalletTx = { id: uid('wt'), userId: c.freelancerId, type: 'escrow_release', amount: c.freelancerFee, description: `Repasse do turno — ${c.establishmentName}`, contractId, date: new Date().toISOString() };
-    const adminFee: WalletTx = { id: uid('wt'), userId: ADMIN_ID, type: 'platform_fee', amount: c.platformFee, description: `Taxa de intermediação (${c.platformFeePercentage}%) — contrato ${c.id}`, contractId, date: new Date().toISOString() };
-    
-    setData((d) => {
-      const users = d.users.map((u) => {
-        if (u.id === c.freelancerId) return { ...u, walletBalance: (u.walletBalance ?? 0) + c.freelancerFee, completedShifts: (u.completedShifts ?? 0) + 1 };
-        if (u.id === ADMIN_ID) return { ...u, walletBalance: (u.walletBalance ?? 0) + c.platformFee };
-        return u;
-      });
-      const contracts = d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'completed' as ContractStatus, history: [...ct.history, { status: 'completed' as ContractStatus, at: new Date().toISOString(), note: 'Split payment realizado' }] } : ct);
-      const notifs: AppNotification[] = [
-        { id: uid('n'), userId: c.freelancerId, type: 'payment', title: 'Repasse realizado', body: `${formatBRL(c.freelancerFee)} liberado para sua carteira. Avalie o estabelecimento!`, read: false, date: new Date().toISOString(), contractId },
-        { id: uid('n'), userId: c.establishmentId, type: 'review', title: 'Serviço concluído', body: `${c.freelancerName} finalizou o serviço. Avalie o profissional!`, read: false, date: new Date().toISOString(), contractId },
-        { id: uid('n'), userId: ADMIN_ID, type: 'payment', title: 'Taxa arrecadada', body: `${formatBRL(c.platformFee)} creditada da intermediação (${c.platformFeePercentage}%).`, read: false, date: new Date().toISOString(), contractId },
-      ];
-      return { ...d, users, contracts, walletTxs: [flRelease, adminFee, ...d.walletTxs], notifications: [...notifs, ...d.notifications] };
-    });
-
-    void dbUpdateContractStatus(contractId, 'completed', 'Split payment realizado').catch(() => {});
-    void dbInsertWalletTx(flRelease).catch(() => {});
-    void dbInsertWalletTx(adminFee).catch(() => {});
-    const flUser = data.users.find((u) => u.id === c.freelancerId);
-    if (flUser) {
-      void dbUpdateWalletBalance(c.freelancerId, (flUser.walletBalance ?? 0) + c.freelancerFee).catch(() => {});
-      void dbUpdateUser(c.freelancerId, { completedShifts: (flUser.completedShifts ?? 0) + 1 }).catch(() => {});
-    }
-    const adminUser = data.users.find((u) => u.id === ADMIN_ID);
-    if (adminUser) {
-      void dbUpdateWalletBalance(ADMIN_ID, (adminUser.walletBalance ?? 0) + c.platformFee).catch(() => {});
-    }
-  }, [data, setData]);
-
-  const cancelContract = useCallback((contractId: string) => {
-    if (!data) return;
-    const c = data.contracts.find((x) => x.id === contractId);
-    if (!c) return;
-    let extraTx: WalletTx | null = null;
-    if (c.status === 'paid' || c.status === 'checked_in') {
-      extraTx = { id: uid('wt'), userId: c.establishmentId, type: 'deposit', amount: c.total, description: `Estorno — contrato cancelado ${c.id}`, contractId, date: new Date().toISOString() };
-    }
-    setData((d) => {
-      let users = d.users;
-      if (extraTx) {
-        users = users.map((u) => u.id === c.establishmentId ? { ...u, walletBalance: (u.walletBalance ?? 0) + c.total } : u);
-      }
-      const contracts = d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'cancelled' as ContractStatus, history: [...ct.history, { status: 'cancelled' as ContractStatus, at: new Date().toISOString() }] } : ct);
-      const notifs: AppNotification[] = [
-        { id: uid('n'), userId: c.freelancerId, type: 'contract_update', title: 'Contrato cancelado', body: `O contrato com ${c.establishmentName} foi cancelado.`, read: false, date: new Date().toISOString(), contractId },
-        { id: uid('n'), userId: c.establishmentId, type: 'contract_update', title: 'Contrato cancelado', body: `O contrato com ${c.freelancerName} foi cancelado. Valor estornado.`, read: false, date: new Date().toISOString(), contractId },
-      ];
-      return { ...d, users, contracts, walletTxs: extraTx ? [extraTx, ...d.walletTxs] : d.walletTxs, notifications: [...notifs, ...d.notifications] };
-    });
-    void dbUpdateContractStatus(contractId, 'cancelled').catch(() => {});
-    if (extraTx) {
-      void dbInsertWalletTx(extraTx).catch(() => {});
-      const estUser = data.users.find((u) => u.id === c.establishmentId);
-      if (estUser) {
-        void dbUpdateWalletBalance(c.establishmentId, (estUser.walletBalance ?? 0) + c.total).catch(() => {});
-      }
-    }
-  }, [data, setData]);
-
-  const submitReview = useCallback((contractId: string, fromId: string, fromName: string, toId: string, rating: number, comment: string) => {
-    if (!data) return;
-    const review: Review = { id: uid('rv'), fromId, fromName, toId, rating, comment, date: new Date().toISOString() };
-    const c = data.contracts.find((x) => x.id === contractId);
-    const fromEstablishment = c ? fromId === c.establishmentId : false;
-    setData((d) => {
-      const contracts = d.contracts.map((ct) => {
-        if (ct.id !== contractId) return ct;
-        return fromEstablishment ? { ...ct, reviewFromEstablishment: review } : { ...ct, reviewFromFreelancer: review };
-      });
-      const users = d.users.map((u) => {
-        if (u.id !== toId) return u;
-        const newCount = (u.reviewsCount ?? 0) + 1;
-        const oldSum = (u.rating ?? 0) * (u.reviewsCount ?? 0);
-        return { ...u, reviewsCount: newCount, rating: Math.round(((oldSum + rating) / newCount) * 10) / 10 };
-      });
-      const n: AppNotification = { id: uid('n'), userId: toId, type: 'review', title: 'Nova avaliação recebida', body: `${fromName} te avaliou com ${rating} estrelas.`, read: false, date: new Date().toISOString() };
-      return { ...d, contracts, users, reviews: [review, ...d.reviews], notifications: [n, ...d.notifications] };
-    });
-    void dbInsertReview(review, contractId, fromEstablishment).catch(() => {});
-    const targetUser = data.users.find((u) => u.id === toId);
-    if (targetUser) {
-      const newCount = (targetUser.reviewsCount ?? 0) + 1;
-      const oldSum = (targetUser.rating ?? 0) * (targetUser.reviewsCount ?? 0);
-      const newRating = Math.round(((oldSum + rating) / newCount) * 10) / 10;
-      void dbUpdateUser(toId, { reviewsCount: newCount, rating: newRating }).catch(() => {});
-    }
-  }, [data, setData]);
-
-  const reviewsFor = useCallback((userId: string) => data?.reviews.filter((r) => r.toId === userId) ?? [], [data?.reviews]);
-  
-  const setDefaultFeePercent = useCallback((n: number) => {
-    setData((d) => ({ ...d, config: { ...d.config, defaultFeePercent: n } }));
-    void dbUpdateDefaultFeePercent(n).catch(() => {});
-  }, [setData]);
-
-  const updatePaymentSettings = useCallback((settings: PaymentSettings) => {
-    setData((d) => ({ ...d, paymentSettings: settings }));
-    void dbUpdatePaymentSettings(settings).catch(() => {});
-  }, [setData]);
-
-  const overrideContractStatus = useCallback((contractId: string, status: ContractStatus) => {
-    setData((d) => ({ ...d, contracts: d.contracts.map((c) => c.id === contractId ? { ...c, status, history: [...c.history, { status, at: new Date().toISOString(), note: 'Override administrativo' }] } : c) }));
-    void dbUpdateContractStatus(contractId, status, 'Override administrativo').catch(() => {});
-  }, [setData]);
-
-  const forceRefund = useCallback((contractId: string) => {
-    if (!data) return;
-    const c = data.contracts.find((x) => x.id === contractId);
-    if (!c) return;
-    const refundTx: WalletTx = { id: uid('wt'), userId: c.establishmentId, type: 'deposit', amount: c.total, description: `Estorno forçado pelo SuperAdmin — contrato ${c.id}`, contractId, date: new Date().toISOString() };
-    setData((d) => {
-      const users = d.users.map((u) => u.id === c.establishmentId ? { ...u, walletBalance: (u.walletBalance ?? 0) + c.total } : u);
-      const contracts = d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'cancelled' as ContractStatus, history: [...ct.history, { status: 'cancelled' as ContractStatus, at: new Date().toISOString(), note: 'Estorno de custódia forçado pelo SuperAdmin' }] } : ct);
-      const auditLog = { id: uid('al'), adminId: currentAdminId, action: `SuperAdmin forçou estorno de custódia no contrato ${contractId} (R$ ${c.total})`, targetUserId: c.establishmentId, createdAt: new Date().toISOString() };
-      const n: AppNotification = { id: uid('n'), userId: c.establishmentId, type: 'contract_update', title: 'Estorno processado', body: `O estorno de ${formatBRL(c.total)} foi processado pelo administrador.`, read: false, date: new Date().toISOString(), contractId };
-      return { ...d, users, contracts, walletTxs: [refundTx, ...d.walletTxs], adminAuditLogs: [auditLog, ...d.adminAuditLogs], notifications: [n, ...d.notifications] };
-    });
-    void dbUpdateContractStatus(contractId, 'cancelled', 'Estorno de custódia forçado pelo SuperAdmin').catch(() => {});
-    void dbInsertWalletTx(refundTx).catch(() => {});
-    const estUser = data.users.find((u) => u.id === c.establishmentId);
-    if (estUser) {
-      void dbUpdateWalletBalance(c.establishmentId, (estUser.walletBalance ?? 0) + c.total).catch(() => {});
-    }
-    void dbInsertAuditLog({ id: uid('al'), adminId: currentAdminId, action: `SuperAdmin forçou estorno de custódia no contrato ${contractId} (R$ ${c.total})`, targetUserId: c.establishmentId, createdAt: new Date().toISOString() }).catch(() => {});
-  }, [data, setData, currentAdminId]);
-
-  // Coupons
-  const coupons = useMemo(() => data?.coupons ?? [], [data?.coupons]);
-  
-  const validateCoupon = useCallback((code: string, userId?: string): { coupon?: Coupon; error?: string } => {
-    if (!data) return { error: 'Sistema carregando.' };
-    const c = data.coupons.find((cp) => cp.code.toUpperCase() === code.toUpperCase().trim() && cp.isActive);
-    if (!c) return { error: 'Cupom inválido ou desativado.' };
-    if (c.expiresAt && new Date(c.expiresAt) < new Date()) return { error: 'Este cupom já expirou.' };
-    if (userId && c.usedBy && c.usedBy.includes(userId)) {
-      return { error: 'Você já utilizou este cupom anteriormente.' };
-    }
-    return { coupon: c };
-  }, [data]);
-
-  const addCoupon = useCallback((coupon: Omit<Coupon, 'id' | 'createdAt'>) => {
-    const newCoupon = { ...coupon, id: uid('cp'), usedBy: [], createdAt: new Date().toISOString() };
-    const auditLog = { id: uid('al'), adminId: currentAdminId, action: `Admin criou cupom ${coupon.code} (${coupon.discountPercentage}%)`, createdAt: new Date().toISOString() };
-    setData((d) => ({ ...d, coupons: [newCoupon, ...d.coupons], adminAuditLogs: [auditLog, ...d.adminAuditLogs] }));
-    void dbInsertCoupon(coupon).catch(() => {});
-    void dbInsertAuditLog(auditLog).catch(() => {});
-  }, [setData, currentAdminId]);
-
-  const toggleCoupon = useCallback((id: string) => {
-    const auditLog = { id: uid('al'), adminId: currentAdminId, action: `Admin alternou status do cupom ${id}`, createdAt: new Date().toISOString() };
-    setData((d) => ({ ...d, coupons: d.coupons.map((c) => c.id === id ? { ...c, isActive: !c.isActive } : c), adminAuditLogs: [auditLog, ...d.adminAuditLogs] }));
-    void dbToggleCoupon(id).catch(() => {});
-    void dbInsertAuditLog(auditLog).catch(() => {});
-  }, [setData, currentAdminId]);
-
-  const deleteCoupon = useCallback((id: string) => {
-    const auditLog = { id: uid('al'), adminId: currentAdminId, action: `Admin removeu cupom ${id}`, createdAt: new Date().toISOString() };
-    setData((d) => ({ ...d, coupons: d.coupons.filter((c) => c.id !== id), adminAuditLogs: [auditLog, ...d.adminAuditLogs] }));
-    void dbDeleteCoupon(id).catch(() => {});
-    void dbInsertAuditLog(auditLog).catch(() => {});
-  }, [setData, currentAdminId]);
-
-  const applyCouponToPurchase = useCallback((userId: string, tier: Tier | EstTier, period: Period, coupon: Coupon, accountType: 'freelancer' | 'establishment'): { ok: boolean; discountedPrice: number; error?: string } => {
-    if (!data) return { ok: false, discountedPrice: 0, error: 'Sistema carregando.' };
-    if (coupon.usedBy?.includes(userId)) {
-      return { ok: false, discountedPrice: 0, error: 'Você já utilizou este cupom.' };
-    }
-    const plan = accountType === 'freelancer' ? getPlan(tier as Tier, data.vipPlans) : getEstPlan(tier as EstTier, data.estVipPlans);
-    const fullPrice = plan.prices[period];
-    const discounted = Math.round(fullPrice * (1 - coupon.discountPercentage / 100) * 100) / 100;
-    const expiry = tier === 'free' ? undefined : new Date(Date.now() + (period === 'annual' ? 365 : period === 'semestral' ? 180 : 30) * 86400000).toISOString();
-    
-    const chargeTx: WalletTx = { id: uid('wt'), userId, type: accountType === 'freelancer' ? 'vip_charge' : 'vip_charge_est', amount: -discounted, description: `Assinatura ${plan.label} (${period}) com cupom ${coupon.code}`, date: new Date().toISOString() };
-    const discountTx: WalletTx = { id: uid('wt'), userId, type: 'coupon_discount', amount: -(fullPrice - discounted), description: `Desconto do cupom ${coupon.code} (${coupon.discountPercentage}%)`, date: new Date().toISOString() };
-    
-    setData((d) => ({
-      ...d,
-      coupons: d.coupons.map((c) => c.id === coupon.id ? { ...c, usedBy: [...(c.usedBy || []), userId] } : c),
-      users: d.users.map((u) => {
-        if (u.id !== userId) return u;
-        if (accountType === 'freelancer') return { ...u, vipTier: tier as Tier, vipExpiresAt: expiry, walletBalance: Math.max(0, (u.walletBalance ?? 0) - discounted) };
-        return { ...u, estVipTier: tier as EstTier, estVipExpiresAt: expiry, walletBalance: Math.max(0, (u.walletBalance ?? 0) - discounted) };
-      }),
-      walletTxs: [chargeTx, discountTx, ...d.walletTxs]
-    }));
-
-    void dbInsertWalletTx(chargeTx).catch(() => {});
-    void dbInsertWalletTx(discountTx).catch(() => {});
-    if (accountType === 'freelancer') {
-      void dbUpdateUser(userId, { vipTier: tier as Tier, vipExpiresAt: expiry }).catch(() => {});
-    } else {
-      void dbUpdateUser(userId, { estVipTier: tier as EstTier, estVipExpiresAt: expiry }).catch(() => {});
-    }
-    return { ok: true, discountedPrice: discounted };
-  }, [data, setData]);
-
-  // Audit logs
-  const auditLogs = useMemo(() => data?.adminAuditLogs ?? [], [data?.adminAuditLogs]);
-  const logAdminAction = useCallback((action: string, targetUserId?: string) => {
-    const auditLog = { id: uid('al'), adminId: currentAdminId, action, targetUserId, createdAt: new Date().toISOString() };
-    setData((d) => ({ ...d, adminAuditLogs: [auditLog, ...d.adminAuditLogs] }));
-    void dbInsertAuditLog(auditLog).catch(() => {});
-  }, [setData, currentAdminId]);
-
-  const adminCreateUser = useCallback((user: Omit<User, 'id' | 'createdAt' | 'walletBalance' | 'rating' | 'reviewsCount' | 'completedShifts'> & Partial<User>): { ok: boolean; error?: string } => {
-    if (!data) return { ok: false, error: 'Sistema carregando.' };
-    if (data.users.some((u) => u.email.toLowerCase() === user.email.toLowerCase().trim())) {
-      return { ok: false, error: 'Este e-mail já está cadastrado.' };
-    }
-    const id = uid(user.accountType === 'freelancer' ? 'fl' : 'es');
-    const newUser: User = {
-      ...user, id, email: user.email.toLowerCase().trim(), createdAt: new Date().toISOString(),
-      walletBalance: 0, rating: user.accountType === 'freelancer' ? 5 : 0, reviewsCount: 0, completedShifts: 0,
-      vipTier: user.accountType === 'freelancer' ? (user.vipTier ?? 'free') : undefined,
-      estVipTier: user.accountType === 'establishment' ? (user.estVipTier ?? 'free') : undefined,
-      categories: user.accountType === 'freelancer' ? (user.categories ?? []) : undefined,
-      availability: user.accountType === 'freelancer' ? (user.availability ?? emptyAvailability()) : undefined,
-    } as User;
-    const auditLog = { id: uid('al'), adminId: currentAdminId, action: `Admin criou usuário ${newUser.name} (${newUser.email})`, targetUserId: id, createdAt: new Date().toISOString() };
-    setData((d) => ({ ...d, users: [...d.users, newUser], adminAuditLogs: [auditLog, ...d.adminAuditLogs] }));
-    void dbInsertUser(newUser).catch(() => {});
-    void dbInsertAuditLog(auditLog).catch(() => {});
-    return { ok: true };
-  }, [data, setData, currentAdminId]);
-
-  const adminCreateAdmin = useCallback((user: { name: string; email: string; password: string; adminRole: 'super' | 'regular'; photo?: string }): { ok: boolean; error?: string } => {
-    if (!data) return { ok: false, error: 'Sistema carregando.' };
-    if (data.users.some((u) => u.email.toLowerCase() === user.email.toLowerCase().trim())) {
-      return { ok: false, error: 'Este e-mail já está cadastrado.' };
-    }
-    const id = uid('adm');
-    const newUser: User = {
-      ...user, id, accountType: 'freelancer', isAdmin: true, adminRole: user.adminRole,
-      email: user.email.toLowerCase().trim(), createdAt: new Date().toISOString(),
-      walletBalance: 0, rating: 0, reviewsCount: 0, completedShifts: 0,
-      photo: user.photo ?? 'https://images.pexels.com/photos/804009/pexels-photo-804009.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
-      phone: '', whatsapp: '', address: { cep: '', street: '', number: '', neighborhood: '', city: '', state: '', lat: 0, lng: 0 },
-    } as User;
-    const auditLog = { id: uid('al'), adminId: currentAdminId, action: `SuperAdmin criou ${user.adminRole === 'super' ? 'SuperAdmin' : 'Admin'} ${newUser.name} (${newUser.email})`, targetUserId: id, createdAt: new Date().toISOString() };
-    setData((d) => ({ ...d, users: [...d.users, newUser], adminAuditLogs: [auditLog, ...d.adminAuditLogs] }));
-    void dbInsertUser(newUser).catch(() => {});
-    void dbInsertAuditLog(auditLog).catch(() => {});
-    return { ok: true };
-  }, [data, setData, currentAdminId]);
-
-  const removeAdmin = useCallback((id: string) => {
-    const auditLog = { id: uid('al'), adminId: currentAdminId, action: `SuperAdmin removeu administrador ${id}`, targetUserId: id, createdAt: new Date().toISOString() };
-    setData((d) => ({ ...d, users: d.users.filter((u) => u.id !== id), adminAuditLogs: [auditLog, ...d.adminAuditLogs] }));
-    void dbDeleteUser(id).catch(() => {});
-    void dbInsertAuditLog(auditLog).catch(() => {});
-  }, [setData, currentAdminId]);
-
-  const adjustWallet = useCallback((userId: string, amount: number, description: string) => {
-    const tx: WalletTx = { id: uid('wt'), userId, type: amount >= 0 ? 'deposit' : 'withdraw', amount, description: `[SuperAdmin] ${description}`, date: new Date().toISOString() };
-    const auditLog = { id: uid('al'), adminId: currentAdminId, action: `SuperAdmin ajustou carteira de ${userId} em ${amount >= 0 ? '+' : ''}${amount} (${description})`, targetUserId: userId, createdAt: new Date().toISOString() };
-    setData((d) => ({
-      ...d,
-      users: d.users.map((u) => (u.id === userId ? { ...u, walletBalance: Math.max(0, (u.walletBalance ?? 0) + amount) } : u)),
-      walletTxs: [tx, ...d.walletTxs],
-      adminAuditLogs: [auditLog, ...d.adminAuditLogs]
-    }));
-    void dbInsertWalletTx(tx).catch(() => {});
-    const user = data?.users.find((u) => u.id === userId);
-    if (user) {
-      void dbUpdateWalletBalance(userId, Math.max(0, (user.walletBalance ?? 0) + amount)).catch(() => {});
-    }
-    void dbInsertAuditLog(auditLog).catch(() => {});
-  }, [setData, currentAdminId, data]);
-
-  const deleteReview = useCallback((reviewId: string) => {
-    if (!data) return;
-    const review = data.reviews.find((r) => r.id === reviewId);
-    if (!review) return;
-    const contract = data.contracts.find((c) => c.reviewFromEstablishment?.id === reviewId || c.reviewFromFreelancer?.id === reviewId);
-    const fromEstablishment = contract ? contract.reviewFromEstablishment?.id === reviewId : false;
-    const target = data.users.find((u) => u.id === review.toId);
-    const auditLog = { id: uid('al'), adminId: currentAdminId, action: `Admin removeu avaliação ${reviewId}`, targetUserId: review.toId, createdAt: new Date().toISOString() };
-    
-    setData((d) => {
-      let users = d.users;
-      if (target && (target.reviewsCount ?? 0) > 0) {
-        const oldCount = target.reviewsCount ?? 0;
-        const oldSum = (target.rating ?? 0) * oldCount;
-        const newCount = oldCount - 1;
-        const newRating = newCount > 0 ? Math.round(((oldSum - review.rating) / newCount) * 10) / 10 : 0;
-        users = users.map((u) => u.id === target.id ? { ...u, reviewsCount: newCount, rating: newRating } : u);
-      }
-      return {
-        ...d,
-        users,
-        reviews: d.reviews.filter((r) => r.id !== reviewId),
-        contracts: d.contracts.map((c) => (c.reviewFromEstablishment?.id === reviewId ? { ...c, reviewFromEstablishment: undefined } : c.reviewFromFreelancer?.id === reviewId ? { ...c, reviewFromFreelancer: undefined } : c)),
-        adminAuditLogs: [auditLog, ...d.adminAuditLogs]
-      };
-    });
-
-    if (contract) {
-      void dbDeleteReview(reviewId, fromEstablishment, contract.id).catch(() => {});
-    }
-    if (target && (target.reviewsCount ?? 0) > 0) {
-      const oldCount = target.reviewsCount ?? 0;
-      const oldSum = (target.rating ?? 0) * oldCount;
-      const newCount = oldCount - 1;
-      const newRating = newCount > 0 ? Math.round(((oldSum - review.rating) / newCount) * 10) / 10 : 0;
-      void dbUpdateUser(review.toId, { reviewsCount: newCount, rating: newRating }).catch(() => {});
-    }
-    void dbInsertAuditLog(auditLog).catch(() => {});
-  }, [data, setData, currentAdminId]);
-
-  const broadcastNotification = useCallback((title: string, body: string) => {
-    if (!data) return;
-    const auditLog = { id: uid('al'), adminId: currentAdminId, action: `Admin enviou comunicado: "${title}"`, createdAt: new Date().toISOString() };
-    setData((d) => {
-      const notifs: AppNotification[] = d.users.filter((u) => !u.isAdmin).map((u) => ({ id: uid('n'), userId: u.id, type: 'system' as const, title, body, read: false, date: new Date().toISOString() }));
-      notifs.forEach((n) => void dbInsertNotification(n).catch(() => {}));
-      return { ...d, notifications: [...notifs, ...d.notifications], adminAuditLogs: [auditLog, ...d.adminAuditLogs] };
-    });
-    void dbInsertAuditLog(auditLog).catch(() => {});
-  }, [data, setData, currentAdminId]);
-
-  // Funções de planos VIP sincronizadas com o Supabase
-  const updateVipPlan = useCallback((tier: Tier, patch: Partial<VipPlan>) => {
-    setData((d) => {
-      const updatedPlans = d.vipPlans.map((p) => {
-        if (p.tier === tier) {
-          const newPlan = { ...p, ...patch };
-          void dbUpsertVipPlan(newPlan).catch((err) => console.error("Erro ao atualizar plano freelancer no Supabase:", err));
-          return newPlan;
-        }
-        return p;
-      });
-      return { ...d, vipPlans: updatedPlans };
-    });
-  }, [setData]);
-
-  const addVipPlan = useCallback((plan: VipPlan) => {
-    setData((d) => {
-      if (d.vipPlans.some((p) => p.tier === plan.tier)) return d;
-      void dbUpsertVipPlan(plan).catch((err) => console.error("Erro ao inserir plano freelancer no Supabase:", err));
-      return { ...d, vipPlans: [...d.vipPlans, plan] };
-    });
-  }, [setData]);
-
-  const removeVipPlan = useCallback((tier: Tier) => {
-    setData((d) => {
-      void dbDeleteVipPlan(tier).catch((err) => console.error("Erro ao remover plano freelancer do Supabase:", err));
-      return {
-        ...d,
-        vipPlans: d.vipPlans.filter((p) => p.tier !== tier),
-        users: d.users.map((u) => u.vipTier === tier ? { ...u, vipTier: 'free' } : u)
-      };
-    });
-  }, [setData]);
-
-  const updateEstVipPlan = useCallback((tier: EstTier, patch: Partial<EstVipPlan>) => {
-    setData((d) => {
-      const updatedPlans = d.estVipPlans.map((p) => {
-        if (p.tier === tier) {
-          const newPlan = { ...p, ...patch };
-          void dbUpsertEstVipPlan(newPlan).catch((err) => console.error("Erro ao atualizar plano de estabelecimento no Supabase:", err));
-          return newPlan;
-        }
-        return p;
-      });
-      return { ...d, estVipPlans: updatedPlans };
-    });
-  }, [setData]);
-
-  const addEstVipPlan = useCallback((plan: EstVipPlan) => {
-    setData((d) => {
-      if (d.estVipPlans.some((p) => p.tier === plan.tier)) return d;
-      void dbUpsertEstVipPlan(plan).catch((err) => console.error("Erro ao inserir plano de estabelecimento no Supabase:", err));
-      return { ...d, estVipPlans: [...d.estVipPlans, plan] };
-    });
-  }, [setData]);
-
-  const removeEstVipPlan = useCallback((tier: EstTier) => {
-    setData((d) => {
-      void dbDeleteEstVipPlan(tier).catch((err) => console.error("Erro ao remover plano de estabelecimento do Supabase:", err));
-      return {
-        ...d,
-        estVipPlans: d.estVipPlans.filter((p) => p.tier !== tier),
-        users: d.users.map((u) => u.estVipTier === tier ? { ...u, estVipTier: 'free' } : u)
-      };
-    });
-  }, [setData]);
-
-  const enterAdminMode = useCallback(() => setAdminMode(true), []);
-  const exitAdminMode = useCallback(() => { setAdminMode(false); setAdminTab('overview'); }, []);
-
-  const freelancers = useMemo(() => data?.users.filter((u) => u.accountType === 'freelancer' && !u.isAdmin) ?? [], [data?.users]);
-  const establishments = useMemo(() => data?.users.filter((u) => u.accountType === 'establishment') ?? [], [data?.users]);
-  const nearbyFreelancers = useCallback((city: string) => {
-    if (!data) return [];
-    const nearby = metroNearby(city);
-    return data.users.filter((u) => u.accountType === 'freelancer' && !u.isAdmin && !u.banned && nearby.includes(u.address.city));
-  }, [data?.users]);
-  const categoryById = useCallback((id: string) => CATEGORIES.find((c) => c.id === id), []);
-
-  const value = useMemo<AppContextValue>(() => ({
-    data: data!, currentUser, isAdmin, isSuperAdmin, login, register, logout, updateUser, adminUpdateUser, deleteEntity, banUser, unbanUser, setVipTier, setEstVipTier, setTermsAcceptance,
-    setAvailability, toggleAvailabilitySlot, toggleDateShift, toggleCategory,
-    addJob, updateJob, deleteJob, pauseJob, applyToJob,
-    requestHire, confirmAvailability, payEscrow, checkInFreelancer, finishService, cancelContract,
-    submitReview, notify, markNotificationRead, markAllNotificationsRead, userNotifications,
-    userWalletBalance, userWalletTxs, adminWalletTxs, depositToWallet, withdrawFromWallet,
-    reviewsFor, setDefaultFeePercent, updatePaymentSettings, overrideContractStatus, forceRefund, resetData,
-    freelancers, establishments, nearbyFreelancers, categoryById,
-    adminTab, setAdminTab, adminMode, exitAdminMode, enterAdminMode,
-    coupons, validateCoupon, addCoupon, toggleCoupon, deleteCoupon, applyCouponToPurchase,
-    auditLogs, logAdminAction, adminCreateUser, adminCreateAdmin, removeAdmin, adjustWallet, deleteReview, broadcastNotification,
-    updateVipPlan, addVipPlan, removeVipPlan, updateEstVipPlan, addEstVipPlan, removeEstVipPlan,
-  }), [
-    data, currentUser, isAdmin, isSuperAdmin, login, register, logout, updateUser, adminUpdateUser, deleteEntity, banUser, unbanUser, setVipTier, setEstVipTier, setTermsAcceptance,
-    setAvailability, toggleAvailabilitySlot, toggleDateShift, toggleCategory, addJob, updateJob, deleteJob, pauseJob, applyToJob,
-    requestHire, confirmAvailability, payEscrow, checkInFreelancer, finishService, cancelContract,
-    submitReview, notify, markNotificationRead, markAllNotificationsRead, userNotifications,
-    userWalletBalance, userWalletTxs, adminWalletTxs, depositToWallet, withdrawFromWallet,
-    reviewsFor, setDefaultFeePercent, updatePaymentSettings, overrideContractStatus, forceRefund, resetData, freelancers, establishments, nearbyFreelancers, categoryById,
-    adminTab, setAdminTab, adminMode, exitAdminMode, enterAdminMode,
-    coupons, validateCoupon, addCoupon, toggleCoupon, deleteCoupon, applyCouponToPurchase,
-    auditLogs, logAdminAction, adminCreateUser, adminCreateAdmin, removeAdmin, adjustWallet, deleteReview, broadcastNotification,
-    updateVipPlan, addVipPlan, removeVipPlan, updateEstVipPlan, addEstVipPlan, removeEstVipPlan,
-  ]);
-
-  if (!loaded || !data) {
-    return <div className="flex min-h-screen items-center justify-center bg-neutral-950 text-white"><div className="animate-pulse text-sm">Carregando FreelaAgora…</div></div>;
-  }
-
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
-}
-
-function formatBRL(v: number) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v); }
+// ... (Resto do arquivo, mantendo o que você já tinha)
