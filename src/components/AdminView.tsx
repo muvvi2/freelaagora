@@ -472,7 +472,48 @@ function MigrationSection() {
   );
 }
 
-function MigrationButton() { return null; }
+function FinancialCard({ icon: Icon, label, value, tone, desc }: { icon: typeof Wallet; label: string; value: string; tone: 'warning' | 'primary' | 'success'; desc: string }) {
+  const toneClass = { warning: 'from-warning-500 to-warning-700', primary: 'from-primary-500 to-primary-700', success: 'from-success-500 to-success-700' }[tone];
+  return (
+    <div className={`rounded-2xl bg-gradient-to-br ${toneClass} p-5 text-white`}>
+      <Icon className="h-7 w-7 opacity-80" />
+      <p className="mt-3 font-display text-2xl font-extrabold">{value}</p>
+      <p className="text-sm font-semibold">{label}</p>
+      <p className="text-xs text-white/70">{desc}</p>
+    </div>
+  );
+}
+
+function RevenueRow({ icon: Icon, label, value, tone }: { icon: typeof Crown; label: string; value: string; tone: 'primary' | 'secondary' | 'success' }) {
+  const toneClass = { primary: 'bg-primary-100 text-primary-600 dark:bg-primary-500/15 dark:text-primary-400', secondary: 'bg-secondary-100 text-secondary-600 dark:bg-secondary-500/15 dark:text-secondary-400', success: 'bg-success-100 text-success-600 dark:bg-success-500/15 dark:text-success-400' }[tone];
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-neutral-100 p-3 dark:border-neutral-800">
+      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${toneClass}`}><Icon className="h-4 w-4" /></div>
+      <div className="min-w-0"><p className="text-xs text-neutral-400">{label}</p><p className="font-display text-base font-bold text-neutral-900 dark:text-white">{value}</p></div>
+    </div>
+  );
+}
+
+function FeeBreakdown({ label, value, tone }: { label: string; value: string; tone: 'error' | 'warning' | 'primary' | 'success' }) {
+  const toneClass = { error: 'text-error-600 dark:text-error-400', warning: 'text-warning-600 dark:text-warning-400', primary: 'text-primary-600 dark:text-primary-400', success: 'text-success-600 dark:text-success-400' }[tone];
+  return (
+    <div className="rounded-lg border border-neutral-100 p-3 dark:border-neutral-800">
+      <p className="text-xs text-neutral-400">{label}</p>
+      <p className={`font-display text-lg font-bold ${toneClass}`}>{value}</p>
+    </div>
+  );
+}
+
+function AdminStat({ icon: Icon, label, value, tone }: { icon: typeof Users; label: string; value: string; tone: 'primary' | 'secondary' | 'accent' | 'neutral' }) {
+  const toneClass = { primary: 'bg-primary-100 text-primary-600 dark:bg-primary-500/15 dark:text-primary-400', secondary: 'bg-secondary-100 text-secondary-600 dark:bg-secondary-500/15 dark:text-secondary-400', accent: 'bg-accent-100 text-accent-600 dark:bg-accent-500/15 dark:text-accent-400', neutral: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300' }[tone];
+  return (
+    <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+      <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${toneClass}`}><Icon className="h-5 w-5" /></div>
+      <p className="mt-3 font-display text-2xl font-extrabold text-neutral-900 dark:text-white">{value}</p>
+      <p className="text-xs text-neutral-400">{label}</p>
+    </div>
+  );
+}
 
 function AdminCreateUserModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { adminCreateUser, data } = useApp();
@@ -650,6 +691,251 @@ export function AdminProfileModal({ open, onClose, admin, onSave }: { open: bool
             <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
           </div>
         </div>
+      </div>
+    </Modal>
+  );
+}
+
+function ActionMenu({ items }: { items: { icon: typeof Pencil; label: string; onClick: () => void; danger?: boolean; disabled?: boolean }[] }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-200 bg-neutral-50 text-neutral-600 transition hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+        aria-label="Ações"
+      >
+        <MoreVertical className="h-4 w-4" />
+      </button>
+      {open && (
+        <div className="absolute right-0 z-50 mt-1 w-48 overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-800">
+          {items.map((item, i) => (
+            <button
+              key={i}
+              disabled={item.disabled}
+              onClick={() => { if (item.disabled) return; item.onClick(); setOpen(false); }}
+              className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition hover:bg-neutral-50 dark:hover:bg-neutral-700/50 ${item.danger ? 'text-error-500' : 'text-neutral-700 dark:text-neutral-200'} ${item.disabled ? 'cursor-not-allowed opacity-40' : ''}`}
+            >
+              <item.icon className="h-4 w-4 shrink-0" />
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VipPlansTab({ vipPlans, estVipPlans, onUpdateVipPlan, onAddVipPlan, onRemoveVipPlan, onUpdateEstVipPlan, onAddEstVipPlan, onRemoveEstVipPlan }: {
+  vipPlans: VipPlan[];
+  estVipPlans: EstVipPlan[];
+  onUpdateVipPlan: (tier: Tier, patch: Partial<VipPlan>) => void;
+  onAddVipPlan: (plan: VipPlan) => void;
+  onRemoveVipPlan: (tier: Tier) => void;
+  onUpdateEstVipPlan: (tier: EstTier, patch: Partial<EstVipPlan>) => void;
+  onAddEstVipPlan: (plan: EstVipPlan) => void;
+  onRemoveEstVipPlan: (tier: EstTier) => void;
+}) {
+  const { notify } = useToast();
+  const [section, setSection] = useState<'freelancer' | 'establishment'>('freelancer');
+
+  const addFreelancerPlan = () => {
+    const tierNum = vipPlans.length;
+    const newTier = `vip${tierNum}` as Tier;
+    if (vipPlans.some((p) => p.tier === newTier)) { notify('Já existe um plano com esse nível', 'warning'); return; }
+    onAddVipPlan({ tier: newTier, label: `VIP ${tierNum}`, prices: { monthly: 49.9, semestral: 249.9, annual: 449.9 }, maxCategories: 5, features: ['Novo plano'] });
+    notify('Plano adicionado');
+  };
+
+  const addEstPlan = () => {
+    const tierNum = estVipPlans.length;
+    const newTier = `vip${tierNum}` as EstTier;
+    if (estVipPlans.some((p) => p.tier === newTier)) { notify('Já existe um plano com esse nível', 'warning'); return; }
+    onAddEstVipPlan({ tier: newTier, label: `VIP ${tierNum}`, prices: { monthly: 99.9, semestral: 499.9, annual: 899.9 }, intermediationFee: 5, features: ['Novo plano'] });
+    notify('Plano adicionado');
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-1.5 rounded-xl border border-neutral-200 bg-neutral-50 p-1 dark:border-neutral-700 dark:bg-neutral-800">
+        {(['freelancer', 'establishment'] as const).map((s) => (
+          <button key={s} onClick={() => setSection(s)} className={`flex-1 rounded-lg py-2 text-sm font-semibold transition ${section === s ? 'bg-white text-primary-600 shadow-sm dark:bg-neutral-700 dark:text-primary-400' : 'text-neutral-500'}`}>
+            {s === 'freelancer' ? 'Planos Freelancer' : 'Planos Estabelecimento'}
+          </button>
+        ))}
+      </div>
+
+      {section === 'freelancer' && (
+        <div className="space-y-3">
+          {vipPlans.map((plan) => (
+            <VipPlanEditor key={plan.tier} plan={plan} isEst={false} onUpdate={(patch) => onUpdateVipPlan(plan.tier, patch as Partial<VipPlan>)} onRemove={() => onRemoveVipPlan(plan.tier)} />
+          ))}
+          <Button variant="outline" fullWidth onClick={addFreelancerPlan}><Plus className="h-4 w-4" /> Adicionar novo plano freelancer</Button>
+        </div>
+      )}
+
+      {section === 'establishment' && (
+        <div className="space-y-3">
+          {estVipPlans.map((plan) => (
+            <VipPlanEditor key={plan.tier} plan={plan} isEst={true} onUpdate={(patch) => onUpdateEstVipPlan(plan.tier, patch as Partial<EstVipPlan>)} onRemove={() => onRemoveEstVipPlan(plan.tier)} />
+          ))}
+          <Button variant="outline" fullWidth onClick={addEstPlan}><Plus className="h-4 w-4" /> Adicionar novo plano estabelecimento</Button>
+        </div>
+      )}
+
+      <p className="text-xs text-neutral-400">Alterações nos preços e benefícios são aplicadas imediatamente. Remover um plano reverte todos os usuários nele para o plano Gratuito.</p>
+    </div>
+  );
+}
+
+function VipPlanEditor({ plan, onUpdate, onRemove, isEst }: {
+  plan: VipPlan | EstVipPlan;
+  onUpdate: (patch: Partial<VipPlan> | Partial<EstVipPlan>) => void;
+  onRemove: () => void;
+  isEst: boolean;
+}) {
+  const { notify } = useToast();
+  const [expanded, setExpanded] = useState(false);
+  const canDelete = plan.tier !== 'free';
+
+  return (
+    <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="flex items-center justify-between gap-2">
+        <button onClick={() => setExpanded(!expanded)} className="flex items-center gap-2 text-left">
+          <Crown className={`h-4 w-4 ${plan.tier === 'vip3' ? 'text-warning-500' : plan.tier === 'vip2' ? 'text-secondary-500' : plan.tier === 'vip1' ? 'text-primary-500' : 'text-neutral-400'}`} />
+          <span className="font-semibold text-neutral-900 dark:text-white">{plan.label}</span>
+          <Badge tone={plan.tier === 'free' ? 'neutral' : 'vip'}>{plan.tier.toUpperCase()}</Badge>
+        </button>
+        <div className="flex items-center gap-1.5">
+          <Button size="sm" variant="ghost" onClick={() => setExpanded(!expanded)}><Pencil className="h-3.5 w-3.5" /></Button>
+          {canDelete && <Button size="sm" variant="ghost" className="text-error-500" onClick={() => { if (confirm(`Remover o plano ${plan.label}? Usuários neste plano voltarão ao Gratuito.`)) { onRemove(); notify('Plano removido', 'warning'); } }}><Trash2 className="h-3.5 w-3.5" /></Button>}
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="mt-4 space-y-3 border-t border-neutral-100 pt-4 dark:border-neutral-800">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Input label="Nome do plano" value={plan.label} onChange={(e) => onUpdate({ label: e.target.value })} />
+            {!isEst && <Input label="Máx. categorias (999 = ilimitado)" type="number" value={String((plan as VipPlan).maxCategories)} onChange={(e) => onUpdate({ maxCategories: Number(e.target.value) || 0 } as Partial<VipPlan>)} />}
+            {isEst && <Input label="Taxa de intermediação (%)" type="number" step="0.5" value={String((plan as EstVipPlan).intermediationFee)} onChange={(e) => onUpdate({ intermediationFee: Number(e.target.value) || 0 } as Partial<EstVipPlan>)} />}
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Input label="Preço mensal (R$)" type="number" value={String(plan.prices.monthly)} onChange={(e) => onUpdate({ prices: { ...plan.prices, monthly: Number(e.target.value) || 0 } })} />
+            <Input label="Preço semestral (R$)" type="number" value={String(plan.prices.semestral)} onChange={(e) => onUpdate({ prices: { ...plan.prices, semestral: Number(e.target.value) || 0 } })} />
+            <Input label="Preço anual (R$)" type="number" value={String(plan.prices.annual)} onChange={(e) => onUpdate({ prices: { ...plan.prices, annual: Number(e.target.value) || 0 } })} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-neutral-500">Benefícios (um por linha)</label>
+            <textarea value={plan.features.join('\n')} onChange={(e) => onUpdate({ features: e.target.value.split('\n').filter(Boolean) })} rows={4} className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100" />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AdminsTab({ admins, currentAdminId, onRemove, onEdit, onAdd }: { admins: User[]; currentAdminId: string; onRemove: (id: string) => void; onEdit: (adminUser: User) => void; onAdd: () => void }) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-neutral-400">{admins.length} administrador(es) ativo(s)</p>
+        <Button size="sm" onClick={onAdd}><UserPlus className="h-4 w-4" /> Novo Admin</Button>
+      </div>
+      {admins.map((a) => (
+        <div key={a.id} className="flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+          <div className="flex items-center gap-3">
+            <Avatar src={a.photo} alt={a.name} size={44} ring={a.adminRole === 'super' ? 'vip' : 'neutral'} />
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="font-semibold text-neutral-900 dark:text-white">{a.name}</p>
+                {a.adminRole === 'super' ? <Badge tone="vip"><Crown className="h-3 w-3" /> Super Admin</Badge> : <Badge tone="primary">Moderador</Badge>}
+              </div>
+              <p className="text-xs text-neutral-400">{a.email}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => onEdit(a)}><Pencil className="h-3.5 w-3.5" /> Editar</Button>
+            {a.id !== currentAdminId && (
+              <Button size="sm" variant="ghost" className="text-error-500" onClick={() => { if (confirm(`Remover ${a.name} como administrador?`)) { onRemove(a.id); } }}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AdminCreateAdminModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { adminCreateAdmin } = useApp();
+  const { notify } = useToast();
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('admin123');
+  const [adminRole, setAdminRole] = useState<'super' | 'regular'>('regular');
+  const [photo, setPhoto] = useState('');
+
+  const create = () => {
+    if (!name.trim() || !email.trim() || !password.trim()) { notify('Preencha nome, e-mail e senha', 'warning'); return; }
+    const result = adminCreateAdmin({ name: name.trim(), email: email.trim(), password, adminRole, photo: photo.trim() || undefined });
+    if (result.ok) { notify(`${adminRole === 'super' ? 'Super Admin' : 'Moderador'} criado com sucesso!`); setName(''); setEmail(''); setPassword('admin123'); setAdminRole('regular'); setPhoto(''); onClose(); }
+    else notify(result.error ?? 'Erro ao criar admin', 'warning');
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Adicionar novo administrador" size="sm"
+      footer={<div className="flex gap-2"><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={create}><UserPlus className="h-4 w-4" /> Criar</Button></div>}>
+      <div className="space-y-4">
+        <div className="flex gap-1.5 rounded-xl border border-neutral-200 bg-neutral-50 p-1 dark:border-neutral-700 dark:bg-neutral-800">
+          {(['regular', 'super'] as const).map((r) => (
+            <button key={r} onClick={() => setAdminRole(r)} className={`flex-1 rounded-lg py-2 text-sm font-semibold transition ${adminRole === r ? 'bg-white text-primary-600 shadow-sm dark:bg-neutral-700 dark:text-primary-400' : 'text-neutral-500'}`}>{r === 'super' ? 'Super Admin' : 'Moderador'}</button>
+          ))}
+        </div>
+        <Input label="Nome" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do administrador" />
+        <Input label="E-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@freelaagora.com" />
+        <Input label="Senha" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <Input label="URL da foto (opcional)" value={photo} onChange={(e) => setPhoto(e.target.value)} placeholder="https://..." />
+        <p className="text-xs text-neutral-400">Moderadores podem gerenciar usuários, vagas e avaliações. Apenas Super Admins podem alterar taxas e gerenciar outros admins.</p>
+      </div>
+    </Modal>
+  );
+}
+
+function AdminWalletModal({ user, open, onClose }: { user: User; open: boolean; onClose: () => void }) {
+  const { adjustWallet } = useApp();
+  const { notify } = useToast();
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
+
+  const apply = (dir: 'add' | 'sub') => {
+    const amt = Number(amount) || 0;
+    if (amt <= 0) { notify('Digite um valor válido', 'warning'); return; }
+    adjustWallet(user.id, dir === 'add' ? amt : -amt, description.trim() || `Ajuste manual pelo Admin`);
+    setAmount(''); setDescription('');
+    notify(`Saldo ${dir === 'add' ? 'adicionado' : 'debitado'} pelo Admin`);
+    onClose();
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title={`Ajustar carteira — ${user.name}`} size="sm"
+      footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={onClose}>Cancelar</Button><Button variant="primary" fullWidth onClick={() => apply('add')}><CheckCircle2 className="h-4 w-4" /> Adicionar</Button><Button variant="danger" fullWidth onClick={() => apply('sub')}><RotateCcw className="h-4 w-4" /> Debitar</Button></div>}>
+      <div className="space-y-4">
+        <div className="rounded-xl bg-neutral-50 p-4 dark:bg-neutral-800/50">
+          <p className="text-xs text-neutral-400">Saldo atual</p>
+          <p className="font-display text-2xl font-extrabold text-neutral-900 dark:text-white">{formatCurrency(user.walletBalance ?? 0)}</p>
+        </div>
+        <Input label="Valor (R$)" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
+        <Input label="Descrição (opcional)" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ajuste manual de saldo" />
       </div>
     </Modal>
   );
