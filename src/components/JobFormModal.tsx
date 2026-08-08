@@ -1,16 +1,16 @@
 import { useState } from 'react';
 import { Check } from 'lucide-react';
 import type { Job, Urgency, User } from '@/types';
-import { uid, urgencyLabel } from '@/utils';
+import { uid, urgencyLabel, getEstPlan } from '@/utils';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Input, Textarea, Select } from './ui/Field';
 import { useApp } from '@/AppContext';
 import { useToast } from './ui/Toast';
-import { CATEGORIES } from '@/mockData'; // Certifique-se de que exporta o formato correto
+import { CATEGORIES } from '@/mockData';
 
 export function JobFormModal({ open, onClose, editing, establishment }: { open: boolean; onClose: () => void; editing: Job | null; establishment: User }) {
-  const { addJob, updateJob } = useApp();
+  const { data, addJob, updateJob } = useApp();
   const { notify } = useToast();
 
   const [title, setTitle] = useState(editing?.title ?? '');
@@ -24,10 +24,26 @@ export function JobFormModal({ open, onClose, editing, establishment }: { open: 
 
   const handleSave = () => {
     if (!title.trim()) { notify('Informe um título para a vaga', 'warning'); return; }
+
     if (editing) {
       updateJob(editing.id, { title, category, description, date: new Date(date).toISOString(), startTime, hours: Number(hours) || 1, value: Number(value) || 0, urgency });
       notify('Vaga atualizada');
     } else {
+      // 1. Descobre o plano atual do estabelecimento
+      const plan = getEstPlan(establishment.estVipTier ?? 'free', data.estVipPlans);
+
+      // 2. Verifica se o estabelecimento está no período de teste de 15 dias (se estiver, libera vagas ilimitadas ou tratamento especial)
+      const isOnTrial = establishment.trialEndsAt && new Date(establishment.trialEndsAt) > new Date();
+
+      // 3. Conta quantas vagas ativas (ou pausadas) o estabelecimento já tem publicadas
+      const activeJobsCount = data.jobs.filter((j) => j.establishmentId === establishment.id && j.status !== 'closed').length;
+
+      // 4. Se não estiver no trial e atingiu o limite do plano, bloqueia e avisa
+      if (!isOnTrial && activeJobsCount >= plan.maxActiveJobs) {
+        notify(`Limite atingido! Seu plano atual permite até ${plan.maxActiveJobs} vagas ativas. Faça um upgrade para o VIP para publicar mais.`, 'error');
+        return;
+      }
+
       const job: Job = {
         id: uid('job'),
         establishmentId: establishment.id,
@@ -59,14 +75,12 @@ export function JobFormModal({ open, onClose, editing, establishment }: { open: 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2"><Input label="Título da vaga" placeholder="Ex: Cobertura de sexta à noite" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
         
-        {/* Campo de Categoria Atualizado com suporte a Grupos se aplicável */}
         <Select label="Categoria da Vaga" value={category} onChange={(e) => setCategory(e.target.value)}>
-          {CATEGORIES.map((cat) => {
-            // Se o seu mock usa estrutura de grupo com subcategorias:
+          {CATEGORIES.map((cat: any) => {
             if (cat.subcategories) {
               return (
                 <optgroup key={cat.id || cat.name} label={cat.name || cat.label}>
-                  {cat.subcategories.map((sub) => (
+                  {cat.subcategories.map((sub: any) => (
                     <option key={sub.id || sub} value={sub.id || sub}>
                       {sub.label || sub}
                     </option>
@@ -74,7 +88,6 @@ export function JobFormModal({ open, onClose, editing, establishment }: { open: 
                 </optgroup>
               );
             }
-            // Fallback para lista simples plana
             return <option key={cat.id} value={cat.id}>{cat.label}</option>;
           })}
         </Select>
