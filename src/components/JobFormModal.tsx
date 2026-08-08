@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Check } from 'lucide-react';
 import type { Job, Urgency, User } from '@/types';
-import { uid, urgencyLabel, getEstPlan } from '@/utils';
+import { uid, urgencyLabel } from '@/utils';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Input, Textarea, Select } from './ui/Field';
@@ -13,7 +13,6 @@ export function JobFormModal({ open, onClose, editing, establishment }: { open: 
   const { data, addJob, updateJob } = useApp();
   const { notify } = useToast();
 
-  // Pega sempre a versão mais atualizada do estabelecimento direto do estado global do app
   const currentEstablishment = data.users.find((u) => u.id === establishment.id) ?? establishment;
 
   const [title, setTitle] = useState(editing?.title ?? '');
@@ -31,23 +30,8 @@ export function JobFormModal({ open, onClose, editing, establishment }: { open: 
     if (editing) {
       updateJob(editing.id, { title, category, description, date: new Date(date).toISOString(), startTime, hours: Number(hours) || 1, value: Number(value) || 0, urgency });
       notify('Vaga atualizada');
+      onClose();
     } else {
-      // 1. Descobre o plano atual do estabelecimento usando o registro atualizado
-      const plan = getEstPlan(currentEstablishment.estVipTier ?? 'free', data.estVipPlans);
-
-      // 2. Verifica se está no período de teste (Trial). Durante o trial, limitamos estritamente a 10 vagas (VIP 2)
-      const isOnTrial = currentEstablishment.trialEndsAt && new Date(currentEstablishment.trialEndsAt) > new Date();
-      const effectiveMaxJobs = isOnTrial ? 10 : plan.maxActiveJobs;
-
-      // 3. Conta quantas vagas ativas o estabelecimento já tem publicadas (tudo que não estiver fechado)
-      const activeJobsCount = data.jobs.filter((j) => j.establishmentId === currentEstablishment.id && j.status !== 'closed').length;
-
-      // 4. Trava rígida caso tenha atingido ou passado do limite
-      if (activeJobsCount >= effectiveMaxJobs) {
-        notify(`Limite atingido! ${isOnTrial ? 'Seu período de teste permite até 10 vagas ativas.' : `Seu plano atual permite até ${effectiveMaxJobs} vagas ativas.`} Faça um upgrade para o VIP para publicar mais.`, 'error');
-        return;
-      }
-
       const job: Job = {
         id: uid('job'),
         establishmentId: currentEstablishment.id,
@@ -67,10 +51,17 @@ export function JobFormModal({ open, onClose, editing, establishment }: { open: 
         applicants: [],
         createdAt: new Date().toISOString(),
       };
-      addJob(job);
+
+      // Valida a resposta da função addJob global
+      const result = addJob(job);
+      if (result && !result.ok) {
+        notify(result.error ?? 'Limite de vagas atingido para o seu plano.', 'error');
+        return; // Interrompe e mantém o modal aberto
+      }
+
       notify('Vaga urgente publicada no feed!');
+      onClose();
     }
-    onClose();
   };
 
   return (
