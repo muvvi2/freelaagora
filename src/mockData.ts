@@ -15,12 +15,13 @@ export const MACRO_CATEGORIES: MacroCategory[] = [
 ];
 
 // ============================================================
-// CATEGORIES — Full national catalog (265 Professions)
+// CATEGORIES — Combos Originais + Opções Individuais Adicionadas
 // ============================================================
 export const CATEGORIES: Category[] = [
   // ==========================================
   // Técnico, Saúde, Educação e Digital
   // ==========================================
+  // Combos Originais
   { id: 'suporte_de_ti_infraestrutura_redes', label: 'Suporte de TI / Infraestrutura / Redes', icon: 'Stethoscope', color: '#8b5cf6', macro: 'tecnico' },
   { id: 'assistencia_tecnica_de_celulares_tablets_e_eletronicos', label: 'Assistência Técnica de Celulares, Tablets e Eletrônicos', icon: 'Stethoscope', color: '#8b5cf6', macro: 'tecnico' },
   { id: 'enfermeiroa_particular_home_care', label: 'Enfermeiro(a) Particular / Home Care', icon: 'Stethoscope', color: '#8b5cf6', macro: 'tecnico' },
@@ -107,9 +108,16 @@ export const CATEGORIES: Category[] = [
   { id: 'especialista_em_ux_research_e_testes_de_usabilidade', label: 'Especialista em UX Research e Testes de Usabilidade', icon: 'Stethoscope', color: '#8b5cf6', macro: 'tecnico' },
   { id: 'arquiteto_de_solucoes_cloud_aws_azure', label: 'Arquiteto de Soluções Cloud (AWS/Azure)', icon: 'Stethoscope', color: '#8b5cf6', macro: 'tecnico' },
 
+  // Adicionadas Individuais (Técnico)
+  { id: 'ind_suporte_ti', label: 'Suporte de TI (Individual)', icon: 'Stethoscope', color: '#8b5cf6', macro: 'tecnico' },
+  { id: 'ind_infraestrutura', label: 'Infraestrutura (Individual)', icon: 'Stethoscope', color: '#8b5cf6', macro: 'tecnico' },
+  { id: 'ind_redes', label: 'Redes (Individual)', icon: 'Stethoscope', color: '#8b5cf6', macro: 'tecnico' },
+  { id: 'ind_celular', label: 'Assistência de Celulares (Individual)', icon: 'Stethoscope', color: '#8b5cf6', macro: 'tecnico' },
+
   // ==========================================
   // Alimentação e Gastronomia
   // ==========================================
+  // Combos Originais
   { id: 'cozinheiroa_auxiliar_de_cozinha', label: 'Cozinheiro(a) / Auxiliar de Cozinha', icon: 'ChefHat', color: '#f97316', macro: 'alimentacao' },
   { id: 'cozinheiroa_executivo_chef_de_cozinha', label: 'Cozinheiro(a) Executivo / Chef de Cozinha', icon: 'ChefHat', color: '#f97316', macro: 'alimentacao' },
   { id: 'sous_chef_coordenador_de_cozinha', label: 'Sous Chef / Coordenador de Cozinha', icon: 'ChefHat', color: '#f97316', macro: 'alimentacao' },
@@ -144,6 +152,11 @@ export const CATEGORIES: Category[] = [
   { id: 'barman_flair_bartender_acrobatico', label: 'Barman Flair (Bartender Acrobático)', icon: 'ChefHat', color: '#f97316', macro: 'alimentacao' },
   { id: 'especialista_em_drinks_sem_alcool_mocktails', label: 'Especialista em Drinks sem Álcool (Mocktails)', icon: 'ChefHat', color: '#f97316', macro: 'alimentacao' },
   { id: 'cozinheiro_para_churrasco_particular_home_grill', label: 'Cozinheiro para Churrasco Particular (Home Grill)', icon: 'ChefHat', color: '#f97316', macro: 'alimentacao' },
+
+  // Adicionadas Individuais (Alimentação)
+  { id: 'ind_cozinheiro', label: 'Cozinheiro (Individual)', icon: 'ChefHat', color: '#f97316', macro: 'alimentacao' },
+  { id: 'ind_aux_cozinha', label: 'Auxiliar de Cozinha (Individual)', icon: 'ChefHat', color: '#f97316', macro: 'alimentacao' },
+  { id: 'ind_garcom', label: 'Garçom (Individual)', icon: 'ChefHat', color: '#f97316', macro: 'alimentacao' },
 
   // ==========================================
   // Eventos, Entretenimento e Estética
@@ -327,7 +340,7 @@ export const VIP_PLANS: VipPlan[] = [
 ];
 
 // ============================================================
-// ESTABLISHMENT VIP PLANS (Incluindo plano Trial configurado no Admin)
+// ESTABLISHMENT VIP PLANS
 // ============================================================
 export const EST_VIP_PLANS: EstVipPlan[] = [
   { tier: 'free', label: 'Plano Gratuito', intermediationFee: 15.0, maxActiveJobs: 2, features: ['Até 2 vagas por semana', 'Taxa de intermediação de 15,0%', 'Gratuito', 'Acesso completo ao marketplace'], prices: { monthly: 0, semestral: 0, annual: 0 } },
@@ -343,7 +356,7 @@ export const tierLabel: Record<string, string> = { free: 'Free', vip1: 'VIP 1', 
 export const estTierLabel: Record<string, string> = { free: 'Gratuito', trial: 'Teste Gratuito', vip1: 'VIP 1', vip2: 'VIP 2', vip3: 'VIP 3' };
 
 // ============================================================
-// METRO MAP — São Paulo (legacy, kept for fallback)
+// METRO MAP — São Paulo
 // ============================================================
 export const METRO_MAP: MetroMap = {
   'São Paulo': ['Guarulhos', 'Osasco', 'Santo André', 'São Bernardo do Campo', 'São Caetano do Sul', 'Diadema', 'Taboão da Serra', 'Embu das Artes'],
