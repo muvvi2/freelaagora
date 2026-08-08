@@ -40,6 +40,7 @@ export interface User {
   // Freelancer-only
   cpf?: string;
   cnpj?: string;
+  gender?: 'Masculino' | 'Feminino' | 'Outro'; // <--- Adicionado aqui
   asaasWalletId?: string;
   bio?: string;
   specialties?: string[];
