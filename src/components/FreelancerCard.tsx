@@ -21,7 +21,7 @@ interface Props {
   distanceKm?: number;
 }
 
-export function FreelancerCard({ freelancer: f, onHire, onView, showAdminActions, showEdit = true, distanceKm }: Props) {
+export function FreelancerCard({ freelancer: f, onHire, onView, showAdminActions, showEdit = false, distanceKm }: Props) {
   const { updateUser, deleteEntity, data, currentUser } = useApp();
   const { notify } = useToast();
   const [editing, setEditing] = useState(false);
@@ -98,7 +98,7 @@ export function FreelancerCard({ freelancer: f, onHire, onView, showAdminActions
           <div className="flex flex-col items-end gap-2">
             {onView && <Button size="sm" variant="outline" onClick={() => onView(f)}><Eye className="h-3.5 w-3.5" /> Ver perfil</Button>}
             {onHire && <Button size="sm" onClick={() => onHire(f)}><DollarSign className="h-4 w-4" /> Contratar</Button>}
-            {showEdit && <Button size="sm" variant="ghost" onClick={() => setEditing(true)}><Pencil className="h-3.5 w-3.5" /> Editar</Button>}
+            {showEdit && isSelf && <Button size="sm" variant="ghost" onClick={() => setEditing(true)}><Pencil className="h-3.5 w-3.5" /> Editar</Button>}
           </div>
         </div>
 
@@ -109,7 +109,7 @@ export function FreelancerCard({ freelancer: f, onHire, onView, showAdminActions
         )}
       </div>
 
-      {editing && (
+      {editing && isSelf && (
         <FreelancerEditModal freelancer={f} open={editing} onClose={() => setEditing(false)} onSave={(patch) => { updateUser(f.id, patch); setEditing(false); notify('Perfil atualizado'); }} />
       )}
 
