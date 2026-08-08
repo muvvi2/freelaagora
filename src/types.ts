@@ -64,7 +64,7 @@ export interface User {
   estVipTier?: EstTier;
   estVipExpiresAt?: string;
   trialEndsAt?: string;
-  adImages?: string[]; // <--- Armazena as imagens de propaganda do VIP 4 e VIP 5
+  adImages?: string[]; // Armazena as imagens de propaganda do estabelecimento
   // Admin-only
   isAdmin?: boolean;
   adminRole?: 'super' | 'regular';
@@ -121,6 +121,8 @@ export interface EstVipPlan {
   label: string;
   intermediationFee: number;
   maxActiveJobs: number;
+  allowAds?: boolean; // Habilita ou desabilita anúncios para o plano
+  maxAds?: number;    // Quantidade máxima de anúncios permitidos para este plano
   features: string[];
   prices: Record<Period, number>;
 }
