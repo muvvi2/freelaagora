@@ -12,6 +12,7 @@ import { JobCard } from './JobCard';
 import { JobFormModal } from './JobFormModal';
 import { EscrowFlowModal } from './EscrowFlowModal';
 import { VipPanel } from './VipPanel';
+import { VipSquareWidget } from './VipSquareWidget';
 import { Modal } from './ui/Modal';
 import { EstablishmentEditModal } from './EstablishmentEditModal';
 import { CATEGORIES, MACRO_CATEGORIES } from '@/mockData';
@@ -315,8 +316,11 @@ export function ContractorView() {
           )}
         </div>
 
-        {/* Sidebar: my jobs + active contracts */}
+        {/* Sidebar: Widget VIP 4/5 + My Jobs + Active Contracts */}
         <aside className="space-y-4">
+          {/* Widget Quadrado de Anúncios VIP 4/5 (Atualiza a cada 10s) */}
+          <VipSquareWidget />
+
           <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="font-display font-bold text-neutral-900 dark:text-white">Minhas vagas</h3>
