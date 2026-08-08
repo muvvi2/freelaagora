@@ -1,4 +1,4 @@
-import { Shield, ArrowLeft, FileText, ScrollText, Fingerprint, Lock, Scale, Gavel, ExternalLink } from 'lucide-react';
+import { Shield, ArrowLeft, FileText, ScrollText, Fingerprint, Lock, Scale, Gavel, ExternalLink, Calendar } from 'lucide-react';
 import { useApp } from '@/AppContext';
 import type { VipPlan, EstVipPlan } from '@/types';
 
@@ -40,38 +40,44 @@ export function TermsPage({ onBack }: { onBack?: () => void }) {
               <p><strong>2.1.</strong> O acesso exige cadastro completo com CPF/CNPJ e endereço comercial válidos.</p>
             </Clause>
 
-            <Clause icon={Lock} title="CLÁUSULA TERCEIRA – PRIVACIDADE">
-              <p><strong>3.1.</strong> Dados de contato permanecem ocultos até a confirmação do pagamento de custódia pelo gateway parceiro (<a href="https://www.asaas.com/r/7efd51e9-dd93-4c9c-8450-7be9873f6653" target="_blank" rel="noopener noreferrer" className="text-primary-500 hover:underline inline-flex items-center gap-1 font-semibold">Asaas <ExternalLink className="h-3 w-3" /></a>).</p>
+            <Clause icon={Calendar} title="CLÁUSULA TERCEIRA – DO PERÍODO DE TESTE (TRIAL DE 15 DIAS)">
+              <p><strong>3.1.</strong> Todo novo Estabelecimento cadastrado na plataforma recebe automaticamente um período de teste gratuito (Trial) com duração de 15 (quinze) dias corridos.</p>
+              <p className="mt-2"><strong>3.2.</strong> Durante o período de teste, o Estabelecimento contará com benefícios operacionais estendidos, permitindo testar a publicação de vagas no feed conforme as configurações vigentes no Painel Administrativo.</p>
+              <p className="mt-2"><strong>3.3.</strong> Após o encerramento do prazo de 15 dias do Trial, a conta será automaticamente convertida para o plano selecionado ou para o Plano Gratuito padrão, passando a vigorar os limites e taxas correspondentes.</p>
             </Clause>
 
-            <Clause icon={Scale} title="CLÁUSULA QUARTA – DA TAXA DE INTERMEDIAÇÃO E LIQUIDAÇÃO">
-              <p><strong>4.1.</strong> O Estabelecimento concorda em pagar uma taxa de intermediação calculada sobre o valor total bruto da diária. Esta taxa será integralmente ADICIONADA ao valor bruto cobrado pelo profissional, garantindo que o valor integral do freelancer não sofra descontos ou deduções da plataforma.</p>
-              <p className="mt-2"><strong>4.2.</strong> O percentual da taxa aditiva e o limite semanal de publicações do Estabelecimento refletem em tempo real as configurações ativas no Painel Administrativo:</p>
+            <Clause icon={Lock} title="CLÁUSULA QUARTA – PRIVACIDADE">
+              <p><strong>4.1.</strong> Dados de contato permanecem ocultos até a confirmação do pagamento de custódia pelo gateway parceiro (<a href="https://www.asaas.com/r/7efd51e9-dd93-4c9c-8450-7be9873f6653" target="_blank" rel="noopener noreferrer" className="text-primary-500 hover:underline inline-flex items-center gap-1 font-semibold">Asaas <ExternalLink className="h-3 w-3" /></a>).</p>
+            </Clause>
+
+            <Clause icon={Scale} title="CLÁUSULA QUINTA – DA TAXA DE INTERMEDIAÇÃO E LIQUIDAÇÃO">
+              <p><strong>5.1.</strong> O Estabelecimento concorda em pagar uma taxa de intermediação calculada sobre o valor total bruto da diária. Esta taxa será integralmente ADICIONADA ao valor bruto cobrado pelo profissional, garantindo que o valor integral do freelancer não sofra descontos ou deduções da plataforma.</p>
+              <p className="mt-2"><strong>5.2.</strong> O percentual da taxa aditiva e o limite semanal de publicações do Estabelecimento refletem em tempo real as configurações ativas no Painel Administrativo:</p>
               <div className="mt-2">
                 <DynamicEstablishmentPlansList />
               </div>
               
               <div className="mt-4">
-                <p><strong>4.3.</strong> Planos e Benefícios Dinâmicos dos Freelancers:</p>
+                <p><strong>5.3.</strong> Planos e Benefícios Dinâmicos dos Freelancers:</p>
                 <p className="text-xs text-neutral-500 mb-2">Os benefícios e limites de categorias dos freelancers refletem em tempo real as configurações ativas no Painel Administrativo:</p>
                 <DynamicFreelancerPlansList />
               </div>
 
-              <p className="mt-4"><strong>4.4.</strong> O desbloqueio de dados de contato e a validação da reserva ficam estritamente condicionados à confirmação de compensação bancária enviada pelo gateway de pagamento.</p>
-              <p className="mt-2"><strong>4.5.</strong> Em caso de cancelamento por falta de disponibilidade do Freelancer, os valores da diária e taxas serão integralmente estornados para a carteira do Estabelecimento no prazo de 24h úteis.</p>
-              <p className="mt-2"><strong>4.6.</strong> Tentativas de burlar o sistema de pagamento geram bloqueio imediato da conta e aplicação de multa.</p>
-              <p className="mt-2"><strong>4.7.</strong> O FreelaAgora atua apenas como interface tecnológica, não sendo responsável por eventuais instabilidades, atrasos na compensação ou falhas técnicas operadas pelo gateway (<a href="https://www.asaas.com/r/7efd51e9-dd93-4c9c-8450-7be9873f6653" target="_blank" rel="noopener noreferrer" className="text-primary-500 hover:underline inline-flex items-center gap-1 font-semibold">Asaas <ExternalLink className="h-3 w-3" /></a>), cabendo ao usuário verificar o status de sua transação junto à instituição processadora.</p>
+              <p className="mt-4"><strong>5.4.</strong> O desbloqueio de dados de contato e a validação da reserva ficam estritamente condicionados à confirmação de compensação bancária enviada pelo gateway de pagamento.</p>
+              <p className="mt-2"><strong>5.5.</strong> Em caso de cancelamento por falta de disponibilidade do Freelancer, os valores da diária e taxas serão integralmente estornados para a carteira do Estabelecimento no prazo de 24h úteis.</p>
+              <p className="mt-2"><strong>5.6.</strong> Tentativas de burlar o sistema de pagamento geram bloqueio imediato da conta e aplicação de multa.</p>
+              <p className="mt-2"><strong>5.7.</strong> O FreelaAgora atua apenas como interface tecnológica, não sendo responsável por eventuais instabilidades, atrasos na compensação ou falhas técnicas operadas pelo gateway (<a href="https://www.asaas.com/r/7efd51e9-dd93-4c9c-8450-7be9873f6653" target="_blank" rel="noopener noreferrer" className="text-primary-500 hover:underline inline-flex items-center gap-1 font-semibold">Asaas <ExternalLink className="h-3 w-3" /></a>), cabendo ao usuário verificar o status de sua transação junto à instituição processadora.</p>
             </Clause>
 
-            <Clause icon={Shield} title="CLÁUSULA QUINTA – ISENÇÃO DE RESPONSABILIDADE TRABALHISTA E CIVIL">
-              <p><strong>5.1.</strong> A relação entre as partes é estritamente civil, sem qualquer vínculo empregatício ou subordinação.</p>
-              <p className="mt-2"><strong>5.2.</strong> O FreelaAgora é isento de qualquer responsabilidade por atos, omissões, litígios, acidentes ou danos causados por usuários.</p>
-              <p className="mt-2"><strong>5.3.</strong> A plataforma emite Nota Fiscal apenas sobre a sua taxa de intermediação. O valor da diária é de responsabilidade tributária do prestador.</p>
-              <p className="mt-2"><strong>5.4.</strong> O usuário causador de litígio judicial obriga-se a requerer a exclusão da plataforma do polo passivo ou arcar com todos os custos de defesa.</p>
+            <Clause icon={Shield} title="CLÁUSULA SEXTA – ISENÇÃO DE RESPONSABILIDADE TRABALHISTA E CIVIL">
+              <p><strong>6.1.</strong> A relação entre as partes é estritamente civil, sem qualquer vínculo empregatício ou subordinação.</p>
+              <p className="mt-2"><strong>6.2.</strong> O FreelaAgora é isento de qualquer responsabilidade por atos, omissões, litígios, acidentes ou danos causados por usuários.</p>
+              <p className="mt-2"><strong>6.3.</strong> A plataforma emite Nota Fiscal apenas sobre a sua taxa de intermediação. O valor da diária é de responsabilidade tributária do prestador.</p>
+              <p className="mt-2"><strong>6.4.</strong> O usuário causador de litígio judicial obriga-se a requerer a exclusão da plataforma do polo passivo ou arcar com todos os custos de defesa.</p>
             </Clause>
 
-            <Clause icon={Gavel} title="CLÁUSULA SEXTA – ASSINATURA ELETRÔNICA">
-              <p><strong>6.1.</strong> O clique em 'Aceito' registra o IP e metadados como assinatura digital vinculante e jurídica.</p>
+            <Clause icon={Gavel} title="CLÁUSULA SÉTIMA – ASSINATURA ELETRÔNICA">
+              <p><strong>7.1.</strong> O clique em 'Aceito' registra o IP e metadados como assinatura digital vinculante e jurídica.</p>
             </Clause>
           </div>
 
@@ -97,6 +103,7 @@ function DynamicEstablishmentPlansList() {
         let jobsLimit = plan.maxActiveJobs;
         if (!jobsLimit || jobsLimit <= 0) {
           if (plan.tier === 'free') jobsLimit = 2;
+          else if (plan.tier === 'trial') jobsLimit = 10;
           else if (plan.tier === 'vip1') jobsLimit = 5;
           else if (plan.tier === 'vip2') jobsLimit = 20;
           else jobsLimit = 999;
