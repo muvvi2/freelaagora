@@ -177,12 +177,33 @@ export function ContractorView() {
               <Button variant="outline" onClick={() => setShowFilters((s) => !s)} className={showFilters ? 'border-primary-400 text-primary-600' : ''}><SlidersHorizontal className="h-4 w-4" /></Button>
             </div>
 
-            {/* Macro category chips */}
-            <div className="no-scrollbar flex gap-1.5 overflow-x-auto">
-              <button onClick={() => { setMacroFilter('all'); setCategory('all'); }} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition ${macroFilter === 'all' ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'}`}>Todas</button>
-              {MACRO_CATEGORIES.map((m) => (
-                <button key={m.id} onClick={() => { setMacroFilter(m.id); setCategory('all'); }} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition ${macroFilter === m.id ? 'text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'}`} style={macroFilter === m.id ? { backgroundColor: m.color } : undefined}>{m.label}</button>
-              ))}
+            {/* Macro category chips - Rolagem horizontal fluida */}
+            <div className="no-scrollbar flex gap-2 overflow-x-auto pb-2 scroll-smooth">
+              <button 
+                onClick={() => { setMacroFilter('all'); setCategory('all'); }} 
+                className={`shrink-0 rounded-xl px-4 py-2 text-xs font-semibold transition ${
+                  macroFilter === 'all' 
+                    ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-sm' 
+                    : 'border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800'
+                }`}
+              >
+                Todas
+              </button>
+              {MACRO_CATEGORIES.map((m) => {
+                const active = macroFilter === m.id;
+                return (
+                  <button 
+                    key={m.id} 
+                    onClick={() => { setMacroFilter(m.id); setCategory('all'); }} 
+                    className={`shrink-0 rounded-xl px-4 py-2 text-xs font-semibold transition ${
+                      active ? 'text-white shadow-sm' : 'border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800'
+                    }`} 
+                    style={active ? { backgroundColor: m.color } : undefined}
+                  >
+                    {m.label}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Distance slider (always visible) */}
