@@ -41,7 +41,9 @@ export function ContractorView() {
   const [escrowContract, setEscrowContract] = useState<Contract | null>(null);
   const [jobForm, setJobForm] = useState<{ open: boolean; editing: Job | null }>({ open: false, editing: null });
   const [editEstablishment, setEditEstablishment] = useState(false);
-  const [vipOpen, setVipOpen] = useState(false);
+  
+  // Estado alterado para alternar para a página inteira de VIP em vez de modal
+  const [viewVipPage, setViewVipPage] = useState(false);
 
   const myJobs = data.jobs.filter((j) => j.establishmentId === me.id);
   const myContracts = data.contracts.filter((c) => c.establishmentId === me.id);
@@ -56,7 +58,6 @@ export function ContractorView() {
     );
   };
 
-  // Pega direto do endereço cadastrado/editado pelo CEP do estabelecimento
   const establishmentCity = me.address?.city || 'Pitangueiras';
   const establishmentState = me.address?.state || 'SP';
 
@@ -68,23 +69,17 @@ export function ContractorView() {
     let list = data.users.filter((f) => {
       if (f.accountType !== 'freelancer' || f.isAdmin || f.banned) return false;
       
-      // Filtro Geográfico Real por Raio em KM (se Km Livre não estiver ativo)
       if (!isUnlimited && !isWithinRadius(f, origin, radiusKm)) return false;
 
-      // Macro category filter
       if (macroFilter !== 'all') {
         const macroCats = CATEGORIES.filter((c) => c.macro === macroFilter).map((c) => c.id);
         if (!(f.categories ?? []).some((c) => macroCats.includes(c))) return false;
       }
-      // Specific category filter
       if (category !== 'all' && !(f.categories ?? []).includes(category)) return false;
-      // Rating filter
       if ((f.rating ?? 0) < minRating) return false;
-      // Date availability filter
       if (dateFilter === 'today' && !isAvailableToday(f)) return false;
       if (dateFilter === 'tomorrow' && !isAvailableTomorrow(f)) return false;
       if (dateFilter === 'custom' && customDate && !isFreelancerAvailableOn(f, customDate)) return false;
-      // Text search
       if (query) {
         const q = query.toLowerCase();
         const catLabels = (f.categories ?? []).map((c) => categoryById(c)?.label.toLowerCase() ?? '').join(' ');
@@ -93,31 +88,16 @@ export function ContractorView() {
       return true;
     });
 
-    // 3-tier sort: VIP tier → chosen sort → distance
     const tierRank: Record<string, number> = { vip3: 0, vip2: 1, vip1: 2, free: 3 };
     list = [...list].sort((a, b) => {
       const tierDiff = (tierRank[a.vipTier ?? 'free'] ?? 3) - (tierRank[b.vipTier ?? 'free'] ?? 3);
       if (tierDiff !== 0) return tierDiff;
       if (sortBy === 'rating') return (b.rating ?? 0) - (a.rating ?? 0);
       if (sortBy === 'price') return (a.dailyRate ?? 9999) - (b.dailyRate ?? 9999);
-      // distance sort (default)
       return distanceBetween(a.address, origin) - distanceBetween(b.address, origin);
     });
     return list;
   }, [data.users, origin, radiusKm, isUnlimited, macroFilter, category, minRating, dateFilter, customDate, query, sortBy, categoryById]);
-
-  // Lista dinâmica de cidades presentes no raio filtrado
-  const matchingCities = useMemo(() => {
-    if (isUnlimited) return ['Todas as cidades (Km Livre / Nacional)'];
-    const citiesSet = new Set<string>();
-    filtered.forEach((f) => {
-      if (f.address?.city) {
-        citiesSet.add(f.address.city);
-      }
-    });
-    const arr = Array.from(citiesSet);
-    return arr.length > 0 ? arr : [establishmentCity];
-  }, [filtered, isUnlimited, establishmentCity]);
 
   const handleHire = (f: User) => {
     const hours = 8;
@@ -127,6 +107,17 @@ export function ContractorView() {
     setEscrowContract(contract);
     notify('Solicitação de contratação enviada! Aguarde a confirmação do freelancer.');
   };
+
+  // Se o usuário clicou em Plano VIP, renderiza a página inteira dedicada
+  if (viewVipPage) {
+    return (
+      <VipPanel 
+        userId={me.id} 
+        accountType="establishment" 
+        onBack={() => setViewVipPage(false)} 
+      />
+    );
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
@@ -147,7 +138,8 @@ export function ContractorView() {
           </div>
           <div className="flex gap-2">
             <Button size="sm" variant="outline" className="border-white/30 bg-white/10 text-white backdrop-blur hover:bg-white/20" onClick={() => setEditEstablishment(true)}><Pencil className="h-3.5 w-3.5" /> Editar</Button>
-            <Button size="sm" className="bg-gradient-to-r from-warning-500 to-warning-600 text-white shadow-lg hover:from-warning-600 hover:to-warning-700" onClick={() => setVipOpen(true)}><Crown className="h-3.5 w-3.5" /> Plano VIP</Button>
+            {/* Botão atualizado para abrir a página inteira */}
+            <Button size="sm" className="bg-gradient-to-r from-warning-500 to-warning-600 text-white shadow-lg hover:from-warning-600 hover:to-warning-700" onClick={() => setViewVipPage(true)}><Crown className="h-3.5 w-3.5" /> Plano VIP</Button>
           </div>
         </div>
       </div>
@@ -316,9 +308,8 @@ export function ContractorView() {
           )}
         </div>
 
-        {/* Sidebar: Widget VIP 4/5 + My Jobs + Active Contracts */}
+        {/* Sidebar: Widget VIP + My Jobs + Active Contracts */}
         <aside className="space-y-4">
-          {/* Widget Quadrado de Anúncios VIP 4/5 (Atualiza a cada 10s) */}
           <VipSquareWidget />
 
           <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
@@ -364,9 +355,6 @@ export function ContractorView() {
       {escrowContract && <EscrowFlowModal contract={escrowContract} open={!!escrowContract} onClose={() => setEscrowContract(null)} />}
       <JobFormModal open={jobForm.open} onClose={() => setJobForm({ open: false, editing: null })} editing={jobForm.editing} establishment={me} />
       <EstablishmentEditModal establishment={me} open={editEstablishment} onClose={() => setEditEstablishment(false)} />
-      <Modal open={vipOpen} onClose={() => setVipOpen(false)} title="Plano de Destaque" size="lg">
-        <VipPanel userId={me.id} accountType="establishment" />
-      </Modal>
     </div>
   );
 }
