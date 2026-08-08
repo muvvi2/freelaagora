@@ -270,7 +270,7 @@ function RegisterForm({ onClose, onSwitch, onNavigateTerms }: { onClose: () => v
                 rel="noreferrer"
                 className="inline-flex items-center gap-1 text-xs font-bold text-primary-600 hover:underline dark:text-primary-400"
               >
-                Criar conta gratuita no Asaas (Indicação FreelaAgora)
+                Criar conta gratuita no Asaas (Indicação https://www.asaas.com/r/7efd51e9-dd93-4c9c-8450-7be9873f6653)
                 <ExternalLink className="h-3 w-3" />
               </a>
             </div>
