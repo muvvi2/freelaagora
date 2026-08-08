@@ -15,7 +15,7 @@ import { VipPanel } from './VipPanel';
 import { Modal } from './ui/Modal';
 import { EstablishmentEditModal } from './EstablishmentEditModal';
 import { CATEGORIES, MACRO_CATEGORIES, metroNearby } from '@/mockData';
-import { formatCurrency, downloadTaxReceipt, distanceBetween, isWithinRadius, isAvailableToday, isAvailableTomorrow, isFreelancerAvailableOn, isEstablishmentOnTrial, trialDaysLeft } from '@/utils';
+import { formatCurrency, downloadTaxReceipt, distanceBetween, isWithinRadius, isAvailableToday, isAvailableTomorrow, isFreelancerAvailableOn, isEstablishmentOnTrial, trialDaysLeft, formatDateBR } from '@/utils';
 import type { User, Job, Contract } from '@/types';
 
 export function ContractorView() {
@@ -139,7 +139,9 @@ export function ContractorView() {
             <Crown className="h-5 w-5" />
           </div>
           <div>
-            <p className="font-display text-sm font-bold text-success-800 dark:text-success-300">Período de teste gratuito — {trialDaysLeft(me)} dias restantes</p>
+            <p className="font-display text-sm font-bold text-success-800 dark:text-success-300">
+              Período de teste gratuito — {trialDaysLeft(me)} dias restantes {me.trialEndsAt ? `(Expira em ${formatDateBR(me.trialEndsAt)})` : ''}
+            </p>
             <p className="text-xs text-success-700 dark:text-success-400">Você não paga nenhuma taxa de intermediação durante os 15 primeiros dias. Após esse período, as taxas do seu plano serão aplicadas automaticamente.</p>
           </div>
         </div>
