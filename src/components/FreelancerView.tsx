@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User as UserIcon, MapPin, Tags, Calendar, Crown, Wallet, Briefcase, Fingerprint, ShieldCheck, MessageSquare, Save, Inbox, Megaphone, Upload } from 'lucide-react';
+import { User as UserIcon, MapPin, Tags, Calendar, Crown, Wallet, Briefcase, Fingerprint, ShieldCheck, MessageSquare, Save, Inbox, Megaphone, Upload, Check } from 'lucide-react'; // Adicionei o Check aqui
 import { useApp } from '@/AppContext';
 import { useToast } from './ui/Toast';
 import { Avatar } from './ui/Avatar';
@@ -15,8 +15,8 @@ import { EscrowFlowModal } from './EscrowFlowModal';
 import { ReviewModal } from './ReviewModal';
 
 import { formatCurrency, getPlan, countAvailableSlots, maskCEP, maskDocumentDisplay, formatDateTime } from '@/utils';
-import { CategoryCombobox } from './ui/CategoryCombobox';
 import type { Contract, ShiftSlot, Address } from '@/types';
+import { CATEGORIES, MACRO_CATEGORIES } from '@/mockData'; // Adicionado MACRO_CATEGORIES
 
 const STATES = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
 
@@ -92,7 +92,6 @@ export function FreelancerView() {
         <div className="space-y-6">
           {tab === 'opportunities' && (
             <div className="grid gap-6 lg:grid-cols-2">
-              {/* Left: Convites Diretos */}
               <section className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
                 <h2 className="mb-4 flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white"><Inbox className="h-5 w-5 text-primary-500" /> Convites Diretos</h2>
                 {myContracts.filter((c) => c.status === 'requested' || c.status === 'confirmed').length > 0 ? (
@@ -112,8 +111,6 @@ export function FreelancerView() {
                   </div>
                 )}
               </section>
-
-              {/* Right: Mural de Vagas */}
               <section className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
                 <h2 className="mb-4 flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white"><Megaphone className="h-5 w-5 text-secondary-500" /> Mural de Vagas</h2>
                 {openJobs.length > 0 ? (
@@ -155,7 +152,6 @@ export function FreelancerView() {
           )}
         </div>
 
-        {/* Sidebar: contracts */}
         <aside className="space-y-4">
           {myContracts.length > 0 && (
             <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
@@ -188,8 +184,100 @@ export function FreelancerView() {
 }
 
 // ============================================================
-// TAB 1: Dados Pessoais, Foto e Documentação
+// TAB 3: Especialidades e Valores (Versão 2 Colunas)
 // ============================================================
+function SpecialtiesTab({ me, onToggleCat, onSave }: { me: import('@/types').User; onToggleCat: (catId: string) => void; onSave: (patch: Partial<import('@/types').User>) => void }) {
+  const { data } = useApp();
+  const plan = getPlan(me.vipTier ?? 'free', data.vipPlans);
+  const [hourlyRate, setHourlyRate] = useState(String(me.hourlyRate ?? 0));
+  const [dailyRate, setDailyRate] = useState(String(me.dailyRate ?? 0));
+  const [serviceRadius, setServiceRadius] = useState(String(me.serviceRadiusKm ?? 25));
+  const [interstate, setInterstate] = useState(me.acceptsInterstate ?? false);
+  
+  // Estado para a coluna da esquerda (Macros)
+  const [selectedMacro, setSelectedMacro] = useState(MACRO_CATEGORIES[0].id);
+
+  // Filtra categorias pela macro selecionada
+  const filteredCategories = CATEGORIES.filter(cat => cat.macro === selectedMacro);
+
+  return (
+    <section className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
+      <h2 className="mb-4 flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white"><Tags className="h-5 w-5 text-primary-500" /> Especialidades e Valores</h2>
+
+      <div className="mb-4">
+        <label className="mb-2 block text-xs font-semibold text-neutral-500 uppercase tracking-wider">Categorias profissionais</label>
+        
+        {/* Layout Duas Colunas */}
+        <div className="flex border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden h-[400px]">
+          {/* Esquerda: Macros */}
+          <div className="w-1/3 bg-neutral-50 dark:bg-neutral-800 overflow-y-auto border-r border-neutral-200 dark:border-neutral-700">
+            {MACRO_CATEGORIES.map(macro => (
+              <button
+                key={macro.id}
+                onClick={() => setSelectedMacro(macro.id)}
+                className={`w-full p-4 text-left text-sm font-medium border-b border-neutral-200 dark:border-neutral-700 transition ${
+                  selectedMacro === macro.id 
+                  ? 'bg-white dark:bg-neutral-900 border-l-4 border-l-primary-500 text-primary-600' 
+                  : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'
+                }`}
+              >
+                {macro.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Direita: Especialidades */}
+          <div className="w-2/3 overflow-y-auto p-4 space-y-1">
+            {filteredCategories.map(cat => {
+              const isSelected = (me.categories || []).includes(cat.id);
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => onToggleCat(cat.id)}
+                  className={`w-full flex items-center justify-between p-3 rounded-lg text-sm transition ${
+                    isSelected ? 'bg-primary-50 text-primary-700 font-semibold' : 'hover:bg-neutral-50 text-neutral-700 dark:text-neutral-300'
+                  }`}
+                >
+                  {cat.label}
+                  {isSelected && <Check className="h-4 w-4 text-primary-600" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        
+        {(me.categories ?? []).length >= plan.maxCategories && (
+          <p className="mt-3 text-xs text-amber-600">Limite do plano {plan.label} atingido.</p>
+        )}
+      </div>
+
+      {/* Outros campos (valores, etc) */}
+      <div className="mb-4 rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-800/50">
+        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300"><MapPin className="h-4 w-4 text-primary-500" /> Área de Atendimento</h3>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-neutral-500">Raio de atendimento (km)</label>
+            <input type="number" min={1} max={500} value={serviceRadius} onChange={(e) => setServiceRadius(e.target.value)}
+              className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100" />
+          </div>
+          <div className="flex items-end">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+              <input type="checkbox" checked={interstate} onChange={(e) => setInterstate(e.target.checked)} className="h-4 w-4 rounded border-neutral-300 text-primary-500 focus:ring-primary-500/20" />
+              Aceito contratos interestaduais
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Input label="Valor da Hora Comercial (R$/h)" type="number" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} placeholder="45" />
+        <Input label="Valor da Diária Fechada (R$)" type="number" value={dailyRate} onChange={(e) => setDailyRate(e.target.value)} placeholder="320" />
+      </div>
+      <Button className="mt-4" onClick={() => onSave({ hourlyRate: Number(hourlyRate) || 0, dailyRate: Number(dailyRate) || 0, serviceRadiusKm: Number(serviceRadius) || 25, acceptsInterstate: interstate })}><Save className="h-4 w-4" /> Salvar valores</Button>
+    </section>
+  );
+}
+
 function PersonalTab({ me, onSave }: { me: import('@/types').User; onSave: (patch: Partial<import('@/types').User>) => void }) {
   const [name, setName] = useState(me.name);
   const [nickname, setNickname] = useState(me.nickname ?? '');
@@ -259,9 +347,6 @@ function PersonalTab({ me, onSave }: { me: import('@/types').User; onSave: (patc
   );
 }
 
-// ============================================================
-// TAB 2: Endereço Completo com Busca Automática por CEP
-// ============================================================
 function AddressTab({ me, onSave }: { me: import('@/types').User; onSave: (addr: Address) => void }) {
   const [addr, setAddr] = useState<Address>(me.address);
   const { notify } = useToast();
@@ -310,67 +395,6 @@ function AddressTab({ me, onSave }: { me: import('@/types').User; onSave: (addr:
         </Select>
       </div>
       <Button className="mt-4" onClick={() => onSave(addr)}><Save className="h-4 w-4" /> Salvar endereço</Button>
-    </section>
-  );
-}
-
-// ============================================================
-// TAB 3: Especialidades e Valores
-// ============================================================
-function SpecialtiesTab({ me, onToggleCat, onSave }: { me: import('@/types').User; onToggleCat: (catId: string) => void; onSave: (patch: Partial<import('@/types').User>) => void }) {
-  const { data } = useApp();
-  const plan = getPlan(me.vipTier ?? 'free', data.vipPlans);
-  const [hourlyRate, setHourlyRate] = useState(String(me.hourlyRate ?? 0));
-  const [dailyRate, setDailyRate] = useState(String(me.dailyRate ?? 0));
-  const [serviceRadius, setServiceRadius] = useState(String(me.serviceRadiusKm ?? 25));
-  const [interstate, setInterstate] = useState(me.acceptsInterstate ?? false);
-
-  const handleCategoriesChange = (ids: string[]) => {
-    const current = me.categories ?? [];
-    for (const id of ids) { if (!current.includes(id)) onToggleCat(id); }
-    for (const id of current) { if (!ids.includes(id)) onToggleCat(id); }
-  };
-
-  return (
-    <section className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
-      <h2 className="mb-4 flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white"><Tags className="h-5 w-5 text-primary-500" /> Especialidades e Valores</h2>
-
-      <div className="mb-4">
-        <CategoryCombobox
-          selected={me.categories ?? []}
-          onChange={handleCategoriesChange}
-          maxSelections={plan.maxCategories}
-          allowCustom={plan.tier !== 'free'}
-          customCategories={[]}
-          label="Categorias profissionais"
-        />
-        {plan.maxCategories <= 2 && (me.categories ?? []).length >= plan.maxCategories && (
-          <p className="mt-3 rounded-lg bg-primary-50 p-2 text-xs text-primary-600 dark:bg-primary-500/10 dark:text-primary-400">Você atingiu o limite de categorias do plano Free. Faça upgrade para VIP para selecionar mais!</p>
-        )}
-      </div>
-
-      <div className="mb-4 rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-800/50">
-        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300"><MapPin className="h-4 w-4 text-primary-500" /> Área de Atendimento</h3>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-neutral-500">Raio de atendimento (km)</label>
-            <input type="number" min={1} max={500} value={serviceRadius} onChange={(e) => setServiceRadius(e.target.value)}
-              className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100" />
-          </div>
-          <div className="flex items-end">
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
-              <input type="checkbox" checked={interstate} onChange={(e) => setInterstate(e.target.checked)} className="h-4 w-4 rounded border-neutral-300 text-primary-500 focus:ring-primary-500/20" />
-              Aceito contratos interestaduais
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Input label="Valor da Hora Comercial (R$/h)" type="number" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} placeholder="45" />
-        <Input label="Valor da Diária Fechada (R$)" type="number" value={dailyRate} onChange={(e) => setDailyRate(e.target.value)} placeholder="320" />
-      </div>
-      <Button className="mt-4" onClick={() => onSave({ hourlyRate: Number(hourlyRate) || 0, dailyRate: Number(dailyRate) || 0, serviceRadiusKm: Number(serviceRadius) || 25, acceptsInterstate: interstate })}><Save className="h-4 w-4" /> Salvar valores</Button>
     </section>
   );
 }
