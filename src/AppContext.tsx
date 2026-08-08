@@ -219,18 +219,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const est = data.users.find((u) => u.id === j.establishmentId);
     if (!est) return { ok: false, error: 'Estabelecimento não encontrado.' };
 
-    const plan = getEstPlan(est.estVipTier ?? 'free', data.estVipPlans);
-    const isOnTrial = est.trialEndsAt && new Date(est.trialEndsAt) > new Date();
-    const effectiveMaxJobs = isOnTrial ? 10 : (plan?.maxActiveJobs ?? 2);
+    // Mapeamento direto e seguro dos limites de vagas por plano de estabelecimento
+    const tierMaxJobs: Record<string, number> = {
+      free: 2,
+      vip1: 5,
+      vip2: 10,
+      vip3: 999,
+    };
+
+    const currentTier = est.estVipTier ?? 'free';
+    const planMaxJobs = tierMaxJobs[currentTier] ?? 2;
+
+    const isOnTrial = est.trialEndsAt ? new Date(est.trialEndsAt) > new Date() : false;
+    const effectiveMaxJobs = isOnTrial ? 10 : planMaxJobs;
 
     const activeJobsCount = data.jobs.filter((job) => job.establishmentId === est.id && job.status !== 'closed').length;
 
-    console.log(`🔒 [TRAVA DE VAGAS] Estabelecimento: ${est.name} | Plano: ${est.estVipTier ?? 'free'} | Vagas Ativas Atuais: ${activeJobsCount} | Máximo Permitido: ${effectiveMaxJobs}`);
+    console.log(`🔒 [TRAVA DE VAGAS] Estabelecimento: ${est.name} | Tier: ${currentTier} | Em Trial: ${isOnTrial} | Ativas: ${activeJobsCount} | Limite: ${effectiveMaxJobs}`);
 
     if (activeJobsCount >= effectiveMaxJobs) {
       return { 
         ok: false, 
-        error: `Limite atingido! Seu plano atual permite no máximo ${effectiveMaxJobs} vagas ativas simultaneamente.` 
+        error: `Limite atingido! Seu plano (${currentTier.toUpperCase()}) permite até ${effectiveMaxJobs} vagas ativas simultâneas. Faça um upgrade para o VIP para publicar mais.` 
       };
     }
 
