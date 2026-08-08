@@ -32,15 +32,16 @@ export function JobFormModal({ open, onClose, editing, establishment }: { open: 
       // 1. Descobre o plano atual do estabelecimento
       const plan = getEstPlan(establishment.estVipTier ?? 'free', data.estVipPlans);
 
-      // 2. Verifica se o estabelecimento está no período de teste de 15 dias (se estiver, libera vagas ilimitadas ou tratamento especial)
+      // 2. Verifica se está no período de teste (Trial). Durante o trial, limitamos ao equivalente ao VIP 2 (máximo de 10 vagas)
       const isOnTrial = establishment.trialEndsAt && new Date(establishment.trialEndsAt) > new Date();
+      const effectiveMaxJobs = isOnTrial ? 10 : plan.maxActiveJobs;
 
-      // 3. Conta quantas vagas ativas (ou pausadas) o estabelecimento já tem publicadas
+      // 3. Conta quantas vagas ativas o estabelecimento já tem publicadas
       const activeJobsCount = data.jobs.filter((j) => j.establishmentId === establishment.id && j.status !== 'closed').length;
 
-      // 4. Se não estiver no trial e atingiu o limite do plano, bloqueia e avisa
-      if (!isOnTrial && activeJobsCount >= plan.maxActiveJobs) {
-        notify(`Limite atingido! Seu plano atual permite até ${plan.maxActiveJobs} vagas ativas. Faça um upgrade para o VIP para publicar mais.`, 'error');
+      // 4. Se atingiu o limite permitido, bloqueia e avisa
+      if (activeJobsCount >= effectiveMaxJobs) {
+        notify(`Limite atingido! ${isOnTrial ? 'Seu período de teste permite até 10 vagas ativas.' : `Seu plano atual permite até ${effectiveMaxJobs} vagas ativas.`} Faça um upgrade para o VIP para publicar mais.`, 'error');
         return;
       }
 
