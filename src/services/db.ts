@@ -4,7 +4,7 @@ import { emptyAvailability, fullAvailability } from '@/mockData';
 import type {
   User, Job, Contract, WalletTx, AppNotification, Review,
   AppData, WeekAvailability, DateAvailability, DayKey, Tier, EstTier,
-  PaymentSettings, PaymentProviderId, PaymentProviderConfig,
+  PaymentSettings, PaymentProviderId, PaymentProviderConfig, VipPlan, EstVipPlan,
 } from '@/types';
 
 const DAY_KEYS: DayKey[] = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
@@ -235,12 +235,15 @@ const STATUS_FROM_DB: Record<string, string> = {
   canceled: 'cancelled',
 };
 
-const VIP_TIER_MAP: Record<string, number> = { free: 1, vip1: 2, vip2: 3, vip3: 4, vip4: 5, vip5: 6, vip6: 7 };
+const VIP_TIER_MAP: Record<string, number> = { free: 4, vip1: 5, vip2: 6, vip3: 7, vip4: 8, vip5: 9, vip6: 10, trial: 4 };
 
-// Mapeamento dinâmico baseado inteiramente no mockData
+function tierToId(tier: string): number {
+  return VIP_TIER_MAP[tier] ?? 4;
+}
+
 function categorySlugToId(slug: string): number | null {
   const index = CATEGORIES.findIndex((c) => c.id === slug);
-  if (index === -1) return 1; // Fallback para a primeira categoria se não encontrar
+  if (index === -1) return 1;
   return index + 1;
 }
 
@@ -374,7 +377,7 @@ function mapUserToFlProfile(user: User): Partial<DbFreelancerProfile> {
     hourly_rate: user.hourlyRate ?? 0,
     daily_rate: user.dailyRate ?? 0,
     pix_key: user.pixKey ?? null,
-    vip_plan_id: user.vipTier ? VIP_TIER_MAP[user.vipTier] : 1,
+    vip_plan_id: user.vipTier ? tierToId(user.vipTier) : 4,
     vip_expires_at: user.vipExpiresAt ?? null,
     rating_average: user.rating ?? 5,
     reviews_count: user.reviewsCount ?? 0,
@@ -392,7 +395,7 @@ function mapUserToEsProfile(user: User): Partial<DbEstablishmentProfile> {
     company_description: user.bio ?? null,
     establishment_type: user.establishmentType ?? null,
     address: `${user.address.street}, ${user.address.number}`,
-    vip_plan_id: user.estVipTier ? VIP_TIER_MAP[user.estVipTier] : 1,
+    vip_plan_id: user.estVipTier ? tierToId(user.estVipTier) : 4,
     vip_expires_at: user.estVipExpiresAt ?? null,
     rating_average: user.rating ?? 0,
     reviews_count: user.reviewsCount ?? 0,
@@ -569,6 +572,51 @@ function mapJobToDbRow(j: Job): Partial<DbJob> {
 }
 
 // ============================================================
+// VIP PLANS DB OPERATIONS
+// ============================================================
+export async function dbUpsertVipPlan(plan: VipPlan): Promise<void> {
+  const planId = tierToId(plan.tier);
+  const { error } = await supabase.from('vip_plans_freelancer').upsert({
+    id: planId,
+    name: plan.label,
+    max_categories: plan.maxCategories,
+    monthly_price: plan.prices.monthly,
+    semestral_price: plan.prices.semestral,
+    annual_price: plan.prices.annual,
+    search_boost_level: plan.tier === 'free' ? 0 : 1,
+    badge_type: plan.badge || null,
+  } as never, { onConflict: 'id' });
+
+  if (error) console.error('Erro ao salvar plano freelancer:', error.message);
+}
+
+export async function dbDeleteVipPlan(tier: Tier): Promise<void> {
+  const planId = tierToId(tier);
+  const { error } = await supabase.from('vip_plans_freelancer').delete().eq('id', planId);
+  if (error) console.error('Erro ao deletar plano freelancer:', error.message);
+}
+
+export async function dbUpsertEstVipPlan(plan: EstVipPlan): Promise<void> {
+  const planId = tierToId(plan.tier);
+  const { error } = await supabase.from('vip_plans_establishment').upsert({
+    id: planId,
+    name: plan.label,
+    intermediation_fee_percentage: plan.intermediationFee,
+    monthly_price: plan.prices.monthly,
+    semestral_price: plan.prices.semestral,
+    annual_price: plan.prices.annual,
+  } as never, { onConflict: 'id' });
+
+  if (error) console.error('Erro ao salvar plano de estabelecimento:', error.message);
+}
+
+export async function dbDeleteEstVipPlan(tier: EstTier): Promise<void> {
+  const planId = tierToId(tier);
+  const { error } = await supabase.from('vip_plans_establishment').delete().eq('id', planId);
+  if (error) console.error('Erro ao deletar plano de estabelecimento:', error.message);
+}
+
+// ============================================================
 // LOAD ALL DATA
 // ============================================================
 export async function loadAllData(): Promise<AppData> {
@@ -576,6 +624,7 @@ export async function loadAllData(): Promise<AppData> {
     usersRes, flProfilesRes, esProfilesRes, flCategoriesRes, flAvailRes,
     contractsRes, eventsRes, contractReviewsRes, walletRes, notifRes,
     jobsRes, applicantsRes, couponsRes, auditRes, configRes, paymentRes,
+    vipFlRes, vipEsRes,
   ] = await Promise.all([
     supabase.from('users').select('*'),
     supabase.from('freelancer_profiles').select('*'),
@@ -593,6 +642,8 @@ export async function loadAllData(): Promise<AppData> {
     supabase.from('admin_audit_logs').select('*').order('created_at', { ascending: false }),
     supabase.from('platform_config').select('*').limit(1).maybeSingle(),
     supabase.from('payment_settings').select('*').limit(1).maybeSingle(),
+    supabase.from('vip_plans_freelancer').select('*'),
+    supabase.from('vip_plans_establishment').select('*'),
   ]);
 
   const usersRows = (usersRes.data ?? []) as unknown as DbUser[];
@@ -691,6 +742,45 @@ export async function loadAllData(): Promise<AppData> {
     createdAt: row.created_at,
   }));
 
+  let vipPlans: VipPlan[] = VIP_PLANS;
+  if (vipFlRes.data && vipFlRes.data.length > 0) {
+    vipPlans = vipFlRes.data.map((p: any) => {
+      const tierKey = p.id === 5 ? 'vip1' : p.id === 6 ? 'vip2' : p.id === 7 ? 'vip3' : p.id === 8 ? 'vip4' : p.id === 9 ? 'vip5' : p.id === 10 ? 'vip6' : 'free';
+      return {
+        tier: tierKey as Tier,
+        label: p.name || `VIP ${p.id}`,
+        maxCategories: p.max_categories || 5,
+        prices: {
+          monthly: Number(p.monthly_price || 0),
+          semestral: Number(p.semestral_price || 0),
+          annual: Number(p.annual_price || 0),
+        },
+        badge: p.badge_type || undefined,
+        features: ['Plano personalizado'],
+      };
+    });
+  }
+
+  let estVipPlans: EstVipPlan[] = EST_VIP_PLANS;
+  if (vipEsRes.data && vipEsRes.data.length > 0) {
+    estVipPlans = vipEsRes.data.map((p: any) => {
+      const tierKey = p.id === 5 ? 'vip1' : p.id === 6 ? 'vip2' : p.id === 7 ? 'vip3' : p.id === 8 ? 'vip4' : p.id === 9 ? 'vip5' : p.id === 10 ? 'vip6' : 'free';
+      return {
+        tier: tierKey as EstTier,
+        label: p.name || `VIP ${p.id}`,
+        intermediationFee: Number(p.intermediation_fee_percentage || 0),
+        maxActiveJobs: 999,
+        allowAds: ['vip4', 'vip5', 'vip6'].includes(tierKey),
+        prices: {
+          monthly: Number(p.monthly_price || 0),
+          semestral: Number(p.semestral_price || 0),
+          annual: Number(p.annual_price || 0),
+        },
+        features: ['Plano personalizado'],
+      };
+    });
+  }
+
   let paymentSettings: PaymentSettings = { activeProvider: 'asaas', configs: {} };
   if (paymentRes.data) {
     const ps = paymentRes.data as { active_provider: string; configs: Record<string, unknown> };
@@ -724,8 +814,8 @@ export async function loadAllData(): Promise<AppData> {
     config: { defaultFeePercent: configRes.data ? Number((configRes.data as { default_fee_percent: number }).default_fee_percent) : 15.0 },
     paymentSettings,
     currentUserId: null,
-    vipPlans: VIP_PLANS,
-    estVipPlans: EST_VIP_PLANS,
+    vipPlans,
+    estVipPlans,
   };
 }
 
