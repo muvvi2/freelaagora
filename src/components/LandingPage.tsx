@@ -75,7 +75,7 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
           </div>
         </nav>
 
-        {/* Main otimizado */}
+        {/* Main otimizado com o carrossel incluído */}
         <main className="flex flex-1 flex-col items-center justify-start px-4 pt-2 pb-12 text-center sm:px-8">
           <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-neutral-300 backdrop-blur">
             <Shield className="h-3.5 w-3.5 text-secondary-400" />
@@ -89,8 +89,10 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
             O marketplace de contratação emergencial de freelancers para bares, restaurantes, buffets, eventos, serviços gerais, saúde, oficinas e logística.
           </p>
 
-          {/* Carrossel de Loop Infinito com Múltiplas Fotos/Anúncios dinâmicos */}
-          <VipEstablishmentsCarousel />
+          {/* Carrossel de Anúncios Integrado na Home */}
+          <div className="w-full max-w-5xl my-4">
+            <VipEstablishmentsCarousel />
+          </div>
 
           <div className="mt-6 grid w-full max-w-4xl grid-cols-1 gap-3 sm:grid-cols-3">
             <FeatureCard icon={Wallet} title="Garantia (Escrow)" desc="Pagamento retido até a conclusão do serviço. Segurança para os dois lados." />
@@ -109,30 +111,23 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
   );
 }
 
-// Carrossel de Loop Infinito com múltiplos anúncios dinâmicos baseados no painel admin
+// Carrossel de Loop Infinito corrigido para exibir os anúncios cadastrados
 function VipEstablishmentsCarousel() {
   const { data } = useApp();
   const activeAds: { establishmentName: string; imageUrl: string; city: string; state: string }[] = [];
   
   data.users.forEach((u) => {
-    if (u.accountType === 'establishment' && u.estVipTier && u.estVipTier !== 'free' && u.adImages && u.adImages.length > 0) {
-      const isOnTrial = u.trialEndsAt ? new Date(u.trialEndsAt) > new Date() : false;
-      const currentTier = isOnTrial ? 'trial' : u.estVipTier;
-      const plan = data.estVipPlans.find((p) => p.tier === currentTier);
-
-      // Verifica se o plano do estabelecimento permite anúncios dinamicamente
-      if (plan?.allowAds) {
-        u.adImages.forEach((img) => {
-          if (img && img.trim() !== '') {
-            activeAds.push({
-              establishmentName: u.name,
-              imageUrl: img,
-              city: u.address?.city || '',
-              state: u.address?.state || '',
-            });
-          }
-        });
-      }
+    if (u.accountType === 'establishment' && u.adImages && u.adImages.length > 0) {
+      u.adImages.forEach((img) => {
+        if (img && typeof img === 'string' && img.trim() !== '') {
+          activeAds.push({
+            establishmentName: u.name,
+            imageUrl: img,
+            city: u.address?.city || '',
+            state: u.address?.state || '',
+          });
+        }
+      });
     }
   });
 
@@ -151,7 +146,7 @@ function VipEstablishmentsCarousel() {
   const getVisibleAds = () => {
     if (activeAds.length === 0) return [];
     const items = [];
-    const count = window.innerWidth >= 768 ? Math.min(3, activeAds.length) : 1;
+    const count = typeof window !== 'undefined' && window.innerWidth >= 768 ? Math.min(3, activeAds.length) : 1;
     for (let i = 0; i < count; i++) {
       const idx = (currentIndex + i) % activeAds.length;
       items.push(activeAds[idx]);
@@ -162,12 +157,12 @@ function VipEstablishmentsCarousel() {
   const visibleAds = getVisibleAds();
 
   return (
-    <div className="mt-4 w-full max-w-5xl mx-auto overflow-hidden rounded-2xl border border-amber-500/30 bg-neutral-900/90 p-3 backdrop-blur shadow-xl">
+    <div className="w-full max-w-5xl mx-auto overflow-hidden rounded-2xl border border-amber-500/30 bg-neutral-900/90 p-3 backdrop-blur shadow-xl">
       <div className="flex items-center justify-between mb-2 px-1">
         <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-amber-400 bg-amber-500/20 px-2.5 py-0.5 rounded-full">
-          <Crown className="h-3 w-3" /> Vitrine de Estabelecimentos VIP (Loop Infinito)
+          <Crown className="h-3 w-3" /> Vitrine de Estabelecimentos VIP
         </span>
-        <span className="text-xs text-neutral-400">Exibindo destaques</span>
+        <span className="text-xs text-neutral-400">Destaques da região</span>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 transition-all duration-500">
