@@ -485,7 +485,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const adminCreateUser = useCallback((user: any) => { return { ok: true }; }, []);
   const adminCreateAdmin = useCallback((user: any) => { return { ok: true }; }, []);
   const removeAdmin = useCallback((id: string) => {}, []);
-  const adjustWallet = useCallback((userId: string, amount: number, description: string) => {}, []);
+  
+  // Função adjustWallet restaurada e funcional
+  const adjustWallet = useCallback((userId: string, amount: number, description: string) => {
+    if (!data) return;
+    const tx: WalletTx = { 
+      id: uid('wt'), 
+      userId, 
+      type: amount >= 0 ? 'deposit' : 'withdraw', 
+      amount, 
+      description: `[Admin] ${description}`, 
+      date: new Date().toISOString() 
+    };
+    const auditLog = { 
+      id: uid('al'), 
+      adminId: currentAdminId, 
+      action: `Admin ajustou carteira de ${userId} em ${amount >= 0 ? '+' : ''}${amount} (${description})`, 
+      targetUserId: userId, 
+      createdAt: new Date().toISOString() 
+    };
+
+    setData((d) => ({
+      ...d,
+      users: d.users.map((u) => (u.id === userId ? { ...u, walletBalance: Math.max(0, (u.walletBalance ?? 0) + amount) } : u)),
+      walletTxs: [tx, ...d.walletTxs],
+      adminAuditLogs: [auditLog, ...d.adminAuditLogs]
+    }));
+
+    void dbInsertWalletTx(tx).catch(() => {});
+    const user = data.users.find((u) => u.id === userId);
+    if (user) {
+      void dbUpdateWalletBalance(userId, Math.max(0, (user.walletBalance ?? 0) + amount)).catch(() => {});
+    }
+    void dbInsertAuditLog(auditLog).catch(() => {});
+  }, [setData, currentAdminId, data]);
+
   const deleteReview = useCallback((reviewId: string) => {}, []);
   const broadcastNotification = useCallback((title: string, body: string) => {}, []);
 
