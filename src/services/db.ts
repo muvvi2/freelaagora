@@ -606,6 +606,7 @@ export async function dbUpsertVipPlan(plan: VipPlan): Promise<void> {
     annual_price: plan.prices.annual,
     search_boost_level: plan.tier === 'free' ? 0 : 1,
     badge_type: plan.badge || null,
+    features: plan.features || [],
   } as never, { onConflict: 'id' });
 
   if (error) {
@@ -634,6 +635,7 @@ export async function dbUpsertEstVipPlan(plan: EstVipPlan): Promise<void> {
     annual_price: plan.prices.annual,
     allow_ads: plan.allowAds ?? false,
     max_ads: plan.maxAds ?? 0,
+    features: plan.features || [],
   } as never, { onConflict: 'id' });
 
   if (error) {
@@ -788,6 +790,7 @@ export async function loadAllData(): Promise<AppData> {
           annual: Number(dbPlan.annual_price ?? plan.prices.annual),
         },
         badge: dbPlan.badge_type || plan.badge,
+        features: dbPlan.features || plan.features,
       };
     }
     return plan;
@@ -808,6 +811,7 @@ export async function loadAllData(): Promise<AppData> {
         },
         allowAds: Boolean(dbPlan.allow_ads ?? plan.allowAds ?? false),
         maxAds: Number(dbPlan.max_ads ?? plan.maxAds ?? 0),
+        features: dbPlan.features || plan.features,
       };
     }
     return plan;
