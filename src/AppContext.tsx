@@ -18,7 +18,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [adminTab, setAdminTab] = useState('overview');
   const [adminMode, setAdminMode] = useState(true);
 
-  // Load state strictly from Supabase on mount, falling back to initialData only if empty/new
+  // Load state strictly from Supabase on mount
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -34,12 +34,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (!cancelled && row?.data && Object.keys(row.data).length > 0) {
           const loadedData = row.data as AppData;
 
-          // 🛡️ Blindagem de Pagamentos: Se o banco veio sem paymentSettings configurado ou vazio, injeta o do initialData para não sumir com os meios de pagamento
+          // Blindagem de Pagamentos
           if (!loadedData.paymentSettings || !loadedData.paymentSettings.configs || Object.keys(loadedData.paymentSettings.configs).length === 0) {
             loadedData.paymentSettings = initialData.paymentSettings;
           }
 
-          // Restaura o usuário logado da sessão atual (sessionStorage) se existir
+          // Restaura o usuário logado da sessão atual
           const savedUserId = sessionStorage.getItem(SESSION_KEY);
           if (savedUserId && loadedData.users.some(u => u.id === savedUserId)) {
             loadedData.currentUserId = savedUserId;
@@ -49,7 +49,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setDataState(loadedData);
           console.log("✅ Estado carregado com sucesso do Supabase!");
         } else {
-          // Se a tabela estiver vazia, inicializa com o initialData e já salva no banco
           setDataState({ ...initialData, currentUserId: null });
           await supabase.from('app_state').upsert({ id: STATE_ID, data: initialData as unknown as Record<string, unknown>, updated_at: new Date().toISOString() });
           console.log("📌 Tabela vazia. Inicializado com dados padrão.");
@@ -70,10 +69,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [data?.paymentSettings]);
 
-  // Persist to Supabase whenever data changes with clear console feedback
+  // Persist to Supabase immediately when data changes
   const persist = useCallback(async (next: AppData) => {
     try {
-      // Remove o currentUserId do objeto salvo no banco global para evitar que o login de uma aba contamine a outra
       const { currentUserId, ...dataToPersist } = next;
       const { error } = await supabase
         .from('app_state')
@@ -116,12 +114,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (user.password !== password) return { ok: false, error: 'Senha incorreta.' };
     if (user.banned) return { ok: false, error: 'Esta conta foi banida. Contate o suporte.' };
     
-    // Salva estritamente na sessão da aba atual
     sessionStorage.setItem(SESSION_KEY, user.id);
     setData((d) => ({ ...d, currentUserId: user.id }));
     return { ok: true };
   }, [data?.users, setData]);
 
+  // Cadastro robusto sincronizado com o banco Supabase
   const register = useCallback((user: Omit<User, 'id' | 'createdAt' | 'walletBalance' | 'rating' | 'reviewsCount' | 'completedShifts'> & Partial<User>): { ok: boolean; error?: string } => {
     if (!data) return { ok: false, error: 'Sistema ainda carregando.' };
     if (data.users.some((u) => u.email.toLowerCase() === user.email.toLowerCase().trim())) {
@@ -139,9 +137,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } as User;
     
     sessionStorage.setItem(SESSION_KEY, id);
-    setData((d) => ({ ...d, users: [...d.users, newUser], currentUserId: id }));
+    
+    // Atualiza o estado e força a persistência síncrona/imediata na nuvem
+    setData((d) => {
+      const nextData = { ...d, users: [...d.users, newUser], currentUserId: id };
+      void persist(nextData);
+      return nextData;
+    });
+
     return { ok: true };
-  }, [data?.users, setData]);
+  }, [data?.users, setData, persist]);
 
   const logout = useCallback(() => {
     sessionStorage.removeItem(SESSION_KEY);
@@ -228,26 +233,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const isOnTrial = est.trialEndsAt ? new Date(est.trialEndsAt) > new Date() : false;
     const currentTier = isOnTrial ? 'trial' : (est.estVipTier ?? 'free');
 
-    // Busca o limite de vagas diretamente do plano cadastrado no Admin (estVipPlans)
     const matchedPlan = data.estVipPlans?.find((p) => p.tier === currentTier);
     const effectiveMaxJobs = matchedPlan?.maxActiveJobs ?? (currentTier === 'trial' ? 10 : currentTier === 'free' ? 2 : 20);
 
-    // Janela semanal: últimos 7 dias a partir de agora
     const oneWeekAgo = Date.now() - 7 * 86400000;
 
-    // Conta TODAS as vagas criadas nos últimos 7 dias (mesmo preenchidas ou fechadas)
     const jobsThisWeekCount = data.jobs.filter((job) => {
       if (job.establishmentId !== est.id) return false;
       const jobDate = new Date(job.createdAt).getTime();
       return jobDate >= oneWeekAgo;
     }).length;
 
-    console.log(`🔒 [TRAVA SEMANAL] Estabelecimento: ${est.name} | Tier: ${currentTier} | Em Trial: ${isOnTrial} | Publicadas nos últimos 7 dias: ${jobsThisWeekCount} | Limite Semanal: ${effectiveMaxJobs}`);
-
     if (jobsThisWeekCount >= effectiveMaxJobs) {
       return { 
         ok: false, 
-        error: `Limite semanal atingido! Seu plano (${currentTier === 'trial' ? 'TESTE GRATUITO' : currentTier.toUpperCase()}) permite publicar no máximo ${effectiveMaxJobs} vagas por semana. Vagas preenchidas ou fechadas continuam contando para o ciclo semanal.` 
+        error: `Limite semanal atingido! Seu plano (${currentTier === 'trial' ? 'TESTE GRATUITO' : currentTier.toUpperCase()}) permite publicar no máximo ${effectiveMaxJobs} vagas por semana.` 
       };
     }
 
@@ -380,7 +380,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, [setData, currentAdminId]);
 
-  // Coupons with 1 use per user enforcement
   const coupons = useMemo(() => data?.coupons ?? [], [data?.coupons]);
   
   const validateCoupon = useCallback((code: string, userId?: string): { coupon?: Coupon; error?: string } => {
@@ -432,7 +431,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return { ok: true, discountedPrice: discounted };
   }, [data, setData]);
 
-  // Audit logs
   const auditLogs = useMemo(() => data?.adminAuditLogs ?? [], [data?.adminAuditLogs]);
   const logAdminAction = useCallback((action: string, targetUserId?: string) => {
     setData((d) => ({ ...d, adminAuditLogs: [{ id: uid('al'), adminId: currentAdminId, action, targetUserId, createdAt: new Date().toISOString() }, ...d.adminAuditLogs] }));
