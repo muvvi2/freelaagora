@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Upload } from 'lucide-react';
+import { Check, Upload, Trash2, Image as ImageIcon } from 'lucide-react';
 import type { User } from '@/types';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
@@ -9,7 +9,7 @@ import { useToast } from './ui/Toast';
 import { maskCNPJ, maskPhone, maskCEP } from '@/utils';
 
 export function EstablishmentEditModal({ establishment, open, onClose }: { establishment: User; open: boolean; onClose: () => void }) {
-  const { updateUser } = useApp();
+  const { updateUser, data } = useApp();
   const { notify } = useToast();
   
   const [name, setName] = useState(establishment.name);
@@ -28,6 +28,16 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
   const [email, setEmail] = useState(establishment.email);
   const [cnpj, setCnpj] = useState(establishment.cnpj ?? '');
 
+  // Gerenciamento de Anúncios do Estabelecimento
+  const [adImages, setAdImages] = useState<string[]>(establishment.adImages ?? []);
+
+  // Identificar se o plano atual permite anúncios e qual o limite
+  const isOnTrial = establishment.trialEndsAt ? new Date(establishment.trialEndsAt) > new Date() : false;
+  const currentTier = isOnTrial ? 'trial' : (establishment.estVipTier ?? 'free');
+  const currentPlan = data.estVipPlans.find((p) => p.tier === currentTier);
+  const allowAds = currentPlan?.allowAds ?? false;
+  const maxAds = currentPlan?.maxAds ?? 0;
+
   // Função para buscar CEP na API ViaCEP
   const handleCepChange = async (value: string) => {
     const masked = maskCEP(value);
@@ -37,13 +47,13 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
     if (cleanCep.length === 8) {
       try {
         const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
-        const data = await response.json();
+        const dataRes = await response.json();
         
-        if (!data.erro) {
-          setStreet(data.logradouro);
-          setNeighborhood(data.bairro);
-          setCity(data.localidade);
-          setState(data.uf);
+        if (!dataRes.erro) {
+          setStreet(dataRes.logradouro);
+          setNeighborhood(dataRes.bairro);
+          setCity(dataRes.localidade);
+          setState(dataRes.uf);
           notify('Endereço encontrado!', 'success');
         } else {
           notify('CEP não encontrado.', 'warning');
@@ -65,20 +75,55 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
     }
   };
 
+  const handleAddAdImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (adImages.length >= maxAds) {
+      notify(`Seu plano atual (${currentPlan?.label ?? currentTier.toUpperCase()}) permite no máximo ${maxAds} anúncio(s). Faça upgrade para VIP superior para adicionar mais!`, 'warning');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAdImages((prev) => [...prev, reader.result as string]);
+      notify('Imagem de anúncio adicionada com sucesso!');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveAdImage = (index: number) => {
+    setAdImages((prev) => prev.filter((_, i) => i !== index));
+    notify('Anúncio removido', 'info');
+  };
+
+  const handleSave = () => {
+    if (allowAds && adImages.length > maxAds) {
+      notify(`A quantidade de anúncios excede o limite do seu plano (${maxAds}).`, 'warning');
+      return;
+    }
+
+    updateUser(establishment.id, { 
+      name, 
+      photo, 
+      establishmentType, 
+      address: { ...establishment.address, cep, street, neighborhood, city, state }, 
+      phone, 
+      whatsapp, 
+      email, 
+      cnpj,
+      adImages: allowAds ? adImages : [] 
+    }); 
+    onClose(); 
+    notify('Estabelecimento atualizado com sucesso!'); 
+  };
+
   return (
     <Modal open={open} onClose={onClose} title="Editar estabelecimento" size="lg"
       footer={
         <div className="flex gap-2">
           <Button variant="ghost" fullWidth onClick={onClose}>Cancelar</Button>
-          <Button fullWidth onClick={() => { 
-            updateUser(establishment.id, { 
-              name, photo, establishmentType, 
-              address: { ...establishment.address, cep, street, neighborhood, city, state }, 
-              phone, whatsapp, email, cnpj 
-            }); 
-            onClose(); 
-            notify('Estabelecimento atualizado'); 
-          }}>
+          <Button fullWidth onClick={handleSave}>
             <Check className="h-4 w-4" /> Salvar
           </Button>
         </div>
@@ -130,6 +175,60 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
               <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
             </label>
           </div>
+        </div>
+
+        {/* Gerenciamento de Anúncios Dinâmicos Conforme o Plano VIP */}
+        <div className="sm:col-span-2 border-t border-neutral-200 dark:border-neutral-800 pt-4 mt-2">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <ImageIcon className="h-5 w-5 text-amber-500" />
+              <h3 className="font-display font-bold text-neutral-900 dark:text-white">Meus Anúncios / Banners Promocionais</h3>
+            </div>
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
+              {adImages.length} de {maxAds} permitidos ({currentPlan?.label ?? currentTier.toUpperCase()})
+            </span>
+          </div>
+
+          {allowAds ? (
+            <div className="space-y-3">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                Adicione imagens de propaganda que aparecerão em destaque no carrossel da home e widgets do aplicativo.
+              </p>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {adImages.map((imgUrl, index) => (
+                  <div key={index} className="relative group rounded-xl overflow-hidden border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 aspect-video">
+                    <img src={imgUrl} alt={`Anúncio ${index + 1}`} className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveAdImage(index)}
+                      className="absolute top-2 right-2 p-1.5 rounded-lg bg-red-600/80 hover:bg-red-600 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Remover anúncio"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+
+                {adImages.length < maxAds && (
+                  <label className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer aspect-video transition-colors">
+                    <Upload className="h-5 w-5 text-neutral-400 mb-1" />
+                    <span className="text-xs font-medium text-neutral-600 dark:text-neutral-300">Adicionar Anúncio</span>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleAddAdImage} />
+                  </label>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-800/40 text-center">
+              <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+                Seu plano atual não inclui o recurso de exibição de anúncios e propagandas.
+              </p>
+              <p className="text-xs text-neutral-400 mt-1">
+                Faça upgrade para um plano VIP elegível para divulgar seu estabelecimento na página inicial!
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </Modal>
