@@ -89,7 +89,7 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
             O marketplace de contratação emergencial de freelancers para bares, restaurantes, buffets, eventos, serviços gerais, saúde, oficinas e logística.
           </p>
 
-          {/* Carrossel de Anúncios com Loop Infinito Real (Marquee Fluido) */}
+          {/* Carrossel de Anúncios com Loop Infinito Real (Move-se Continuamente) */}
           <div className="w-full max-w-6xl my-4">
             <VipEstablishmentsCarousel />
           </div>
@@ -111,7 +111,7 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
   );
 }
 
-// Carrossel com Loop Infinito Real (Estilo Marquee Fluido contínuo)
+// Carrossel com Loop Infinito Real (Movimento contínuo garantido)
 function VipEstablishmentsCarousel() {
   const { data } = useApp();
   const activeAds: { establishmentName: string; imageUrl: string; city: string; state: string }[] = [];
@@ -133,8 +133,8 @@ function VipEstablishmentsCarousel() {
 
   if (activeAds.length === 0) return null;
 
-  // Multiplicamos os itens para preencher perfeitamente a barra e garantir o movimento contínuo infinito sem falhas
-  const displayAds = [...activeAds, ...activeAds, ...activeAds, ...activeAds];
+  // Multiplicamos os itens para garantir a esteira longa em loop contínuo perfeitamente fluida
+  const displayAds = [...activeAds, ...activeAds, ...activeAds, ...activeAds, ...activeAds, ...activeAds];
 
   return (
     <div className="w-full max-w-6xl mx-auto overflow-hidden rounded-2xl border border-amber-500/30 bg-neutral-900/90 p-4 backdrop-blur shadow-xl">
@@ -145,9 +145,9 @@ function VipEstablishmentsCarousel() {
         <span className="text-xs text-neutral-400">Destaques da região</span>
       </div>
       
-      {/* Container com marquee em loop contínuo */}
+      {/* Container com rolagem contínua garantida por animação interna */}
       <div className="relative w-full overflow-hidden flex whitespace-nowrap">
-        <div className="flex gap-4 animate-marquee py-1">
+        <div className="flex gap-4 py-1 animate-continuous-scroll">
           {displayAds.map((ad, idx) => (
             <div key={idx} className="relative overflow-hidden h-64 w-80 sm:w-96 rounded-xl bg-neutral-950 border border-white/10 flex items-center justify-center shadow-lg shrink-0 group">
               <img src={ad.imageUrl} alt={ad.establishmentName} className="h-full w-full object-cover transition-all duration-500 group-hover:scale-105" />
@@ -159,6 +159,22 @@ function VipEstablishmentsCarousel() {
           ))}
         </div>
       </div>
+
+      {/* Estilo CSS embutido que força o carrossel a se mover ininterruptamente sem depender de arquivos externos */}
+      <style>{`
+        @keyframes continuousScroll {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .animate-continuous-scroll {
+          display: flex;
+          width: max-content;
+          animation: continuousScroll 20s linear infinite;
+        }
+        .animate-continuous-scroll:hover {
+          animation-play-state: paused;
+        }
+      `}</style>
     </div>
   );
 }
