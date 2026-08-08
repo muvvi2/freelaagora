@@ -46,7 +46,7 @@ export function TermsPage({ onBack }: { onBack?: () => void }) {
 
             <Clause icon={Scale} title="CLÁUSULA QUARTA – DA TAXA DE INTERMEDIAÇÃO E LIQUIDAÇÃO">
               <p><strong>4.1.</strong> O Estabelecimento concorda em pagar uma taxa de intermediação calculada sobre o valor total bruto da diária. Esta taxa será integralmente ADICIONADA ao valor bruto cobrado pelo profissional, garantindo que o valor integral do freelancer não sofra descontos ou deduções da plataforma.</p>
-              <p className="mt-2"><strong>4.2.</strong> O percentual da taxa aditiva do Estabelecimento reflete em tempo real as configurações de planos e taxas ativas no Painel Administrativo:</p>
+              <p className="mt-2"><strong>4.2.</strong> O percentual da taxa aditiva e o limite semanal de publicações do Estabelecimento refletem em tempo real as configurações ativas no Painel Administrativo:</p>
               <div className="mt-2">
                 <DynamicEstablishmentPlansList />
               </div>
@@ -96,7 +96,7 @@ function DynamicEstablishmentPlansList() {
       {data.estVipPlans.map((plan: EstVipPlan) => (
         <div key={plan.tier}>
           <p className="font-semibold text-neutral-900 dark:text-white">
-            {plan.label} {plan.intermediationFee === 0 ? '(Isenção total - 0% de taxa)' : `(taxa de ${plan.intermediationFee}% somada ao valor total)`}:
+            {plan.label} {plan.intermediationFee === 0 ? '(Isenção total - 0% de taxa)' : `(taxa de ${plan.intermediationFee}% somada ao valor total)`} — Limite de {plan.maxActiveJobs >= 999 ? 'vagas ilimitadas' : `${plan.maxActiveJobs} vagas por semana`}:
           </p>
           <ul className="mt-1 list-disc list-inside space-y-1 ml-2">
             {plan.features.map((f: string, i: number) => (
