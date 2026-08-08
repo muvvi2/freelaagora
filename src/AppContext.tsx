@@ -221,14 +221,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const plan = getEstPlan(est.estVipTier ?? 'free', data.estVipPlans);
     const isOnTrial = est.trialEndsAt && new Date(est.trialEndsAt) > new Date();
-    const effectiveMaxJobs = isOnTrial ? 10 : plan.maxActiveJobs;
+    const effectiveMaxJobs = isOnTrial ? 10 : (plan?.maxActiveJobs ?? 2);
 
     const activeJobsCount = data.jobs.filter((job) => job.establishmentId === est.id && job.status !== 'closed').length;
+
+    console.log(`🔒 [TRAVA DE VAGAS] Estabelecimento: ${est.name} | Plano: ${est.estVipTier ?? 'free'} | Vagas Ativas Atuais: ${activeJobsCount} | Máximo Permitido: ${effectiveMaxJobs}`);
 
     if (activeJobsCount >= effectiveMaxJobs) {
       return { 
         ok: false, 
-        error: `Limite atingido! ${isOnTrial ? 'Seu período de teste permite até 10 vagas ativas.' : `Seu plano atual permite até ${effectiveMaxJobs} vagas ativas.`} Faça um upgrade para o VIP para publicar mais.` 
+        error: `Limite atingido! Seu plano atual permite no máximo ${effectiveMaxJobs} vagas ativas simultaneamente.` 
       };
     }
 
