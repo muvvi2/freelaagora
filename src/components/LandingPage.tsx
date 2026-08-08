@@ -89,7 +89,7 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
             O marketplace de contratação emergencial de freelancers para bares, restaurantes, buffets, eventos, serviços gerais, saúde, oficinas e logística.
           </p>
 
-          {/* Carrossel de Anúncios Integrado na Home com Altura Ajustada */}
+          {/* Carrossel de Anúncios com Loop Infinito Real (Marquee Fluido) */}
           <div className="w-full max-w-6xl my-4">
             <VipEstablishmentsCarousel />
           </div>
@@ -111,7 +111,7 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
   );
 }
 
-// Carrossel de Loop Infinito com altura expandida e visual aprimorado
+// Carrossel com Loop Infinito Real (Estilo Marquee Fluido contínuo)
 function VipEstablishmentsCarousel() {
   const { data } = useApp();
   const activeAds: { establishmentName: string; imageUrl: string; city: string; state: string }[] = [];
@@ -131,30 +131,10 @@ function VipEstablishmentsCarousel() {
     }
   });
 
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  useEffect(() => {
-    if (activeAds.length <= 1) return;
-    const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % activeAds.length);
-    }, 3500);
-    return () => clearInterval(timer);
-  }, [activeAds.length]);
-
   if (activeAds.length === 0) return null;
 
-  const getVisibleAds = () => {
-    if (activeAds.length === 0) return [];
-    const items = [];
-    const count = typeof window !== 'undefined' && window.innerWidth >= 768 ? Math.min(3, activeAds.length) : 1;
-    for (let i = 0; i < count; i++) {
-      const idx = (currentIndex + i) % activeAds.length;
-      items.push(activeAds[idx]);
-    }
-    return items;
-  };
-
-  const visibleAds = getVisibleAds();
+  // Multiplicamos os itens para preencher perfeitamente a barra e garantir o movimento contínuo infinito sem falhas
+  const displayAds = [...activeAds, ...activeAds, ...activeAds, ...activeAds];
 
   return (
     <div className="w-full max-w-6xl mx-auto overflow-hidden rounded-2xl border border-amber-500/30 bg-neutral-900/90 p-4 backdrop-blur shadow-xl">
@@ -165,16 +145,19 @@ function VipEstablishmentsCarousel() {
         <span className="text-xs text-neutral-400">Destaques da região</span>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 transition-all duration-500">
-        {visibleAds.map((ad, idx) => (
-          <div key={idx} className="relative overflow-hidden h-64 sm:h-80 rounded-xl bg-neutral-950 border border-white/10 flex items-center justify-center shadow-lg group">
-            <img src={ad.imageUrl} alt={ad.establishmentName} className="h-full w-full object-cover transition-all duration-500 group-hover:scale-105" />
-            <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 text-left flex justify-between items-end">
-              <span className="text-sm font-bold text-white drop-shadow truncate pr-2">{ad.establishmentName}</span>
-              <span className="text-xs text-amber-300 whitespace-nowrap">{ad.city} - {ad.state}</span>
+      {/* Container com marquee em loop contínuo */}
+      <div className="relative w-full overflow-hidden flex whitespace-nowrap">
+        <div className="flex gap-4 animate-marquee py-1">
+          {displayAds.map((ad, idx) => (
+            <div key={idx} className="relative overflow-hidden h-64 w-80 sm:w-96 rounded-xl bg-neutral-950 border border-white/10 flex items-center justify-center shadow-lg shrink-0 group">
+              <img src={ad.imageUrl} alt={ad.establishmentName} className="h-full w-full object-cover transition-all duration-500 group-hover:scale-105" />
+              <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 text-left flex justify-between items-end">
+                <span className="text-sm font-bold text-white drop-shadow truncate pr-2">{ad.establishmentName}</span>
+                <span className="text-xs text-amber-300 whitespace-nowrap">{ad.city} - {ad.state}</span>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );
