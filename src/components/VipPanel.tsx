@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Crown, Check, Sparkles, ShieldCheck, Diamond, Star, Store, Percent, Ticket, QrCode, CreditCard, FileText, Wallet, AlertCircle, Copy, Upload } from 'lucide-react';
 import { useApp } from '@/AppContext';
 import { supabase } from '@/lib/supabase';
@@ -259,21 +259,28 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
         </div>
       )}
 
-      {/* Painel de Gerenciamento de Anúncios para Estabelecimentos com permissão de anúncios (ex: VIP 4 / VIP 5 ou planos com allowAds) */}
+      {/* Painel de Gerenciamento de Anúncios Dinâmico e Verificado pelo Admin */}
       {accountType === 'establishment' && (
         (() => {
           const activeEstPlan = data.estVipPlans.find(p => p.tier === (currentUser?.estVipTier ?? 'free'));
-          const canAdvertise = activeEstPlan?.allowAds || ['vip4', 'vip5', 'vip6'].includes(currentUser?.estVipTier ?? '');
+          const canAdvertise = activeEstPlan?.allowAds ?? false;
+          const maxAllowedAds = activeEstPlan?.maxAds ?? 0;
+
           if (!canAdvertise) return null;
 
           return (
             <div className="mt-6 rounded-2xl border border-amber-500/40 bg-amber-500/5 p-5 dark:border-amber-500/30 dark:bg-amber-500/10">
-              <div className="flex items-center gap-2 mb-2">
-                <Crown className="h-5 w-5 text-amber-500" />
-                <h3 className="font-display font-bold text-neutral-900 dark:text-white">Gerenciamento de Anúncios ({currentUser?.estVipTier?.toUpperCase()})</h3>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Crown className="h-5 w-5 text-amber-500" />
+                  <h3 className="font-display font-bold text-neutral-900 dark:text-white">Gerenciamento de Anúncios ({activeEstPlan?.label ?? currentUser?.estVipTier?.toUpperCase()})</h3>
+                </div>
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300">
+                  Limite: {maxAllowedAds} anúncio(s)
+                </span>
               </div>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-4">
-                Seu plano atual dá direito a publicar anúncios publicitários em nossa rede de exibições (carrossel e widgets).
+                Seu plano atual dá direito a publicar até {maxAllowedAds} imagem(ns) de propaganda em nossa rede de exibições (carrossel e widgets).
               </p>
 
               <div className="mb-4 rounded-xl bg-amber-500/10 p-3 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300 space-y-1">
@@ -283,7 +290,7 @@ export function VipPanel({ userId, accountType }: { userId: string; accountType:
               </div>
 
               <div className="space-y-3">
-                {Array.from({ length: currentUser?.estVipTier === 'vip5' || currentUser?.estVipTier === 'vip6' ? 3 : 1 }).map((_, index) => {
+                {Array.from({ length: maxAllowedAds }).map((_, index) => {
                   const currentImages = currentUser?.adImages || [];
                   const imageUrl = currentImages[index] || '';
 
