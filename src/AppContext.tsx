@@ -109,9 +109,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [setData]);
 
   const updateUser = useCallback((id: string, patch: Partial<User>) => {
+    // Validação de limite de anúncios para estabelecimentos
+    if (patch.adImages && data) {
+      const user = data.users.find(u => u.id === id);
+      if (user && user.accountType === 'establishment') {
+        const isOnTrial = user.trialEndsAt ? new Date(user.trialEndsAt) > new Date() : false;
+        const currentTier = isOnTrial ? 'trial' : (user.estVipTier ?? 'free');
+        const plan = data.estVipPlans.find(p => p.tier === currentTier);
+
+        if (!plan?.allowAds) {
+          console.warn("⚠️ O plano atual deste estabelecimento não permite anúncios.");
+        } else if (patch.adImages.length > (plan.maxAds ?? 0)) {
+          console.warn(`⚠️ Limite de anúncios excedido. Máximo permitido para o plano ${plan.label}: ${plan.maxAds}`);
+        }
+      }
+    }
+
     setData((d) => ({ ...d, users: d.users.map((u) => (u.id === id ? { ...u, ...patch } : u)) }));
     void dbUpdateUser(id, patch).catch(() => {});
-  }, [setData]);
+  }, [setData, data]);
 
   const adminUpdateUser = useCallback((id: string, patch: Partial<User>) => {
     const stampedPatch = { ...patch, lastAdminEdit: new Date().toISOString() };
