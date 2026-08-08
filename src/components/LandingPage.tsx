@@ -89,7 +89,7 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
             O marketplace de contratação emergencial de freelancers para bares, restaurantes, buffets, eventos, serviços gerais, saúde, oficinas e logística.
           </p>
 
-          {/* Carrossel de Loop Infinito com Múltiplas Fotos/Anúncios */}
+          {/* Carrossel de Loop Infinito com Múltiplas Fotos/Anúncios dinâmicos */}
           <VipEstablishmentsCarousel />
 
           <div className="mt-6 grid w-full max-w-4xl grid-cols-1 gap-3 sm:grid-cols-3">
@@ -109,23 +109,30 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
   );
 }
 
-// Carrossel de Loop Infinito com múltiplos anúncios simultâneos
+// Carrossel de Loop Infinito com múltiplos anúncios dinâmicos baseados no painel admin
 function VipEstablishmentsCarousel() {
   const { data } = useApp();
   const activeAds: { establishmentName: string; imageUrl: string; city: string; state: string }[] = [];
   
   data.users.forEach((u) => {
-    if (u.accountType === 'establishment' && ['vip4', 'vip5'].includes(u.estVipTier ?? '') && u.adImages && u.adImages.length > 0) {
-      u.adImages.forEach((img) => {
-        if (img && img.trim() !== '') {
-          activeAds.push({
-            establishmentName: u.name,
-            imageUrl: img,
-            city: u.address?.city || '',
-            state: u.address?.state || '',
-          });
-        }
-      });
+    if (u.accountType === 'establishment' && u.estVipTier && u.estVipTier !== 'free' && u.adImages && u.adImages.length > 0) {
+      const isOnTrial = u.trialEndsAt ? new Date(u.trialEndsAt) > new Date() : false;
+      const currentTier = isOnTrial ? 'trial' : u.estVipTier;
+      const plan = data.estVipPlans.find((p) => p.tier === currentTier);
+
+      // Verifica se o plano do estabelecimento permite anúncios dinamicamente
+      if (plan?.allowAds) {
+        u.adImages.forEach((img) => {
+          if (img && img.trim() !== '') {
+            activeAds.push({
+              establishmentName: u.name,
+              imageUrl: img,
+              city: u.address?.city || '',
+              state: u.address?.state || '',
+            });
+          }
+        });
+      }
     }
   });
 
@@ -141,7 +148,6 @@ function VipEstablishmentsCarousel() {
 
   if (activeAds.length === 0) return null;
 
-  // Seleciona múltiplos itens para exibir lado a lado (ex: 3 no desktop, 1 no mobile)
   const getVisibleAds = () => {
     if (activeAds.length === 0) return [];
     const items = [];
@@ -164,7 +170,6 @@ function VipEstablishmentsCarousel() {
         <span className="text-xs text-neutral-400">Exibindo destaques</span>
       </div>
       
-      {/* Grid responsivo simulando o carrossel contínuo */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 transition-all duration-500">
         {visibleAds.map((ad, idx) => (
           <div key={idx} className="relative overflow-hidden h-36 sm:h-44 rounded-xl bg-neutral-950 border border-white/10 flex items-center justify-center shadow-md">
