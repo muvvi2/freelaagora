@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Clock, Calendar, Pencil, Pause, Play, Trash2, Users, Zap, CheckCircle2 } from 'lucide-react';
+import { Clock, Calendar, Pencil, Pause, Play, Trash2, Users, Zap, CheckCircle2, Lock } from 'lucide-react';
 import type { Job } from '@/types';
 import { formatCurrency, formatDate, urgencyLabel } from '@/utils';
 import { Avatar } from './ui/Avatar';
@@ -30,15 +30,33 @@ export function JobCard({ job, variant = 'manage' }: { job: Job; variant?: 'mana
 
   const establishment = data.users.find((u) => u.id === job.establishmentId);
 
+  // Verifica se o usuário logado já tem um contrato pago/confirmado com este estabelecimento para esta vaga
+  const hasActiveContract = currentUser ? data.contracts.some(
+    (c) => c.establishmentId === job.establishmentId && c.freelancerId === currentUser.id && (c.status === 'paid' || c.status === 'checked_in' || c.status === 'completed')
+  ) : false;
+
+  // Se for o próprio estabelecimento gerorando a vaga (manage), ele vê os dados. Se for o freela (apply), só vê os dados se houver contrato fechado/pago.
+  const showIdentity = variant === 'manage' || hasActiveContract;
+
   return (
     <>
       <div className={`flex flex-col gap-3 rounded-2xl border bg-white p-4 transition-all hover:shadow-card-hover dark:bg-neutral-900 ${paused ? 'border-neutral-200 opacity-70 dark:border-neutral-800' : job.urgency === 'hoje' ? 'border-error-200 dark:border-error-500/30' : 'border-neutral-200 dark:border-neutral-800'}`}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <Avatar src={job.establishmentPhoto} alt={job.establishmentName} size={44} ring="neutral" />
+            {showIdentity ? (
+              <Avatar src={job.establishmentPhoto} alt={job.establishmentName} size={44} ring="neutral" />
+            ) : (
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-400">
+                <Lock className="h-5 w-5" />
+              </div>
+            )}
             <div>
-              <p className="font-semibold text-neutral-900 dark:text-white">{job.establishmentName}</p>
-              <p className="text-xs text-neutral-400">{job.city}, {job.state}</p>
+              <p className="font-semibold text-neutral-900 dark:text-white">
+                {showIdentity ? job.establishmentName : 'Estabelecimento Confidencial'}
+              </p>
+              <p className="text-xs text-neutral-400">
+                {showIdentity ? `${job.city}, ${job.state}` : 'Região Metropolitana'}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
@@ -57,7 +75,7 @@ export function JobCard({ job, variant = 'manage' }: { job: Job; variant?: 'mana
         <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-neutral-500 dark:text-neutral-400">
           <span className="inline-flex items-center gap-1"><Calendar className="h-3.5 w-3.5" /> {formatDate(job.date)}</span>
           <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {job.startTime} · {job.hours}h</span>
-          <span className="inline-flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {job.applicants.length} candidato(s)</span>
+          {variant === 'manage' && <span className="inline-flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {job.applicants.length} candidato(s)</span>}
         </div>
 
         <div className="flex items-center justify-between border-t border-neutral-100 pt-3 dark:border-neutral-800">
