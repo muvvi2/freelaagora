@@ -213,7 +213,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return { ok: true };
   }, [data, updateUser]);
 
-  const addJob = useCallback((j: Job) => setData((d) => ({ ...d, jobs: [j, ...d.jobs] })), [setData]);
+  const addJob = useCallback((j: Job): { ok: boolean; error?: string } => {
+    if (!data) return { ok: false, error: 'Sistema carregando.' };
+    
+    // 1. Acha o estabelecimento que está criando a vaga
+    const est = data.users.find((u) => u.id === j.establishmentId);
+    if (!est) return { ok: false, error: 'Estabelecimento não encontrado.' };
+
+    // 2. Descobre o plano atual do estabelecimento
+    const plan = getEstPlan(est.estVipTier ?? 'free', data.estVipPlans);
+
+    // 3. Verifica período de teste (Trial) — limitando estritamente a 10 vagas no trial
+    const isOnTrial = est.trialEndsAt && new Date(est.trialEndsAt) > new Date();
+    const effectiveMaxJobs = isOnTrial ? 10 : plan.maxActiveJobs;
+
+    // 4. Conta quantas vagas ativas o estabelecimento já possui (tudo que não estiver fechado)
+    const activeJobsCount = data.jobs.filter((job) => job.establishmentId === est.id && job.status !== 'closed').length;
+
+    // 5. BLOQUEIO GLOBAL: Se atingiu ou passou do limite, rejeita a criação!
+    if (activeJobsCount >= effectiveMaxJobs) {
+      return { 
+        ok: false, 
+        error: `Limite atingido! ${isOnTrial ? 'Seu período de teste permite até 10 vagas ativas.' : `Seu plano atual permite até ${effectiveMaxJobs} vagas ativas.`} Faça um upgrade para o VIP para publicar mais.` 
+      };
+    }
+
+    setData((d) => ({ ...d, jobs: [j, ...d.jobs] }));
+    return { ok: true };
+  }, [data, setData]);
+
   const updateJob = useCallback((id: string, patch: Partial<Job>) => setData((d) => ({ ...d, jobs: d.jobs.map((j) => (j.id === id ? { ...j, ...patch } : j)) })), [setData]);
   const deleteJob = useCallback((id: string) => setData((d) => ({ ...d, jobs: d.jobs.filter((j) => j.id !== id) })), [setData]);
   const pauseJob = useCallback((id: string) => setData((d) => ({ ...d, jobs: d.jobs.map((j) => (j.id === id ? { ...j, status: j.status === 'paused' ? 'active' : 'paused' } : j)) })), [setData]);
