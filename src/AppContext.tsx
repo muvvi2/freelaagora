@@ -13,6 +13,7 @@ import {
   dbInsertReview, dbDeleteReview,
   dbInsertCoupon, dbToggleCoupon, dbDeleteCoupon,
   dbInsertAuditLog, dbUpdateDefaultFeePercent, dbUpdatePaymentSettings,
+  dbUpsertVipPlan, dbDeleteVipPlan, dbUpsertEstVipPlan, dbDeleteEstVipPlan,
 } from '@/services/db';
 
 export { useApp };
@@ -739,23 +740,71 @@ export function AppProvider({ children }: { children: ReactNode }) {
     void dbInsertAuditLog(auditLog).catch(() => {});
   }, [data, setData, currentAdminId]);
 
+  // Funções de planos VIP sincronizadas com o Supabase
   const updateVipPlan = useCallback((tier: Tier, patch: Partial<VipPlan>) => {
-    setData((d) => ({ ...d, vipPlans: d.vipPlans.map((p) => p.tier === tier ? { ...p, ...patch } : p) }));
+    setData((d) => {
+      const updatedPlans = d.vipPlans.map((p) => {
+        if (p.tier === tier) {
+          const newPlan = { ...p, ...patch };
+          void dbUpsertVipPlan(newPlan).catch((err) => console.error("Erro ao atualizar plano freelancer no Supabase:", err));
+          return newPlan;
+        }
+        return p;
+      });
+      return { ...d, vipPlans: updatedPlans };
+    });
   }, [setData]);
+
   const addVipPlan = useCallback((plan: VipPlan) => {
-    setData((d) => d.vipPlans.some((p) => p.tier === plan.tier) ? d : { ...d, vipPlans: [...d.vipPlans, plan] });
+    setData((d) => {
+      if (d.vipPlans.some((p) => p.tier === plan.tier)) return d;
+      void dbUpsertVipPlan(plan).catch((err) => console.error("Erro ao inserir plano freelancer no Supabase:", err));
+      return { ...d, vipPlans: [...d.vipPlans, plan] };
+    });
   }, [setData]);
+
   const removeVipPlan = useCallback((tier: Tier) => {
-    setData((d) => ({ ...d, vipPlans: d.vipPlans.filter((p) => p.tier !== tier), users: d.users.map((u) => u.vipTier === tier ? { ...u, vipTier: 'free' } : u) }));
+    setData((d) => {
+      void dbDeleteVipPlan(tier).catch((err) => console.error("Erro ao remover plano freelancer do Supabase:", err));
+      return {
+        ...d,
+        vipPlans: d.vipPlans.filter((p) => p.tier !== tier),
+        users: d.users.map((u) => u.vipTier === tier ? { ...u, vipTier: 'free' } : u)
+      };
+    });
   }, [setData]);
+
   const updateEstVipPlan = useCallback((tier: EstTier, patch: Partial<EstVipPlan>) => {
-    setData((d) => ({ ...d, estVipPlans: d.estVipPlans.map((p) => p.tier === tier ? { ...p, ...patch } : p) }));
+    setData((d) => {
+      const updatedPlans = d.estVipPlans.map((p) => {
+        if (p.tier === tier) {
+          const newPlan = { ...p, ...patch };
+          void dbUpsertEstVipPlan(newPlan).catch((err) => console.error("Erro ao atualizar plano de estabelecimento no Supabase:", err));
+          return newPlan;
+        }
+        return p;
+      });
+      return { ...d, estVipPlans: updatedPlans };
+    });
   }, [setData]);
+
   const addEstVipPlan = useCallback((plan: EstVipPlan) => {
-    setData((d) => d.estVipPlans.some((p) => p.tier === plan.tier) ? d : { ...d, estVipPlans: [...d.estVipPlans, plan] });
+    setData((d) => {
+      if (d.estVipPlans.some((p) => p.tier === plan.tier)) return d;
+      void dbUpsertEstVipPlan(plan).catch((err) => console.error("Erro ao inserir plano de estabelecimento no Supabase:", err));
+      return { ...d, estVipPlans: [...d.estVipPlans, plan] };
+    });
   }, [setData]);
+
   const removeEstVipPlan = useCallback((tier: EstTier) => {
-    setData((d) => ({ ...d, estVipPlans: d.estVipPlans.filter((p) => p.tier !== tier), users: d.users.map((u) => u.estVipTier === tier ? { ...u, estVipTier: 'free' } : u) }));
+    setData((d) => {
+      void dbDeleteEstVipPlan(tier).catch((err) => console.error("Erro ao remover plano de estabelecimento do Supabase:", err));
+      return {
+        ...d,
+        estVipPlans: d.estVipPlans.filter((p) => p.tier !== tier),
+        users: d.users.map((u) => u.estVipTier === tier ? { ...u, estVipTier: 'free' } : u)
+      };
+    });
   }, [setData]);
 
   const enterAdminMode = useCallback(() => setAdminMode(true), []);
