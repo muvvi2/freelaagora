@@ -235,7 +235,17 @@ const STATUS_FROM_DB: Record<string, string> = {
   canceled: 'cancelled',
 };
 
-const VIP_TIER_MAP: Record<string, number> = { free: 4, vip1: 5, vip2: 6, vip3: 7, vip4: 8, vip5: 9, vip6: 10, trial: 4 };
+// Mapeamento correto de IDs para evitar conflito com o Trial
+const VIP_TIER_MAP: Record<string, number> = { 
+  free: 4, 
+  trial: 11, 
+  vip1: 5, 
+  vip2: 6, 
+  vip3: 7, 
+  vip4: 8, 
+  vip5: 9, 
+  vip6: 10 
+};
 
 function tierToId(tier: string): number {
   return VIP_TIER_MAP[tier] ?? 4;
@@ -624,6 +634,7 @@ export async function loadAllData(): Promise<AppData> {
     usersRes, flProfilesRes, esProfilesRes, flCategoriesRes, flAvailRes,
     contractsRes, eventsRes, contractReviewsRes, walletRes, notifRes,
     jobsRes, applicantsRes, couponsRes, auditRes, configRes, paymentRes,
+    vipFlRes, vipEsRes,
   ] = await Promise.all([
     supabase.from('users').select('*'),
     supabase.from('freelancer_profiles').select('*'),
@@ -641,6 +652,8 @@ export async function loadAllData(): Promise<AppData> {
     supabase.from('admin_audit_logs').select('*').order('created_at', { ascending: false }),
     supabase.from('platform_config').select('*').limit(1).maybeSingle(),
     supabase.from('payment_settings').select('*').limit(1).maybeSingle(),
+    supabase.from('vip_plans_freelancer').select('*'),
+    supabase.from('vip_plans_establishment').select('*'),
   ]);
 
   const usersRows = (usersRes.data ?? []) as unknown as DbUser[];
@@ -739,9 +752,43 @@ export async function loadAllData(): Promise<AppData> {
     createdAt: row.created_at,
   }));
 
-  // Mantém rigorosamente os planos originais do mockData (VIP_PLANS e EST_VIP_PLANS) preservando nome, trial e benefícios
-  const vipPlans: VipPlan[] = VIP_PLANS;
-  const estVipPlans: EstVipPlan[] = EST_VIP_PLANS;
+  // Preserva integralmente o VIP_PLANS original do mockData e aplica os dados do DB caso existam
+  const vipPlans: VipPlan[] = VIP_PLANS.map(plan => {
+    const dbPlan = vipFlRes.data?.find((p: any) => p.id === tierToId(plan.tier));
+    if (dbPlan) {
+      return {
+        ...plan,
+        label: dbPlan.name || plan.label,
+        maxCategories: dbPlan.max_categories ?? plan.maxCategories,
+        prices: {
+          monthly: Number(dbPlan.monthly_price ?? plan.prices.monthly),
+          semestral: Number(dbPlan.semestral_price ?? plan.prices.semestral),
+          annual: Number(dbPlan.annual_price ?? plan.prices.annual),
+        },
+        badge: dbPlan.badge_type || plan.badge,
+      };
+    }
+    return plan;
+  });
+
+  // Preserva integralmente o EST_VIP_PLANS original do mockData e aplica os dados do DB caso existam
+  const estVipPlans: EstVipPlan[] = EST_VIP_PLANS.map(plan => {
+    const dbPlan = vipEsRes.data?.find((p: any) => p.id === tierToId(plan.tier));
+    if (dbPlan) {
+      return {
+        ...plan,
+        label: dbPlan.name || plan.label,
+        intermediationFee: Number(dbPlan.intermediation_fee_percentage ?? plan.intermediationFee),
+        prices: {
+          monthly: Number(dbPlan.monthly_price ?? plan.prices.monthly),
+          semestral: Number(dbPlan.semestral_price ?? plan.prices.semestral),
+          annual: Number(dbPlan.annual_price ?? plan.prices.annual),
+        },
+        allowAds: ['vip4', 'vip5', 'vip6'].includes(plan.tier),
+      };
+    }
+    return plan;
+  });
 
   let paymentSettings: PaymentSettings = { activeProvider: 'asaas', configs: {} };
   if (paymentRes.data) {
