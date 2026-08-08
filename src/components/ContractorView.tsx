@@ -182,7 +182,7 @@ export function ContractorView() {
               <p className="text-xs text-neutral-400">
                 {isUnlimited 
                   ? 'Filtrando por: Km Livre (Atendimento Nacional / Sem Limite de Raio)' 
-                  : `Filtrando a até ${radiusKm} km de ${establishmentCity} - ${establishmentState}. Cidades no raio: ${matchingCities.join(', ')}`}
+                  : `Filtrando a até ${radiusKm} km de ${establishmentCity} - ${establishmentState}.`}
               </p>
             </div>
           </div>
