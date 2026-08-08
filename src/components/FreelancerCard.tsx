@@ -39,10 +39,10 @@ export function FreelancerCard({ freelancer: f, onHire, onView, showAdminActions
 
   return (
     <>
-      <div className={`group relative flex flex-col gap-4 rounded-2xl border bg-white p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-hover dark:bg-neutral-900 ${f.vipTier === 'vip3' ? 'border-warning-300/60 shadow-glow-vip dark:border-warning-500/30' : f.vipTier === 'vip2' ? 'border-secondary-300/50 dark:border-secondary-500/30' : f.vipTier === 'vip1' ? 'border-primary-200 dark:border-primary-500/30' : 'border-neutral-200 dark:border-neutral-800'}`}>
+      <div className={`group relative flex flex-col gap-4 rounded-2xl border bg-white p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-hover dark:bg-neutral-900 ${f.vipTier === 'vip3' || f.vipTier === 'vip4' || f.vipTier === 'vip5' || f.vipTier === 'vip6' ? 'border-amber-400/60 shadow-glow-vip dark:border-amber-500/40 bg-gradient-to-br from-amber-500/5 via-white to-transparent dark:from-amber-950/20 dark:via-neutral-900 dark:to-neutral-900' : f.vipTier === 'vip2' ? 'border-secondary-300/50 dark:border-secondary-500/30' : f.vipTier === 'vip1' ? 'border-primary-200 dark:border-primary-500/30' : 'border-neutral-200 dark:border-neutral-800'}`}>
         {f.vipTier && f.vipTier !== 'free' && (
-          <div className="absolute -top-2.5 left-4">
-            <Badge tone="vip"><Crown className="h-3 w-3" /> {plan.label}</Badge>
+          <div className="absolute -top-2.5 left-4 z-10">
+            <Badge tone="vip"><Crown className="h-3 w-3 text-amber-500" /> {plan.label}</Badge>
           </div>
         )}
 
