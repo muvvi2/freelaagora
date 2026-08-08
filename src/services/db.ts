@@ -235,20 +235,19 @@ const STATUS_FROM_DB: Record<string, string> = {
   canceled: 'cancelled',
 };
 
-// Mapeamento correto de IDs para evitar conflito com o Trial
-const VIP_TIER_MAP: Record<string, number> = { 
-  free: 4, 
-  trial: 11, 
-  vip1: 5, 
-  vip2: 6, 
-  vip3: 7, 
-  vip4: 8, 
-  vip5: 9, 
-  vip6: 10 
-};
-
+// Mapeamento correto e sequencial para os IDs do banco
 function tierToId(tier: string): number {
-  return VIP_TIER_MAP[tier] ?? 4;
+  switch (tier) {
+    case 'free': return 1;
+    case 'vip1': return 2;
+    case 'vip2': return 3;
+    case 'vip3': return 4;
+    case 'vip4': return 5;
+    case 'vip5': return 6;
+    case 'vip6': return 7;
+    case 'trial': return 4;
+    default: return 1;
+  }
 }
 
 function categorySlugToId(slug: string): number | null {
@@ -387,7 +386,7 @@ function mapUserToFlProfile(user: User): Partial<DbFreelancerProfile> {
     hourly_rate: user.hourlyRate ?? 0,
     daily_rate: user.dailyRate ?? 0,
     pix_key: user.pixKey ?? null,
-    vip_plan_id: user.vipTier ? tierToId(user.vipTier) : 4,
+    vip_plan_id: user.vipTier ? tierToId(user.vipTier) : 1,
     vip_expires_at: user.vipExpiresAt ?? null,
     rating_average: user.rating ?? 5,
     reviews_count: user.reviewsCount ?? 0,
@@ -752,9 +751,10 @@ export async function loadAllData(): Promise<AppData> {
     createdAt: row.created_at,
   }));
 
-  // Preserva integralmente o VIP_PLANS original do mockData e aplica os dados do DB caso existam
+  // Sincroniza os planos de freelancer respeitando exatamente os IDs do Supabase (1=free, 2=vip1, 3=vip2, 4=vip3, 5=vip4, etc.)
   const vipPlans: VipPlan[] = VIP_PLANS.map(plan => {
-    const dbPlan = vipFlRes.data?.find((p: any) => p.id === tierToId(plan.tier));
+    const targetId = tierToId(plan.tier);
+    const dbPlan = vipFlRes.data?.find((p: any) => p.id === targetId);
     if (dbPlan) {
       return {
         ...plan,
@@ -771,9 +771,10 @@ export async function loadAllData(): Promise<AppData> {
     return plan;
   });
 
-  // Preserva integralmente o EST_VIP_PLANS original do mockData e aplica os dados do DB caso existam
+  // Sincroniza os planos de estabelecimento respeitando exatamente os IDs do Supabase (4=free/trial, 5=vip1, 6=vip2, 7=vip3, 8=vip4, etc.)
   const estVipPlans: EstVipPlan[] = EST_VIP_PLANS.map(plan => {
-    const dbPlan = vipEsRes.data?.find((p: any) => p.id === tierToId(plan.tier));
+    const targetId = plan.tier === 'free' || plan.tier === 'trial' ? 4 : plan.tier === 'vip1' ? 5 : plan.tier === 'vip2' ? 6 : plan.tier === 'vip3' ? 7 : plan.tier === 'vip4' ? 8 : plan.tier === 'vip5' ? 9 : 10;
+    const dbPlan = vipEsRes.data?.find((p: any) => p.id === targetId);
     if (dbPlan) {
       return {
         ...plan,
@@ -784,7 +785,7 @@ export async function loadAllData(): Promise<AppData> {
           semestral: Number(dbPlan.semestral_price ?? plan.prices.semestral),
           annual: Number(dbPlan.annual_price ?? plan.prices.annual),
         },
-        allowAds: ['vip4', 'vip5', 'vip6'].includes(plan.tier),
+        allowAds: ['vip4', 'vip5', 'vip6', 'vip7'].includes(plan.tier),
       };
     }
     return plan;
