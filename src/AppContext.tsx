@@ -219,16 +219,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const est = data.users.find((u) => u.id === j.establishmentId);
     if (!est) return { ok: false, error: 'Estabelecimento não encontrado.' };
 
-    // Mapeamento dos limites de publicações por semana (VIP 2 atualizado para 20 vagas)
-    const tierMaxJobsPerWeek: Record<string, number> = {
-      free: 2,
-      vip1: 5,
-      vip2: 20,
-      vip3: 999,
-    };
-
     const currentTier = est.estVipTier ?? 'free';
-    const planMaxJobs = tierMaxJobsPerWeek[currentTier] ?? 2;
+
+    // Busca o limite de vagas diretamente do plano cadastrado no Admin (estVipPlans)
+    const matchedPlan = data.estVipPlans?.find((p) => p.tier === currentTier);
+    const planMaxJobs = matchedPlan?.maxActiveJobs ?? (currentTier === 'free' ? 2 : currentTier === 'vip1' ? 5 : currentTier === 'vip2' ? 20 : 999);
 
     const isOnTrial = est.trialEndsAt ? new Date(est.trialEndsAt) > new Date() : false;
     const effectiveMaxJobs = isOnTrial ? 10 : planMaxJobs;
