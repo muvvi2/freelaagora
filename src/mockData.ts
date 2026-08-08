@@ -1,3 +1,18 @@
+import type { AppData, Category, MacroCategory, VipPlan, EstVipPlan, MetroMap, User, WeekAvailability, Job, Contract, WalletTx, AppNotification, Address } from './types';
+
+// ============================================================
+// MACRO-CATEGORIES
+// ============================================================
+export const MACRO_CATEGORIES: MacroCategory[] = [
+  { id: 'alimentacao', label: 'Alimentação e Gastronomia', icon: 'ChefHat', color: '#f97316' },
+  { id: 'domesticos', label: 'Domésticos e Cuidados', icon: 'Home', color: '#22c55e' },
+  { id: 'eventos', label: 'Eventos, Entretenimento e Estética', icon: 'PartyPopper', color: '#ec4899' },
+  { id: 'manutencao', label: 'Manutenção, Reformas e Emergências', icon: 'Wrench', color: '#f59e0b' },
+  { id: 'varejo', label: 'Varejo, Comércio e Atendimento', icon: 'Store', color: '#0891b2' },
+  { id: 'logistica', label: 'Logística, Segurança e Serviços Gerais', icon: 'Truck', color: '#3b82f6' },
+  { id: 'tecnico', label: 'Técnico, Saúde e Educação', icon: 'Stethoscope', color: '#8b5cf6' },
+];
+
 // ============================================================
 // CATEGORIES — Full national catalog (Hyper-Comprehensive Edition)
 // ============================================================
@@ -160,3 +175,238 @@ export const CATEGORIES: Category[] = [
   { id: 'contador_freelancer', label: 'Contador(a) / Consultor(a) Fiscal e Tributário', icon: 'Calculator', color: '#0f766e', macro: 'tecnico' },
   { id: 'advogado_consultor', label: 'Advogado(a) Consultor(a) Freelancer', icon: 'Scale', color: '#1e3a8a', macro: 'tecnico' },
 ];
+
+// ============================================================
+// FREELANCER VIP PLANS
+// ============================================================
+export const VIP_PLANS: VipPlan[] = [
+  { tier: 'free', label: 'Free', maxCategories: 2, features: ['Até 2 categorias ativas', 'Aparição padrão nas buscas'], prices: { monthly: 0, semestral: 0, annual: 0 } },
+  { tier: 'vip1', label: 'VIP 1', maxCategories: 4, features: ['Até 4 categorias ativas', 'Impulso leve nas buscas'], prices: { monthly: 14.90, semestral: 59.90, annual: 99.90 }, boost: 'light' },
+  { tier: 'vip2', label: 'VIP 2', maxCategories: 5, features: ['Até 5 categorias ativas', 'Selo verificado', 'Ranking superior nas buscas'], prices: { monthly: 24.90, semestral: 99.90, annual: 169.90 }, badge: 'verified', boost: 'top' },
+  { tier: 'vip3', label: 'VIP 3', maxCategories: 999, features: ['Categorias ilimitadas', 'Destaque visual máximo', 'Suporte prioritário', 'Ranking máximo'], prices: { monthly: 39.90, semestral: 159.90, annual: 279.90 }, badge: 'diamond', boost: 'max' },
+];
+
+// ============================================================
+// ESTABLISHMENT VIP PLANS (Incluindo plano Trial configurado no Admin)
+// ============================================================
+export const EST_VIP_PLANS: EstVipPlan[] = [
+  { tier: 'free', label: 'Plano Gratuito', intermediationFee: 15.0, maxActiveJobs: 2, features: ['Até 2 vagas por semana', 'Taxa de intermediação de 15,0%', 'Gratuito', 'Acesso completo ao marketplace'], prices: { monthly: 0, semestral: 0, annual: 0 } },
+  { tier: 'trial', label: 'Teste Gratuito (15 dias)', intermediationFee: 7.5, maxActiveJobs: 10, features: ['Até 10 vagas por semana durante o teste', 'Taxa reduzida de 7,5%', 'Sem compromisso'], prices: { monthly: 0, semestral: 0, annual: 0 } },
+  { tier: 'vip1', label: 'Plano VIP 1', intermediationFee: 7.5, maxActiveJobs: 5, features: ['Até 5 vagas por semana', 'Taxa reduzida de 7,5%', 'Prioridade no suporte'], prices: { monthly: 29.90, semestral: 149.90, annual: 249.90 } },
+  { tier: 'vip2', label: 'Plano VIP 2', intermediationFee: 5.0, maxActiveJobs: 20, features: ['Até 20 vagas por semana', 'Taxa reduzida de 5,0%', 'Prioridade no suporte', 'Destaque nas buscas'], prices: { monthly: 59.90, semestral: 299.90, annual: 499.90 } },
+  { tier: 'vip3', label: 'Plano VIP 3', intermediationFee: 0.0, maxActiveJobs: 999, features: ['Vagas ilimitadas por semana', 'Isenção total (0%) de taxas', 'Suporte prioritário VIP', 'Destaque máximo'], prices: { monthly: 119.90, semestral: 549.00, annual: 949.00 } },
+];
+
+export const LEGAL_VERSION = 'v1.9';
+
+export const tierLabel: Record<string, string> = { free: 'Free', vip1: 'VIP 1', vip2: 'VIP 2', vip3: 'VIP 3' };
+export const estTierLabel: Record<string, string> = { free: 'Gratuito', trial: 'Teste Gratuito', vip1: 'VIP 1', vip2: 'VIP 2', vip3: 'VIP 3' };
+
+// ============================================================
+// METRO MAP — São Paulo (legacy, kept for fallback)
+// ============================================================
+export const METRO_MAP: MetroMap = {
+  'São Paulo': ['Guarulhos', 'Osasco', 'Santo André', 'São Bernardo do Campo', 'São Caetano do Sul', 'Diadema', 'Taboão da Serra', 'Embu das Artes'],
+  'Guarulhos': ['São Paulo'],
+  'Osasco': ['São Paulo', 'Barueri'],
+  'Santo André': ['São Paulo', 'São Bernardo do Campo', 'São Caetano do Sul', 'Mauá'],
+  'São Bernardo do Campo': ['São Paulo', 'Santo André', 'São Caetano do Sul', 'Diadema'],
+  'São Caetano do Sul': ['São Paulo', 'Santo André', 'São Bernardo do Campo'],
+  'Diadema': ['São Paulo', 'São Bernardo do Campo'],
+  'Taboão da Serra': ['São Paulo', 'Embu das Artes'],
+  'Embu das Artes': ['São Paulo', 'Taboão da Serra'],
+  'Barueri': ['Osasco', 'Carapicuíba'],
+  'Carapicuíba': ['Osasco', 'Barueri'],
+  'Mauá': ['Santo André', 'Ribeirão Pires'],
+  'Ribeirão Pires': ['Mauá', 'Santo André'],
+};
+
+export function metroNearby(city: string): string[] {
+  const nearby = METRO_MAP[city] ?? [];
+  return [city, ...nearby];
+}
+
+// ============================================================
+// AVAILABILITY helpers
+// ============================================================
+export function emptyAvailability(): WeekAvailability {
+  const days: WeekAvailability = {} as WeekAvailability;
+  for (const d of ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'] as const) {
+    days[d] = { manha: false, tarde: false, noite: false };
+  }
+  return days;
+}
+
+export function fullAvailability(): WeekAvailability {
+  const days: WeekAvailability = {} as WeekAvailability;
+  for (const d of ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'] as const) {
+    days[d] = { manha: true, tarde: true, noite: true };
+  }
+  return days;
+}
+
+export const DAY_LABELS: { key: 'seg' | 'ter' | 'qua' | 'qui' | 'sex' | 'sab' | 'dom'; label: string; short: string }[] = [
+  { key: 'seg', label: 'Segunda', short: 'Seg' },
+  { key: 'ter', label: 'Terça', short: 'Ter' },
+  { key: 'qua', label: 'Quarta', short: 'Qua' },
+  { key: 'qui', label: 'Quinta', short: 'Qui' },
+  { key: 'sex', label: 'Sexta', short: 'Sex' },
+  { key: 'sab', label: 'Sábado', short: 'Sáb' },
+  { key: 'dom', label: 'Domingo', short: 'Dom' },
+];
+
+export const SHIFT_LABELS: { key: 'manha' | 'tarde' | 'noite'; label: string; icon: string }[] = [
+  { key: 'manha', label: 'Manhã', icon: 'Sunrise' },
+  { key: 'tarde', label: 'Tarde', icon: 'Sun' },
+  { key: 'noite', label: 'Noite', icon: 'Moon' },
+];
+
+// ============================================================
+// DEMO USERS
+// ============================================================
+const now = Date.now();
+const daysAgo = (d: number) => new Date(now - d * 86400000).toISOString();
+
+const addrSP = (street: string, num: string, bairro: string, lat = -23.56, lng = -46.65): Address => ({ cep: '01310-100', street, number: num, neighborhood: bairro, city: 'São Paulo', state: 'SP', lat, lng });
+
+export const SEED_USERS: User[] = [
+  {
+    id: 'admin1', accountType: 'freelancer', isAdmin: true, adminRole: 'super',
+    email: 'admin@freelaagora.com', password: 'admin123', name: 'Administrador FreelaAgora',
+    photo: 'https://images.pexels.com/photos/804009/pexels-photo-804009.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+    phone: '(11) 90000-0000', whatsapp: '(11) 90000-0000', address: addrSP('R. Augusta', '100', 'Consolação'),
+    walletBalance: 0, createdAt: daysAgo(120),
+    termsAcceptance: { timestamp: daysAgo(120), ip: '189.45.22.10', userAgent: 'Mozilla/5.0 FreelaAgora', legalVersion: 'v1.0' },
+  },
+  {
+    id: 'admin2', accountType: 'freelancer', isAdmin: true, adminRole: 'regular',
+    email: 'moderador@freelaagora.com', password: 'mod123', name: 'Moderador FreelaAgora',
+    photo: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+    phone: '(11) 90000-0001', whatsapp: '(11) 90000-0001', address: addrSP('R. Augusta', '200', 'Consolação'),
+    walletBalance: 0, createdAt: daysAgo(60),
+    termsAcceptance: { timestamp: daysAgo(60), ip: '189.45.22.11', userAgent: 'Mozilla/5.0 FreelaAgora', legalVersion: 'v1.0' },
+  },
+  {
+    id: 'fl1', accountType: 'freelancer', email: 'marcos@freelaagora.com', password: '123456',
+    name: 'Marcos "Tigrão" Araújo', nickname: 'Tigrão', photo: 'https://images.pexels.com/photos/26621714/pexels-photo-26621714.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+    phone: '(11) 98888-1111', whatsapp: '(11) 98888-1111', address: addrSP('R. dos Pinheiros', '842', 'Pinheiros', -23.57, -46.70),
+    cpf: '111.444.777-35', bio: '15 anos de brasa na chapa. Especialista em costela fogo de chão e buffet para grandes eventos.',
+    specialties: ['Churrasqueiro', 'Cozinheiro'], hourlyRate: 45, dailyRate: 320, pixKey: 'marcos.tigrao@pix.com',
+    rating: 4.9, reviewsCount: 47, completedShifts: 142, vipTier: 'vip2',
+    vipExpiresAt: new Date(now + 20 * 86400000).toISOString(), categories: ['churrasqueiro', 'cozinha', 'garcom', 'bartender', 'promotor_eventos'],
+    availability: fullAvailability(), walletBalance: 1240, documentVerified: true, createdAt: daysAgo(90),
+    serviceRadiusKm: 25, acceptsInterstate: true,
+    termsAcceptance: { timestamp: daysAgo(90), ip: '201.55.33.22', userAgent: 'Mozilla/5.0 Chrome', legalVersion: 'v1.0' },
+  },
+  {
+    id: 'fl2', accountType: 'freelancer', email: 'juliana@freelaagora.com', password: '123456',
+    name: 'Juliana Mendes', nickname: 'Ju', photo: 'https://images.pexels.com/photos/28945105/pexels-photo-28945105.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+    phone: '(11) 97777-2222', whatsapp: '(11) 97777-2222', address: { cep: '02011-000', street: 'R. Voluntários da Pátria', number: '500', neighborhood: 'Santana', city: 'São Paulo', state: 'SP', lat: -23.50, lng: -46.62 },
+    cpf: '222.333.444-05', bio: 'Garçonete de evento desde 2018. Atendo casamentos, confraternizações e jantares corporativos.',
+    specialties: ['Garçonete', 'Recepcionista'], hourlyRate: 32, dailyRate: 220, pixKey: 'ju.mendes@pix.com',
+    rating: 4.8, reviewsCount: 63, completedShifts: 98, vipTier: 'free',
+    categories: ['garcom', 'recepcionista'],
+    availability: { ...emptyAvailability(), seg: { manha: false, tarde: true, noite: true }, qua: { manha: false, tarde: true, noite: true }, sex: { manha: false, tarde: false, noite: true }, sab: { manha: true, tarde: true, noite: true }, dom: { manha: true, tarde: true, noite: false } },
+    walletBalance: 860, createdAt: daysAgo(60), serviceRadiusKm: 10, acceptsInterstate: false,
+    termsAcceptance: { timestamp: daysAgo(60), ip: '189.22.44.55', userAgent: 'Mozilla/5.0 Safari', legalVersion: 'v1.0' },
+  },
+  {
+    id: 'fl3', accountType: 'freelancer', email: 'diego@freelaagora.com', password: '123456',
+    name: 'Diego Santos', photo: 'https://images.pexels.com/photos/14164521/pexels-photo-14164521.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+    phone: '(11) 96666-3333', whatsapp: '(11) 96666-3333', address: { cep: '07041-050', street: 'R. Felício Marcondes', number: '123', neighborhood: 'Centro', city: 'Guarulhos', state: 'SP', lat: -23.45, lng: -46.53 },
+    cpf: '333.222.111-04', bio: 'Auxiliar de cozinha ágil e organizado. Disponível para plantões de fim de semana e coberturas.',
+    specialties: ['Auxiliar de Cozinha', 'Copeiro'], hourlyRate: 24, dailyRate: 160, pixKey: 'diegosantos@pix.com',
+    rating: 4.7, reviewsCount: 29, completedShifts: 54, vipTier: 'free', categories: ['cozinha'],
+    availability: { ...emptyAvailability(), sab: { manha: true, tarde: true, noite: true }, dom: { manha: true, tarde: true, noite: true } },
+    walletBalance: 320, createdAt: daysAgo(45), serviceRadiusKm: 15, acceptsInterstate: false,
+    termsAcceptance: { timestamp: daysAgo(45), ip: '177.33.55.66', userAgent: 'Mozilla/5.0 Firefox', legalVersion: 'v1.0' },
+  },
+  {
+    id: 'fl4', accountType: 'freelancer', email: 'rafael@freelaagora.com', password: '123456',
+    name: 'Rafael "Rafa" Costa', nickname: 'Rafa', photo: 'https://images.pexels.com/photos/19652091/pexels-photo-19652091.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+    phone: '(11) 95555-4444', whatsapp: '(11) 95555-4444', address: addrSP('Al. Santos', '2000', 'Jardim Paulista', -23.58, -46.67),
+    cpf: '444.555.666-07', bio: 'Bartender premiado em duas edições da São Paulo Cocktail Week. Levo minha própria estação.',
+    specialties: ['Bartender', 'Somelier'], hourlyRate: 40, dailyRate: 280, pixKey: 'rafa.cocktails@pix.com',
+    rating: 5.0, reviewsCount: 41, completedShifts: 87, vipTier: 'vip3',
+    vipExpiresAt: new Date(now + 60 * 86400000).toISOString(), categories: ['bartender', 'promotor_eventos', 'cozinha', 'dj', 'garcom'],
+    availability: fullAvailability(), walletBalance: 2100, documentVerified: true, createdAt: daysAgo(80),
+    serviceRadiusKm: 50, acceptsInterstate: true,
+    termsAcceptance: { timestamp: daysAgo(80), ip: '201.44.66.77', userAgent: 'Mozilla/5.0 Chrome Mobile', legalVersion: 'v1.0' },
+  },
+  {
+    id: 'es1', accountType: 'establishment', email: 'contato@bardoze.com.br', password: '123456',
+    name: 'Bar do Zé', photo: 'https://images.pexels.com/photos/5531664/pexels-photo-5531664.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+    phone: '(11) 98888-1234', whatsapp: '(11) 98888-1234', address: addrSP('R. dos Pinheiros', '842', 'Pinheiros', -23.57, -46.70),
+    cnpj: '12.345.678/0001-90', establishmentType: 'Bar & Restaurante',
+    estVipTier: 'vip2', rating: 4.6, reviewsCount: 124, walletBalance: 500, createdAt: daysAgo(100),
+    termsAcceptance: { timestamp: daysAgo(100), ip: '189.55.77.88', userAgent: 'Mozilla/5.0 Chrome', legalVersion: 'v1.0' },
+  },
+  {
+    id: 'es2', accountType: 'establishment', email: 'eventos@lumiere.com.br', password: '123456',
+    name: 'Casa de Eventos Lumière', photo: 'https://images.pexels.com/photos/13869884/pexels-photo-13869884.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+    phone: '(11) 97777-5678', whatsapp: '(11) 97777-5678', address: { cep: '04547-000', street: 'Av. das Nações', number: '1500', neighborhood: 'Itaim Bibi', city: 'São Paulo', state: 'SP', lat: -23.59, lng: -46.68 },
+    cnpj: '98.765.432/0001-10', establishmentType: 'Buffet & Eventos',
+    estVipTier: 'vip3', estVipExpiresAt: new Date(now + 90 * 86400000).toISOString(),
+    rating: 4.8, reviewsCount: 89, walletBalance: 1200, createdAt: daysAgo(95),
+    termsAcceptance: { timestamp: daysAgo(95), ip: '201.66.88.99', userAgent: 'Mozilla/5.0 Safari', legalVersion: 'v1.0' },
+  },
+];
+
+export const SEED_JOBS: Job[] = [
+  { id: 'job1', establishmentId: 'es1', establishmentName: 'Bar do Zé', establishmentPhoto: 'https://images.pexels.com/photos/5531664/pexels-photo-5531664.jpeg?auto=compress&cs=tinysrgb&h=650&w=940', category: 'garcom', title: 'Cobertura de sexta à noite', description: 'Preciso de 1 garçom para a noite de sexta. Casa lotada por causa do show.', date: new Date(now + 2 * 86400000).toISOString(), startTime: '18:00', hours: 6, value: 210, urgency: 'hoje', status: 'active', city: 'São Paulo', state: 'SP', applicants: ['fl2'], createdAt: daysAgo(1) },
+  { id: 'job2', establishmentId: 'es2', establishmentName: 'Casa de Eventos Lumière', establishmentPhoto: 'https://images.pexels.com/photos/13869884/pexels-photo-13869884.jpeg?auto=compress&cs=tinysrgb&h=650&w=940', category: 'bartender', title: 'Casamento sábado — bar de drinks', description: 'Casamento para 180 convidados. Bartender com experiência em drinks autorais.', date: new Date(now + 4 * 86400000).toISOString(), startTime: '16:00', hours: 8, value: 380, urgency: 'esta_semana', status: 'active', city: 'São Paulo', state: 'SP', applicants: ['fl4'], createdAt: daysAgo(2) },
+  { id: 'job3', establishmentId: 'es1', establishmentName: 'Bar do Zé', establishmentPhoto: 'https://images.pexels.com/photos/5531664/pexels-photo-5531664.jpeg?auto=compress&cs=tinysrgb&h=650&w=940', category: 'cozinha', title: 'Churrasco de domingo — urgente', description: 'Churrasqueiro escalado faltou. Rodízio de carnes das 12h às 17h.', date: new Date(now + 1 * 86400000).toISOString(), startTime: '11:00', hours: 7, value: 350, urgency: 'hoje', status: 'active', city: 'São Paulo', state: 'SP', applicants: ['fl1'], createdAt: daysAgo(1) },
+];
+
+export const SEED_CONTRACTS: Contract[] = [
+  { id: 'ct1', jobId: null, establishmentId: 'es1', establishmentName: 'Bar do Zé', freelancerId: 'fl1', freelancerName: 'Marcos "Tigrão" Araújo', freelancerPhoto: 'https://images.pexels.com/photos/26621714/pexels-photo-26621714.jpeg?auto=compress&cs=tinysrgb&h=650&w=940', freelancerPhone: '(11) 98888-1111', freelancerWhatsapp: '(11) 98888-1111', category: 'cozinha', date: daysAgo(12), hours: 7, freelancerFee: 380, platformFeePercentage: 5.0, platformFee: 19, total: 399, status: 'completed', createdAt: daysAgo(15), history: [{ status: 'requested', at: daysAgo(15) }, { status: 'confirmed', at: daysAgo(15) }, { status: 'paid', at: daysAgo(14) }, { status: 'checked_in', at: daysAgo(12) }, { status: 'completed', at: daysAgo(12) }], reviewFromEstablishment: { id: 'rv1', fromId: 'es1', fromName: 'Bar do Zé', toId: 'fl1', rating: 5, comment: 'Tigrão salvou nosso domingo. Brasa no ponto!', date: daysAgo(12) }, reviewFromFreelancer: { id: 'rv2', fromId: 'fl1', fromName: 'Marcos "Tigrão" Araújo', toId: 'es1', rating: 5, comment: 'Estrutura impecável, pagamento no mesmo dia.', date: daysAgo(12) } },
+  { id: 'ct2', jobId: 'job2', establishmentId: 'es2', establishmentName: 'Casa de Eventos Lumière', freelancerId: 'fl4', freelancerName: 'Rafael "Rafa" Costa', freelancerPhoto: 'https://images.pexels.com/photos/19652091/pexels-photo-19652091.jpeg?auto=compress&cs=tinysrgb&h=650&w=940', freelancerPhone: '(11) 95555-4444', freelancerWhatsapp: '(11) 95555-4444', category: 'bartender', date: daysAgo(3), hours: 8, freelancerFee: 340, platformFeePercentage: 0.0, platformFee: 0, total: 340, status: 'paid', createdAt: daysAgo(6), coraInvoiceId: 'cora-inv-002', history: [{ status: 'requested', at: daysAgo(6) }, { status: 'confirmed', at: daysAgo(5) }, { status: 'paid', at: daysAgo(3) }] },
+];
+
+export const SEED_WALLET_TXS: WalletTx[] = [
+  { id: 'wt1', userId: 'fl1', type: 'escrow_release', amount: 380, description: 'Repasse do turno — Bar do Zé', contractId: 'ct1', date: daysAgo(12) },
+  { id: 'wt2', userId: 'fl1', type: 'platform_fee', amount: -19, description: 'Taxa de intermediação FreelaAgora (5%)', contractId: 'ct1', date: daysAgo(12) },
+  { id: 'wt3', userId: 'fl4', type: 'escrow_hold', amount: 0, description: 'Garantia retida — Casa de Eventos Lumière', contractId: 'ct2', date: daysAgo(3) },
+  { id: 'wt4', userId: 'es1', type: 'escrow_hold', amount: -399, description: 'Pagamento em garantia — Marcos Tigrão', contractId: 'ct1', date: daysAgo(14) },
+  { id: 'wt5', userId: 'es2', type: 'escrow_hold', amount: -340, description: 'Pagamento em garantia — Rafael Costa (0% taxa)', contractId: 'ct2', date: daysAgo(3) },
+  { id: 'wt6', userId: 'admin1', type: 'platform_fee', amount: 19, description: 'Taxa de intermediação recebida — contrato ct1 (5%)', contractId: 'ct1', date: daysAgo(12) },
+  { id: 'wt7', userId: 'es1', type: 'vip_charge_est', amount: -59.90, description: 'Assinatura VIP 2 (mensal)', date: daysAgo(30) },
+  { id: 'wt8', userId: 'fl1', type: 'vip_charge', amount: -24.90, description: 'Assinatura VIP 2 (mensal)', date: daysAgo(30) },
+  { id: 'wt9', userId: 'es2', type: 'vip_charge_est', amount: -119.90, description: 'Assinatura VIP 3 (mensal)', date: daysAgo(30) },
+];
+
+export const SEED_NOTIFICATIONS: AppNotification[] = [
+  { id: 'n1', userId: 'fl1', type: 'contract_update', title: 'Repasse realizado', body: 'Seu pagamento de R$ 380,00 foi liberado para sua carteira.', read: true, date: daysAgo(12), contractId: 'ct1' },
+  { id: 'n2', userId: 'fl4', type: 'hire_request', title: 'Nova solicitação de contratação', body: 'Casa de Eventos Lumière quer te contratar. Confirme sua disponibilidade.', read: false, date: daysAgo(6), contractId: 'ct2' },
+  { id: 'n3', userId: 'es2', type: 'contract_update', title: 'Freelancer confirmou disponibilidade', body: 'Rafael Costa confirmou. Realize o pagamento para liberar o contato.', read: false, date: daysAgo(5), contractId: 'ct2' },
+  { id: 'n4', userId: 'admin1', type: 'payment', title: 'Taxa arrecadada', body: 'Taxa de intermediação de R$ 19,00 creditada (5%).', read: true, date: daysAgo(12), contractId: 'ct1' },
+];
+
+export const SEED_COUPONS = [
+  { id: 'cp1', code: 'BEMVINDO10', discountPercentage: 10, isActive: true, createdAt: daysAgo(30) },
+  { id: 'cp2', code: 'FREELA20', discountPercentage: 20, isActive: true, createdAt: daysAgo(15) },
+  { id: 'cp3', code: 'VIPMAX15', discountPercentage: 15, isActive: true, createdAt: daysAgo(5) },
+];
+
+export const SEED_AUDIT_LOGS = [
+  { id: 'al1', adminId: 'admin1', action: 'Sistema iniciado — dados de demonstração carregados', createdAt: daysAgo(120) },
+];
+
+export const initialData: AppData = {
+  users: SEED_USERS,
+  jobs: SEED_JOBS,
+  contracts: SEED_CONTRACTS,
+  walletTxs: SEED_WALLET_TXS,
+  notifications: SEED_NOTIFICATIONS,
+  reviews: [
+    { id: 'rv1', fromId: 'es1', fromName: 'Bar do Zé', toId: 'fl1', rating: 5, comment: 'Tigrão salvou nosso domingo. Brasa no ponto!', date: daysAgo(12) },
+    { id: 'rv2', fromId: 'fl1', fromName: 'Marcos "Tigrão" Araújo', toId: 'es1', rating: 5, comment: 'Estrutura impecável, pagamento no mesmo dia.', date: daysAgo(12) },
+  ],
+  coupons: SEED_COUPONS,
+  adminAuditLogs: SEED_AUDIT_LOGS,
+  config: { defaultFeePercent: 15.0 },
+  paymentSettings: { activeProvider: 'asaas', configs: {} },
+  currentUserId: null,
+  vipPlans: VIP_PLANS,
+  estVipPlans: EST_VIP_PLANS,
+};
