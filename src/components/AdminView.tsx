@@ -886,7 +886,7 @@ function VipPlanEditor({ plan, onUpdate, onRemove, isEst }: {
             )}
           </div>
 
-          {/* Opção para ativar anúncios e definir a quantidade limite para estabelecimentos */}
+          {/* Opção universal de anúncios visível para QUALQUER plano de estabelecimento */}
           {isEst && (
             <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 dark:bg-amber-500/10 space-y-3">
               <label className="flex cursor-pointer items-center justify-between">
@@ -906,16 +906,15 @@ function VipPlanEditor({ plan, onUpdate, onRemove, isEst }: {
                 />
               </label>
 
-              {estPlan?.allowAds && (
-                <div className="pt-2 border-t border-amber-500/20">
-                  <Input
-                    label="Quantidade máxima de anúncios permitidos neste plano"
-                    type="number"
-                    value={String(estPlan?.maxAds ?? 1)}
-                    onChange={(e) => onUpdate({ maxAds: Number(e.target.value) || 1 } as Partial<EstVipPlan>)}
-                  />
-                </div>
-              )}
+              {/* Caixa de quantidade disponível de forma universal e irrestrita */}
+              <div className="pt-2 border-t border-amber-500/20">
+                <Input
+                  label="Quantidade máxima de anúncios permitidos neste plano"
+                  type="number"
+                  value={String(estPlan?.maxAds ?? 0)}
+                  onChange={(e) => onUpdate({ maxAds: Number(e.target.value) || 0 } as Partial<EstVipPlan>)}
+                />
+              </div>
             </div>
           )}
 
