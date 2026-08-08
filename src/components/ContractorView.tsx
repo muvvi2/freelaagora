@@ -14,7 +14,7 @@ import { EscrowFlowModal } from './EscrowFlowModal';
 import { VipPanel } from './VipPanel';
 import { Modal } from './ui/Modal';
 import { EstablishmentEditModal } from './EstablishmentEditModal';
-import { CATEGORIES, MACRO_CATEGORIES, metroNearby } from '@/mockData';
+import { CATEGORIES, MACRO_CATEGORIES } from '@/mockData';
 import { formatCurrency, downloadTaxReceipt, distanceBetween, isWithinRadius, isAvailableToday, isAvailableTomorrow, isFreelancerAvailableOn, isEstablishmentOnTrial, trialDaysLeft, formatDateBR } from '@/utils';
 import type { User, Job, Contract } from '@/types';
 
@@ -49,23 +49,23 @@ export function ContractorView() {
     if (useGps) { setUseGps(false); return; }
     if (!navigator.geolocation) { notify('Geolocalização não suportada neste navegador.', 'warning'); return; }
     navigator.geolocation.getCurrentPosition(
-      (pos) => { setGpsLat(pos.coords.latitude); setGpsLng(pos.coords.longitude); setUseGps(true); notify('Localização detectada!'); },
-      () => { notify('Não foi possível obter sua localização.', 'warning'); },
+      (pos) => { setGpsLat(pos.coords.latitude); setGpsLng(pos.coords.longitude); setUseGps(true); notify('Localização GPS detectada com sucesso!'); },
+      () => { notify('Não foi possível obter sua localização GPS.', 'warning'); },
       { enableHighAccuracy: true, timeout: 10000 }
     );
   };
 
   const origin = useGps && gpsLat != null && gpsLng != null
-    ? { cep: '', street: '', number: '', neighborhood: '', city: '', state: '', lat: gpsLat, lng: gpsLng }
+    ? { cep: '', street: '', number: '', neighborhood: '', city: useGps ? 'GPS Atual' : me.address.city, state: me.address.state, lat: gpsLat, lng: gpsLng }
     : me.address;
-
-  const nearbyCities = metroNearby(me.address.city);
 
   const filtered = useMemo(() => {
     let list = data.users.filter((f) => {
       if (f.accountType !== 'freelancer' || f.isAdmin || f.banned) return false;
-      // Geo filter (se não estiver com Km Livre ativo)
+      
+      // Filtro Geográfico Real por Raio em KM (se Km Livre não estiver ativo)
       if (!isUnlimited && !isWithinRadius(f, origin, radiusKm)) return false;
+
       // Macro category filter
       if (macroFilter !== 'all') {
         const macroCats = CATEGORIES.filter((c) => c.macro === macroFilter).map((c) => c.id);
@@ -123,7 +123,7 @@ export function ContractorView() {
               <h1 className="font-display text-xl font-extrabold drop-shadow sm:text-2xl">{me.name}</h1>
               <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm">
                 <Rating value={me.rating ?? 0} count={me.reviewsCount ?? 0} />
-                <span className="text-white/80">{me.establishmentType}</span>
+                <span className="text-white/80">{me.establishmentType} · {me.address.city} - {me.address.state}</span>
               </div>
             </div>
           </div>
@@ -162,7 +162,11 @@ export function ContractorView() {
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <h2 className="font-display text-lg font-bold text-neutral-900 dark:text-white">Profissionais na sua região</h2>
-              <p className="text-xs text-neutral-400">Filtrando por: {nearbyCities.join(', ')}</p>
+              <p className="text-xs text-neutral-400">
+                {isUnlimited 
+                  ? 'Filtrando por: Km Livre (Atendimento Nacional / Sem Limite de Raio)' 
+                  : `Filtrando por: Raio real de até ${radiusKm} km a partir de ${me.address.city} - ${me.address.state}`}
+              </p>
             </div>
           </div>
 
@@ -174,7 +178,7 @@ export function ContractorView() {
                 <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por nome, categoria ou descrição..."
                   className="w-full rounded-xl border border-neutral-200 bg-white py-2.5 pl-10 pr-3 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100" />
               </div>
-              <Button variant="outline" onClick={handleGps} className={useGps ? 'border-secondary-400 text-secondary-600 bg-secondary-50' : ''} title="Usar minha localização"><Navigation className={`h-4 w-4 ${useGps ? 'fill-current' : ''}`} /></Button>
+              <Button variant="outline" onClick={handleGps} className={useGps ? 'border-secondary-400 text-secondary-600 bg-secondary-50' : ''} title="Usar minha localização GPS"><Navigation className={`h-4 w-4 ${useGps ? 'fill-current' : ''}`} /></Button>
               <Button variant="outline" onClick={() => setShowFilters((s) => !s)} className={showFilters ? 'border-primary-400 text-primary-600' : ''}><SlidersHorizontal className="h-4 w-4" /></Button>
             </div>
 
@@ -212,7 +216,7 @@ export function ContractorView() {
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3 dark:border-neutral-800 dark:bg-neutral-900">
               <div className="flex items-center gap-3 flex-1 min-w-[200px]">
                 <MapPin className="h-4 w-4 shrink-0 text-neutral-400" />
-                <span className="text-xs font-semibold text-neutral-500">Distância</span>
+                <span className="text-xs font-semibold text-neutral-500">Distância Máxima</span>
                 <input
                   type="range"
                   min={1}
@@ -282,7 +286,7 @@ export function ContractorView() {
 
           {/* Results count */}
           {useGps && <p className="mb-2 flex items-center gap-1 text-xs text-secondary-600 dark:text-secondary-400"><Navigation className="h-3 w-3 fill-current" /> Usando sua localização GPS atual</p>}
-          <p className="mb-3 text-xs text-neutral-400"><strong className="text-neutral-600 dark:text-neutral-300">{filtered.length}</strong> profissionais encontrados {useGps ? 'no raio selecionado' : 'na sua região'}</p>
+          <p className="mb-3 text-xs text-neutral-400"><strong className="text-neutral-600 dark:text-neutral-300">{filtered.length}</strong> profissionais encontrados dentro dos critérios de distância configurados</p>
 
           <div className="grid gap-4 sm:grid-cols-2">
             {filtered.map((f) => <FreelancerCard key={f.id} freelancer={f} onHire={handleHire} onView={setViewing} distanceKm={distanceBetween(f.address, origin)} />)}
