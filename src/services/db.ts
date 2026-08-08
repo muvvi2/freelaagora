@@ -56,6 +56,7 @@ export interface DbUser {
   is_admin: boolean;
   admin_role: string | null;
   trial_ends_at: string | null;
+  ad_images: string[] | null;
 }
 
 export interface DbFreelancerProfile {
@@ -235,7 +236,6 @@ const STATUS_FROM_DB: Record<string, string> = {
   canceled: 'cancelled',
 };
 
-// Mapeamento ID Fixo por Tiers para Freelancer
 function freelancerTierToId(tier: string): number {
   switch (tier) {
     case 'free': return 1;
@@ -249,7 +249,6 @@ function freelancerTierToId(tier: string): number {
   }
 }
 
-// Mapeamento ID Fixo por Tiers para Estabelecimento (Trial integrado ao ID 3)
 function establishmentTierToId(tier: string): number {
   switch (tier) {
     case 'trial': return 3;
@@ -341,6 +340,7 @@ function mapDbUserToUser(
     termsAcceptance: row.terms_acceptance_json as { timestamp: string; ip: string; userAgent: string; legalVersion: string } | undefined,
     lastAdminEdit: row.last_admin_edit ?? undefined,
     createdAt: row.created_at,
+    adImages: row.ad_images ?? [],
   };
 }
 
@@ -389,6 +389,7 @@ function mapUserToDbUser(user: User): Partial<DbUser> {
     is_admin: user.isAdmin ?? false,
     admin_role: user.adminRole ?? null,
     trial_ends_at: user.trialEndsAt ?? null,
+    ad_images: user.adImages ?? [],
   };
 }
 
@@ -594,9 +595,6 @@ function mapJobToDbRow(j: Job): Partial<DbJob> {
   };
 }
 
-// ============================================================
-// VIP PLANS DB OPERATIONS (Com Tratamento de Erros Explícito)
-// ============================================================
 export async function dbUpsertVipPlan(plan: VipPlan): Promise<void> {
   const planId = freelancerTierToId(plan.tier);
   const { error } = await supabase.from('vip_plans_freelancer').upsert({
@@ -653,9 +651,6 @@ export async function dbDeleteEstVipPlan(tier: EstTier): Promise<void> {
   }
 }
 
-// ============================================================
-// LOAD ALL DATA (BLINDADO E LIMPO)
-// ============================================================
 export async function loadAllData(): Promise<AppData> {
   const [
     usersRes, flProfilesRes, esProfilesRes, flCategoriesRes, flAvailRes,
@@ -779,7 +774,6 @@ export async function loadAllData(): Promise<AppData> {
     createdAt: row.created_at,
   }));
 
-  // Sincroniza rigidamente com os IDs oficiais, mapeando os dados do Supabase
   const vipPlans: VipPlan[] = VIP_PLANS.map(plan => {
     const targetId = freelancerTierToId(plan.tier);
     const dbPlan = vipFlRes.data?.find((p: any) => p.id === targetId);
@@ -857,9 +851,6 @@ export async function loadAllData(): Promise<AppData> {
   };
 }
 
-// ============================================================
-// USER OPERATIONS
-// ============================================================
 export async function dbInsertUser(user: User): Promise<void> {
   const dbUser = mapUserToDbUser(user);
   const { error } = await supabase.from('users').insert(dbUser as never);
@@ -894,68 +885,90 @@ export async function dbInsertUser(user: User): Promise<void> {
 }
 
 export async function dbUpdateUser(id: string, patch: Partial<User>): Promise<void> {
-  const fullUser: User = {
-    id,
-    accountType: 'freelancer',
-    email: '',
-    password: '',
-    name: '',
-    photo: '',
-    phone: '',
-    whatsapp: '',
-    address: { cep: '', street: '', number: '', neighborhood: '', city: '', state: '' },
-    createdAt: '',
-    ...patch,
-  } as User;
+  const dbPatch: Record<string, unknown> = {};
 
-  const dbUser = mapUserToDbUser(fullUser);
-  const { error } = await supabase.from('users').update(dbUser as never).eq('id', id);
-  if (error) throw new Error(`Erro ao atualizar usuário: ${error.message}`);
+  if (patch.name !== undefined) dbPatch.full_name = patch.name;
+  if (patch.email !== undefined) dbPatch.email = patch.email;
+  if (patch.password !== undefined) dbPatch.password_hash = patch.password;
+  if (patch.accountType !== undefined) dbPatch.user_type = patch.isAdmin ? 'admin' : patch.accountType;
+  if (patch.photo !== undefined) dbPatch.photo_url = patch.photo;
+  if (patch.cpf !== undefined) dbPatch.document_cpf = patch.cpf;
+  if (patch.cnpj !== undefined) dbPatch.document_cnpj = patch.cnpj;
+  if (patch.whatsapp !== undefined) dbPatch.whatsapp = patch.whatsapp;
+  if (patch.phone !== undefined) dbPatch.phone_contact = patch.phone;
+  if (patch.banned !== undefined) dbPatch.banned = patch.banned;
+  if (patch.nickname !== undefined) dbPatch.nickname = patch.nickname;
+  if (patch.documentVerified !== undefined) dbPatch.document_verified = patch.documentVerified;
+  if (patch.termsAcceptance !== undefined) dbPatch.terms_acceptance_json = patch.termsAcceptance;
+  if (patch.lastAdminEdit !== undefined) dbPatch.last_admin_edit = patch.lastAdminEdit;
+  if (patch.walletBalance !== undefined) dbPatch.wallet_balance = patch.walletBalance;
+  if (patch.isAdmin !== undefined) dbPatch.is_admin = patch.isAdmin;
+  if (patch.adminRole !== undefined) dbPatch.admin_role = patch.adminRole;
+  if (patch.trialEndsAt !== undefined) dbPatch.trial_ends_at = patch.trialEndsAt;
+  if (patch.vipTier !== undefined) dbPatch.vip_tier = patch.vipTier;
+  if (patch.estVipTier !== undefined) dbPatch.est_vip_tier = patch.estVipTier;
+  if (patch.vipExpiresAt !== undefined) dbPatch.vip_expires_at = patch.vipExpiresAt;
+  if (patch.estVipExpiresAt !== undefined) dbPatch.est_vip_expires_at = patch.estVipExpiresAt;
+  if (patch.adImages !== undefined) dbPatch.ad_images = patch.adImages;
 
-  if (patch.accountType === 'freelancer' || patch.bio !== undefined || patch.hourlyRate !== undefined || patch.dailyRate !== undefined || patch.pixKey !== undefined || patch.specialties !== undefined || patch.walletBalance !== undefined || patch.rating !== undefined || patch.reviewsCount !== undefined || patch.completedShifts !== undefined || patch.vipTier !== undefined || patch.vipExpiresAt !== undefined || patch.documentVerified !== undefined || patch.serviceRadiusKm !== undefined || patch.acceptsInterstate !== undefined) {
-    const flProfile = mapUserToFlProfile(fullUser);
-    const { error: e2 } = await supabase.from('freelancer_profiles').upsert(flProfile as never).eq('user_id', id);
+  if (patch.address) {
+    if (patch.address.city !== undefined) dbPatch.city = patch.address.city;
+    if (patch.address.state !== undefined) dbPatch.state = patch.address.state;
+    if (patch.address.cep !== undefined) dbPatch.address_cep = patch.address.cep;
+    if (patch.address.street !== undefined) dbPatch.address_street = patch.address.street;
+    if (patch.address.number !== undefined) dbPatch.address_number = patch.address.number;
+    if (patch.address.complement !== undefined) dbPatch.address_complement = patch.address.complement;
+    if (patch.address.neighborhood !== undefined) dbPatch.address_neighborhood = patch.address.neighborhood;
+    if (patch.address.lat !== undefined) dbPatch.address_lat = patch.address.lat;
+    if (patch.address.lng !== undefined) dbPatch.address_lng = patch.address.lng;
+  }
+
+  if (Object.keys(dbPatch).length > 0) {
+    const { error } = await supabase.from('users').update(dbPatch).eq('id', id);
+    if (error) throw new Error(`Erro ao atualizar usuário: ${error.message}`);
+  }
+
+  if (patch.accountType === 'freelancer' || patch.bio !== undefined || patch.hourlyRate !== undefined || patch.dailyRate !== undefined || patch.pixKey !== undefined || patch.specialties !== undefined || patch.serviceRadiusKm !== undefined || patch.acceptsInterstate !== undefined) {
+    const flPatch: Record<string, unknown> = { user_id: id };
+    if (patch.bio !== undefined) flPatch.bio = patch.bio;
+    if (patch.specialties !== undefined) flPatch.specialties = patch.specialties;
+    if (patch.hourlyRate !== undefined) flPatch.hourly_rate = patch.hourlyRate;
+    if (patch.dailyRate !== undefined) flPatch.daily_rate = patch.dailyRate;
+    if (patch.pixKey !== undefined) flPatch.pix_key = patch.pixKey;
+    if (patch.serviceRadiusKm !== undefined) flPatch.service_radius_km = patch.serviceRadiusKm;
+    if (patch.acceptsInterstate !== undefined) flPatch.accepts_interstate = patch.acceptsInterstate;
+    if (patch.vipTier !== undefined) flPatch.vip_plan_id = freelancerTierToId(patch.vipTier);
+    if (patch.vipExpiresAt !== undefined) flPatch.vip_expires_at = patch.vipExpiresAt;
+    if (patch.walletBalance !== undefined) flPatch.wallet_balance = patch.walletBalance;
+
+    const { error: e2 } = await supabase.from('freelancer_profiles').upsert(flPatch as never);
     if (e2) throw new Error(`Erro ao atualizar perfil freelancer: ${e2.message}`);
   }
 
-  if (patch.accountType === 'establishment' || patch.establishmentType !== undefined || patch.walletBalance !== undefined || patch.rating !== undefined || patch.reviewsCount !== undefined || patch.estVipTier !== undefined || patch.estVipExpiresAt !== undefined || patch.address !== undefined) {
-    const esProfile = mapUserToEsProfile(fullUser);
-    const { error: e2 } = await supabase.from('establishment_profiles').upsert(esProfile as never).eq('user_id', id);
-    if (e2) throw new Error(`Erro ao atualizar perfil estabelecimento: ${e2.message}`);
-  }
-
-  if (patch.categories !== undefined) {
-    await supabase.from('freelancer_categories').delete().eq('freelancer_id', id);
-    if (patch.categories.length > 0) {
-      const catRows = patch.categories.map((cat) => ({
-        freelancer_id: id,
-        category_id: categorySlugToId(cat),
-      })).filter((r) => r.category_id !== null);
-      if (catRows.length > 0) {
-        await supabase.from('freelancer_categories').insert(catRows as never);
+  if (patch.accountType === 'establishment' || patch.establishmentType !== undefined || patch.address !== undefined) {
+    const esPatch: Record<string, unknown> = { user_id: id };
+    if (patch.establishmentType !== undefined) esPatch.establishment_type = patch.establishmentType;
+    if (patch.bio !== undefined) esPatch.company_description = patch.bio;
+    if (patch.address) {
+      if (patch.address.street && patch.address.number) {
+        esPatch.address = `${patch.address.street}, ${patch.address.number}`;
       }
+      if (patch.address.cep !== undefined) esPatch.address_cep = patch.address.cep;
+      if (patch.address.street !== undefined) esPatch.address_street = patch.address.street;
+      if (patch.address.number !== undefined) esPatch.address_number = patch.address.number;
+      if (patch.address.complement !== undefined) esPatch.address_complement = patch.address.complement;
+      if (patch.address.neighborhood !== undefined) esPatch.address_neighborhood = patch.address.neighborhood;
+      if (patch.address.city !== undefined) esPatch.address_city = patch.address.city;
+      if (patch.address.state !== undefined) esPatch.address_state = patch.address.state;
+      if (patch.address.lat !== undefined) esPatch.address_lat = patch.address.lat;
+      if (patch.address.lng !== undefined) esPatch.address_lng = patch.address.lng;
     }
-  }
+    if (patch.estVipTier !== undefined) esPatch.vip_plan_id = establishmentTierToId(patch.estVipTier);
+    if (patch.estVipExpiresAt !== undefined) esPatch.vip_expires_at = patch.estVipExpiresAt;
+    if (patch.walletBalance !== undefined) esPatch.wallet_balance = patch.walletBalance;
 
-  if (patch.availability !== undefined) {
-    await supabase.from('freelancer_availability').delete().eq('freelancer_id', id).is('specific_date', null);
-    const avRows = mapAvailabilityToRows(id, patch.availability);
-    await supabase.from('freelancer_availability').insert(avRows as never);
-  }
-
-  if (patch.dateAvailability !== undefined) {
-    await supabase.from('freelancer_availability').delete().eq('freelancer_id', id).not('specific_date', 'is', null);
-    const dateRows = Object.entries(patch.dateAvailability).map(([dateKey, shifts]) => ({
-      freelancer_id: id,
-      day_of_week: new Date(dateKey).getDay(),
-      shift_morning: shifts.manha,
-      shift_afternoon: shifts.tarde,
-      shift_night: shifts.noite,
-      specific_date: dateKey,
-    }));
-    if (dateRows.length > 0) {
-      await supabase.from('freelancer_availability').insert(dateRows as never);
-    }
+    const { error: e3 } = await supabase.from('establishment_profiles').upsert(esPatch as never);
+    if (e3) throw new Error(`Erro ao atualizar perfil estabelecimento: ${e3.message}`);
   }
 }
 
@@ -964,9 +977,6 @@ export async function dbDeleteUser(id: string): Promise<void> {
   if (error) throw new Error(`Erro ao deletar usuário: ${error.message}`);
 }
 
-// ============================================================
-// JOB OPERATIONS
-// ============================================================
 export async function dbInsertJob(job: Job): Promise<void> {
   const row = mapJobToDbRow(job);
   const { error } = await supabase.from('jobs').insert(row as never);
@@ -1005,9 +1015,6 @@ export async function dbApplyToJob(jobId: string, freelancerId: string): Promise
   if (error && !error.message.includes('duplicate')) throw new Error(`Erro ao candidatar: ${error.message}`);
 }
 
-// ============================================================
-// CONTRACT OPERATIONS
-// ============================================================
 export async function dbInsertContract(contract: Contract): Promise<void> {
   const row = mapContractToDbRow(contract);
   const { error } = await supabase.from('contracts').insert(row as never);
@@ -1042,9 +1049,6 @@ export async function dbUpdateContractInvoice(contractId: string, invoiceId: str
   if (error) throw new Error(`Erro ao atualizar fatura: ${error.message}`);
 }
 
-// ============================================================
-// WALLET OPERATIONS
-// ============================================================
 export async function dbInsertWalletTx(tx: WalletTx): Promise<void> {
   const { error } = await supabase.from('wallet_transactions').insert({
     id: tx.id,
@@ -1068,9 +1072,6 @@ export async function dbUpdateWalletBalance(userId: string, newBalance: number):
   if (e3 && !e3.message.includes('no rows')) { /* may not have a profile */ }
 }
 
-// ============================================================
-// NOTIFICATION OPERATIONS
-// ============================================================
 export async function dbInsertNotification(n: AppNotification): Promise<void> {
   const { error } = await supabase.from('notifications').insert({
     id: n.id,
@@ -1095,9 +1096,6 @@ export async function dbMarkAllNotificationsRead(userId: string): Promise<void> 
   if (error) throw new Error(`Erro ao marcar notificações: ${error.message}`);
 }
 
-// ============================================================
-// REVIEW OPERATIONS
-// ============================================================
 export async function dbInsertReview(review: Review, contractId: string, fromEstablishment: boolean): Promise<void> {
   const { data, error } = await supabase.from('contract_reviews').insert({
     id: review.id,
@@ -1123,9 +1121,6 @@ export async function dbDeleteReview(reviewId: string, fromEstablishment: boolea
   if (error) throw new Error(`Erro ao deletar avaliação: ${error.message}`);
 }
 
-// ============================================================
-// COUPON OPERATIONS
-// ============================================================
 export async function dbInsertCoupon(coupon: { code: string; discountPercentage: number; isActive: boolean; expiresAt?: string }): Promise<void> {
   const { error } = await supabase.from('discount_coupons').insert({
     code: coupon.code,
@@ -1149,9 +1144,6 @@ export async function dbDeleteCoupon(id: string): Promise<void> {
   if (error) throw new Error(`Erro ao deletar cupom: ${error.message}`);
 }
 
-// ============================================================
-// AUDIT LOG OPERATIONS
-// ============================================================
 export async function dbInsertAuditLog(log: { id: string; adminId: string; action: string; targetUserId?: string; createdAt: string }): Promise<void> {
   const { error } = await supabase.from('admin_audit_logs').insert({
     id: log.id,
@@ -1163,17 +1155,11 @@ export async function dbInsertAuditLog(log: { id: string; adminId: string; actio
   if (error) throw new Error(`Erro ao inserir log: ${error.message}`);
 }
 
-// ============================================================
-// CONFIG OPERATIONS
-// ============================================================
 export async function dbUpdateDefaultFeePercent(value: number): Promise<void> {
   const { error } = await supabase.from('platform_config').update({ default_fee_percent: value }).eq('id', 1);
   if (error) throw new Error(`Erro ao atualizar taxa: ${error.message}`);
 }
 
-// ============================================================
-// PAYMENT SETTINGS OPERATIONS
-// ============================================================
 export async function dbUpdatePaymentSettings(settings: PaymentSettings): Promise<void> {
   const configs: Record<string, unknown> = {};
   for (const [key, val] of Object.entries(settings.configs)) {
