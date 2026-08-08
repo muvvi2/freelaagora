@@ -6,18 +6,26 @@ export function VipSquareWidget() {
   const { data } = useApp();
   
   const activeAds: { establishmentName: string; imageUrl: string; city: string; state: string }[] = [];
+  
   data.users.forEach((u) => {
-    if (u.accountType === 'establishment' && ['vip4', 'vip5'].includes(u.estVipTier ?? '') && u.adImages && u.adImages.length > 0) {
-      u.adImages.forEach((img) => {
-        if (img && img.trim() !== '') {
-          activeAds.push({
-            establishmentName: u.name,
-            imageUrl: img,
-            city: u.address?.city || '',
-            state: u.address?.state || '',
-          });
-        }
-      });
+    if (u.accountType === 'establishment' && u.estVipTier && u.estVipTier !== 'free' && u.adImages && u.adImages.length > 0) {
+      // Verifica se o plano atual do estabelecimento tem permissão para exibir anúncios dinamicamente
+      const isOnTrial = u.trialEndsAt ? new Date(u.trialEndsAt) > new Date() : false;
+      const currentTier = isOnTrial ? 'trial' : u.estVipTier;
+      const plan = data.estVipPlans.find((p) => p.tier === currentTier);
+
+      if (plan?.allowAds) {
+        u.adImages.forEach((img) => {
+          if (img && img.trim() !== '') {
+            activeAds.push({
+              establishmentName: u.name,
+              imageUrl: img,
+              city: u.address?.city || '',
+              state: u.address?.state || '',
+            });
+          }
+        });
+      }
     }
   });
 
