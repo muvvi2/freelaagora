@@ -56,8 +56,11 @@ export function ContractorView() {
   };
 
   const origin = useGps && gpsLat != null && gpsLng != null
-    ? { cep: '', street: '', number: '', neighborhood: '', city: useGps ? 'GPS Atual' : (me.address?.city || ''), state: (me.address?.state || ''), lat: gpsLat, lng: gpsLng }
-    : (me.address || { cep: '', street: '', number: '', neighborhood: '', city: 'Pitangueiras', state: 'SP', lat: -21.01, lng: -48.22 });
+    ? { cep: '', street: '', number: '', neighborhood: '', city: 'GPS Atual', state: me.address?.state || 'SP', lat: gpsLat, lng: gpsLng }
+    : (me.address || { cep: '', street: '', number: '', neighborhood: '', city: 'São Paulo', state: 'SP', lat: -23.56, lng: -46.65 });
+
+  const establishmentCity = origin.city;
+  const establishmentState = origin.state;
 
   const filtered = useMemo(() => {
     let list = data.users.filter((f) => {
@@ -101,6 +104,19 @@ export function ContractorView() {
     return list;
   }, [data.users, origin, radiusKm, isUnlimited, macroFilter, category, minRating, dateFilter, customDate, query, sortBy, categoryById]);
 
+  // Lista dinâmica de cidades presentes no raio filtrado
+  const matchingCities = useMemo(() => {
+    if (isUnlimited) return ['Todas as cidades (Km Livre / Nacional)'];
+    const citiesSet = new Set<string>();
+    filtered.forEach((f) => {
+      if (f.address?.city) {
+        citiesSet.add(f.address.city);
+      }
+    });
+    const arr = Array.from(citiesSet);
+    return arr.length > 0 ? arr : [establishmentCity];
+  }, [filtered, isUnlimited, establishmentCity]);
+
   const handleHire = (f: User) => {
     const hours = 8;
     const fee = f.dailyRate ?? 0;
@@ -123,7 +139,7 @@ export function ContractorView() {
               <h1 className="font-display text-xl font-extrabold drop-shadow sm:text-2xl">{me.name}</h1>
               <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm">
                 <Rating value={me.rating ?? 0} count={me.reviewsCount ?? 0} />
-                <span className="text-white/80">{me.establishmentType} · {me.address?.city} - {me.address?.state}</span>
+                <span className="text-white/80">{me.establishmentType} · {establishmentCity} - {establishmentState}</span>
               </div>
             </div>
           </div>
@@ -164,8 +180,8 @@ export function ContractorView() {
               <h2 className="font-display text-lg font-bold text-neutral-900 dark:text-white">Profissionais na sua região</h2>
               <p className="text-xs text-neutral-400">
                 {isUnlimited 
-                  ? `Filtrando por: Km Livre (Atendimento Nacional / Sem Limite de Raio a partir de ${me.address?.city || 'sua cidade'})` 
-                  : `Filtrando profissionais a até ${radiusKm} km de ${me.address?.city || 'sua cidade'} - ${me.address?.state || 'SP'}`}
+                  ? 'Filtrando por: Km Livre (Atendimento Nacional / Sem Limite de Raio)' 
+                  : `Filtrando a até ${radiusKm} km de ${establishmentCity} - ${establishmentState}. Cidades no raio: ${matchingCities.join(', ')}`}
               </p>
             </div>
           </div>
