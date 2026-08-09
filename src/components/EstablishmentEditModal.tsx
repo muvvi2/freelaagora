@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Upload, Trash2, Image as ImageIcon, Link as LinkIcon, Lock, Home, Users, Building2 } from 'lucide-react';
+import { Check, Upload, Trash2, ImageIcon, Link as LinkIcon, Lock, Users, Building2 } from 'lucide-react';
 import type { User } from '@/types';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
@@ -30,18 +30,16 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
   const [email, setEmail] = useState(establishment.email);
   const [cnpj, setCnpj] = useState(establishment.cnpj ?? '');
 
-  // Abas de Gerenciamento por Local dentro do Modal
-  const [activeModalTab, setActiveModalTab] = useState<'home' | 'freelancers' | 'establishments'>('home');
+  // Apenas duas abas agora: Freelancers e Estabelecimentos
+  const [activeModalTab, setActiveModalTab] = useState<'freelancers' | 'establishments'>('freelancers');
 
-  // Permissões de locais contratados no plano VIP
-  const hasHomePermission = establishment.includeHomeAd ?? true;
-  const hasFreelancerPermission = establishment.includeFreelancerAd ?? false;
-  const hasEstablishmentPermission = establishment.includeEstablishmentAd ?? false;
+  const allowedFreelancerSlots = establishment.allowedFreelancerSlots ?? [];
+  const allowedEstablishmentSlots = establishment.allowedEstablishmentSlots ?? [];
 
-  // Gerenciamento de Anúncios e Links por Local
-  const [homeImages, setHomeImages] = useState<string[]>((establishment.homeAds || establishment.adImages) ?? []);
-  const [homeLinks, setHomeLinks] = useState<string[]>(establishment.homeLinks ?? []);
+  const hasFreelancerPermission = establishment.includeFreelancerAd ?? (allowedFreelancerSlots.length > 0);
+  const hasEstablishmentPermission = establishment.includeEstablishmentAd ?? (allowedEstablishmentSlots.length > 0);
 
+  // Armazenamento dos banners por slot (1, 2 e 3)
   const [freelancerImages, setFreelancerImages] = useState<string[]>(establishment.freelancerAds ?? []);
   const [freelancerLinks, setFreelancerLinks] = useState<string[]>(establishment.freelancerLinks ?? []);
 
@@ -50,51 +48,39 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
 
   const nearbyAds = filterAdsByRadius(data.users, establishment);
 
-  // Identificar se o plano atual permite anúncios e qual o limite
   const isOnTrial = establishment.trialEndsAt ? new Date(establishment.trialEndsAt) > new Date() : false;
   const currentTier = isOnTrial ? 'trial' : (establishment.estVipTier ?? 'free');
   const currentPlan = data.estVipPlans.find((p) => p.tier === currentTier);
   const allowAds = currentPlan?.allowAds ?? false;
-  const maxAds = currentPlan?.maxAds ?? 0;
 
-  // Selecionar listas ativas com base na aba do modal
-  const activeImagesList = activeModalTab === 'home' ? homeImages : activeModalTab === 'freelancers' ? freelancerImages : establishmentImages;
-  const activeLinksList = activeModalTab === 'home' ? homeLinks : activeModalTab === 'freelancers' ? freelancerLinks : establishmentLinks;
+  const activeImagesList = activeModalTab === 'freelancers' ? freelancerImages : establishmentImages;
+  const activeLinksList = activeModalTab === 'freelancers' ? freelancerLinks : establishmentLinks;
+  const allowedSlotsForCurrentTab = activeModalTab === 'freelancers' ? allowedFreelancerSlots : allowedEstablishmentSlots;
 
   const setActiveImages = (newImgs: string[]) => {
-    if (activeModalTab === 'home') setHomeImages(newImgs);
-    else if (activeModalTab === 'freelancers') setFreelancerImages(newImgs);
+    if (activeModalTab === 'freelancers') setFreelancerImages(newImgs);
     else setEstablishmentImages(newImgs);
   };
 
   const setActiveLinks = (newLinks: string[]) => {
-    if (activeModalTab === 'home') setHomeLinks(newLinks);
-    else if (activeModalTab === 'freelancers') setFreelancerLinks(newLinks);
+    if (activeModalTab === 'freelancers') setFreelancerLinks(newLinks);
     else setEstablishmentLinks(newLinks);
   };
 
-  // Função para buscar CEP na API ViaCEP
   const handleCepChange = async (value: string) => {
     const masked = maskCEP(value);
     setCep(masked);
-    
     const cleanCep = masked.replace(/\D/g, '');
     if (cleanCep.length === 8) {
       try {
         const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
         const dataRes = await response.json();
-        
         if (!dataRes.erro) {
           const newStreet = dataRes.logradouro || street;
           const newNeighborhood = dataRes.bairro || neighborhood;
           const newCity = dataRes.localidade || city;
           const newState = dataRes.uf || state;
-
-          setStreet(newStreet);
-          setNeighborhood(newNeighborhood);
-          setCity(newCity);
-          setState(newState);
-
+          setStreet(newStreet); setNeighborhood(newNeighborhood); setCity(newCity); setState(newState);
           try {
             const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(`${newStreet}, ${newCity}, ${newState}, Brazil`)}`);
             const geoData = await geoRes.json();
@@ -102,10 +88,7 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
               setLat(parseFloat(geoData[0].lat));
               setLng(parseFloat(geoData[0].lon));
             }
-          } catch (geoErr) {
-            // Ignora erro de geolocalização se houver falha
-          }
-
+          } catch (geoErr) {}
           notify('Endereço encontrado!', 'success');
         } else {
           notify('CEP não encontrado.', 'warning');
@@ -120,22 +103,15 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhoto(reader.result as string);
-      };
+      reader.onloadend = () => setPhoto(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
 
-  // Validação estrita de dimensões 600x900 pixels
-  const handleAddAdImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Validação estrita de dimensões 600x900 pixels por slot
+  const handleAddOrUpdateAdForSlot = (e: React.ChangeEvent<HTMLInputElement>, slotNumber: number) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    if (activeImagesList.length >= maxAds) {
-      notify(`Seu plano atual (${currentPlan?.label ?? currentTier.toUpperCase()}) permite no máximo ${maxAds} anúncio(s) por local.`, 'warning');
-      return;
-    }
 
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -150,9 +126,16 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
           return;
         }
 
-        setActiveImages([...activeImagesList, reader.result as string]);
-        setActiveLinks([...activeLinksList, '']);
-        notify('Imagem de anúncio adicionada com sucesso! (600x900px)', 'success');
+        const slotIndex = slotNumber - 1;
+        const newImgs = [...activeImagesList];
+        newImgs[slotIndex] = reader.result as string;
+        setActiveImages(newImgs);
+
+        const newLinks = [...activeLinksList];
+        if (!newLinks[slotIndex]) newLinks[slotIndex] = '';
+        setActiveLinks(newLinks);
+
+        notify(`Slot #${slotNumber} atualizado com sucesso! (600x900px)`, 'success');
       };
 
       img.onerror = () => {
@@ -163,15 +146,18 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
     reader.readAsDataURL(file);
   };
 
-  const handleRemoveAdImage = (index: number) => {
-    setActiveImages(activeImagesList.filter((_, i) => i !== index));
-    setActiveLinks(activeLinksList.filter((_, i) => i !== index));
-    notify('Anúncio removido', 'info');
+  const handleRemoveAdSlot = (slotNumber: number) => {
+    const slotIndex = slotNumber - 1;
+    const newImgs = [...activeImagesList];
+    newImgs[slotIndex] = '';
+    setActiveImages(newImgs);
+    notify(`Anúncio do Slot #${slotNumber} removido`, 'info');
   };
 
-  const handleLinkChange = (index: number, val: string) => {
+  const handleLinkChange = (slotNumber: number, val: string) => {
+    const slotIndex = slotNumber - 1;
     const next = [...activeLinksList];
-    next[index] = val;
+    next[slotIndex] = val;
     setActiveLinks(next);
   };
 
@@ -185,9 +171,9 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
       whatsapp, 
       email, 
       cnpj,
-      homeAds: allowAds ? homeImages : [],
-      adImages: allowAds ? homeImages : [],
-      homeLinks: allowAds ? homeLinks : [],
+      homeAds: [],
+      adImages: [],
+      homeLinks: [],
       freelancerAds: allowAds ? freelancerImages : [],
       freelancerLinks: allowAds ? freelancerLinks : [],
       establishmentAds: allowAds ? establishmentImages : [],
@@ -252,98 +238,101 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <ImageIcon className="h-5 w-5 text-amber-500" />
-              <h3 className="font-display font-bold text-neutral-900 dark:text-white">Gerenciamento de Anúncios por Local</h3>
+              <h3 className="font-display font-bold text-neutral-900 dark:text-white">Gerenciamento de Anúncios Rotativos (600x900px)</h3>
             </div>
             <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
-              Limite: {maxAds} por local · Plano: {currentPlan?.label ?? currentTier.toUpperCase()}
+              Plano: {currentPlan?.label ?? currentTier.toUpperCase()}
             </span>
           </div>
 
           {allowAds ? (
             <div className="space-y-4">
-              {/* Abas de Navegação por Local */}
               <div className="flex flex-wrap gap-2 border-b border-neutral-200 dark:border-neutral-700 pb-3">
-                <button
-                  type="button"
-                  onClick={() => setActiveModalTab('home')}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition ${activeModalTab === 'home' ? 'bg-amber-500 text-neutral-950 shadow' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200'}`}
-                >
-                  <Home className="h-3.5 w-3.5" /> Carrossel Home {hasHomePermission ? '' : '🔒'}
-                </button>
                 <button
                   type="button"
                   onClick={() => setActiveModalTab('freelancers')}
                   className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition ${activeModalTab === 'freelancers' ? 'bg-amber-500 text-neutral-950 shadow' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200'}`}
                 >
-                  <Users className="h-3.5 w-3.5" /> Pág. Freelancers {hasFreelancerPermission ? '' : '🔒'}
+                  <Users className="h-3.5 w-3.5" /> Página de Freelancers {hasFreelancerPermission ? '' : '🔒'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveModalTab('establishments')}
                   className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition ${activeModalTab === 'establishments' ? 'bg-amber-500 text-neutral-950 shadow' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200'}`}
                 >
-                  <Building2 className="h-3.5 w-3.5" /> Pág. Estabelecimentos {hasEstablishmentPermission ? '' : '🔒'}
+                  <Building2 className="h-3.5 w-3.5" /> Página de Estabelecimentos {hasEstablishmentPermission ? '' : '🔒'}
                 </button>
               </div>
 
-              {/* Trava caso não tenha permissão para o local selecionado */}
-              {((activeModalTab === 'home' && !hasHomePermission) ||
-                (activeModalTab === 'freelancers' && !hasFreelancerPermission) ||
+              {((activeModalTab === 'freelancers' && !hasFreelancerPermission) ||
                 (activeModalTab === 'establishments' && !hasEstablishmentPermission)) ? (
                 <div className="rounded-xl border border-error-500/30 bg-error-500/10 p-6 text-center space-y-2">
                   <Lock className="mx-auto h-8 w-8 text-error-400" />
-                  <h4 className="font-bold text-white text-sm">Local não contratado</h4>
+                  <h4 className="font-bold text-white text-sm">Página não contratada</h4>
                   <p className="text-xs text-neutral-300 max-w-xs mx-auto">
-                    Você não adquiriu o direito de exibir anúncios nesta página durante a assinatura do plano. Atualize seu plano para desbloquear.
+                    Você não selecionou slots para esta página durante a assinatura. Atualize seu plano para desbloquear.
                   </p>
                 </div>
               ) : (
                 <>
                   <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                    📐 Envie imagens estritamente verticais (<strong>600x900 pixels</strong>). Qualquer outra proporção será rejeitada automaticamente.
+                    📐 Gerencie abaixo os <strong>3 slots rotativos</strong> (intervalo automático de 4 segundos). Formato obrigatório: <strong>600x900 pixels</strong>.
                   </p>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {activeImagesList.map((imgUrl, index) => (
-                      <div key={index} className="flex flex-col gap-3 p-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-neutral-500">Slot #{index + 1}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveAdImage(index)}
-                            className="text-xs text-red-500 hover:underline flex items-center gap-1 font-medium"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" /> Remover
-                          </button>
-                        </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {[1, 2, 3].map((slotNum) => {
+                      const isSlotAllowed = allowedSlotsForCurrentTab.includes(slotNum);
+                      const imgUrl = activeImagesList[slotNum - 1] || '';
+                      const linkUrl = activeLinksList[slotNum - 1] || '';
 
-                        <div className="flex items-center gap-3">
-                          <img src={imgUrl} alt={`Anúncio ${index + 1}`} className="w-20 h-28 object-cover rounded-lg border border-neutral-200 dark:border-neutral-700 shrink-0" />
-                          <div className="flex-1 space-y-2 w-full">
-                            <div className="relative">
-                              <LinkIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400" />
-                              <input 
-                                type="text" 
-                                placeholder="Link de redirecionamento (https://...)" 
-                                value={activeLinksList[index] || ''}
-                                onChange={(e) => handleLinkChange(index, e.target.value)}
-                                className="w-full rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 py-1.5 pl-8 pr-2.5 text-xs text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-1 focus:ring-amber-500"
-                              />
-                            </div>
-                            <span className="text-[10px] text-neutral-400 block">Link que abre ao clicar no banner.</span>
+                      return (
+                        <div key={slotNum} className={`flex flex-col gap-3 p-3 rounded-xl border ${isSlotAllowed ? 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800' : 'border-neutral-800 bg-neutral-950 opacity-60'}`}>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-neutral-300">Slot #{slotNum} {isSlotAllowed ? '' : '(Não contratado)'}</span>
+                            {imgUrl && isSlotAllowed && (
+                              <button type="button" onClick={() => handleRemoveAdSlot(slotNum)} className="text-xs text-red-500 hover:underline flex items-center gap-1 font-medium">
+                                <Trash2 className="h-3 w-3" /> Remover
+                              </button>
+                            )}
                           </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
 
-                  {activeImagesList.length < maxAds && (
-                    <label className="flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer p-4 transition-colors">
-                      <Upload className="h-4 w-4 text-neutral-400" />
-                      <span className="text-xs font-medium text-neutral-600 dark:text-neutral-300">Carregar banner (Exato 600x900px)</span>
-                      <input type="file" accept="image/*" className="hidden" onChange={handleAddAdImage} />
-                    </label>
-                  )}
+                          {isSlotAllowed ? (
+                            <div className="space-y-3">
+                              <div className="h-28 w-full rounded-lg bg-neutral-900 border border-neutral-700 flex items-center justify-center overflow-hidden">
+                                {imgUrl ? (
+                                  <img src={imgUrl} alt={`Slot ${slotNum}`} className="h-full w-full object-cover" />
+                                ) : (
+                                  <span className="text-[10px] text-neutral-500">Sem imagem</span>
+                                )}
+                              </div>
+
+                              <div className="relative">
+                                <LinkIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400" />
+                                <input 
+                                  type="text" 
+                                  placeholder="Link (https://...)" 
+                                  value={linkUrl}
+                                  onChange={(e) => handleLinkChange(slotNum, e.target.value)}
+                                  className="w-full rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 py-1 pl-7 pr-2 text-[11px] text-neutral-800 dark:text-neutral-100"
+                                />
+                              </div>
+
+                              <label className="cursor-pointer inline-flex items-center justify-center gap-1.5 w-full px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-neutral-950 font-bold text-[11px] transition">
+                                <Upload className="h-3.5 w-3.5" />
+                                <span>{imgUrl ? 'Substituir (600x900)' : 'Carregar (600x900)'}</span>
+                                <input type="file" accept="image/*" className="hidden" onChange={(e) => handleAddOrUpdateAdForSlot(e, slotNum)} />
+                              </label>
+                            </div>
+                          ) : (
+                            <div className="py-8 text-center">
+                              <Lock className="mx-auto h-6 w-6 text-neutral-600 mb-1" />
+                              <span className="text-[10px] text-neutral-500">Slot não incluído no seu plano atual.</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </>
               )}
             </div>
@@ -351,9 +340,6 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
             <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-800/40 text-center">
               <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
                 Seu plano atual não inclui o recurso de exibição de anúncios e propagandas.
-              </p>
-              <p className="text-xs text-neutral-400 mt-1">
-                Faça upgrade para um plano VIP elegível para divulgar seu estabelecimento!
               </p>
             </div>
           )}
