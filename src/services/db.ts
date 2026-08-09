@@ -63,6 +63,10 @@ export interface DbUser {
   freelancer_links: string[] | null;
   establishment_ads: string[] | null;
   establishment_links: string[] | null;
+  allowed_freelancer_slots?: number[] | null;
+  allowed_establishment_slots?: number[] | null;
+  include_freelancer_ad?: boolean;
+  include_establishment_ad?: boolean;
 }
 
 export interface DbFreelancerProfile {
@@ -353,6 +357,10 @@ function mapDbUserToUser(
     freelancerLinks: row.freelancer_links ?? [],
     establishmentAds: row.establishment_ads ?? [],
     establishmentLinks: row.establishment_links ?? [],
+    allowedFreelancerSlots: row.allowed_freelancer_slots ?? [],
+    allowedEstablishmentSlots: row.allowed_establishment_slots ?? [],
+    includeFreelancerAd: row.include_freelancer_ad ?? false,
+    includeEstablishmentAd: row.include_establishment_ad ?? false,
   };
 }
 
@@ -408,6 +416,10 @@ function mapUserToDbUser(user: User): Partial<DbUser> {
     freelancer_links: user.freelancerLinks ?? [],
     establishment_ads: user.establishmentAds ?? [],
     establishment_links: user.establishmentLinks ?? [],
+    allowed_freelancer_slots: user.allowedFreelancerSlots ?? [],
+    allowed_establishment_slots: user.allowedEstablishmentSlots ?? [],
+    include_freelancer_ad: user.includeFreelancerAd ?? false,
+    include_establishment_ad: user.includeEstablishmentAd ?? false,
   };
 }
 
@@ -653,6 +665,9 @@ export async function dbUpsertEstVipPlan(plan: EstVipPlan): Promise<void> {
     annual_price: plan.prices.annual,
     allow_ads: plan.allowAds ?? false,
     max_ads: plan.maxAds ?? 0,
+    price_slot_1: plan.priceSlot1 ?? 30,
+    price_slot_2: plan.priceSlot2 ?? 25,
+    price_slot_3: plan.priceSlot3 ?? 20,
     features: plan.features || [],
   } as never, { onConflict: 'id' });
 
@@ -829,6 +844,9 @@ export async function loadAllData(): Promise<AppData> {
         },
         allowAds: Boolean(dbPlan.allow_ads ?? plan.allowAds ?? false),
         maxAds: Number(dbPlan.max_ads ?? plan.maxAds ?? 0),
+        priceSlot1: Number(dbPlan.price_slot_1 ?? plan.priceSlot1 ?? 30),
+        priceSlot2: Number(dbPlan.price_slot_2 ?? plan.priceSlot2 ?? 25),
+        priceSlot3: Number(dbPlan.price_slot_3 ?? plan.priceSlot3 ?? 20),
         features: dbPlan.features || plan.features,
       };
     }
@@ -936,7 +954,11 @@ export async function dbUpdateUser(id: string, patch: Partial<User>): Promise<vo
   if (patch.vipExpiresAt !== undefined) dbPatch.vip_expires_at = patch.vipExpiresAt;
   if (patch.estVipExpiresAt !== undefined) dbPatch.est_vip_expires_at = patch.estVipExpiresAt;
   
-  // Sincronização dos campos de anúncios e links
+  if (patch.allowedFreelancerSlots !== undefined) dbPatch.allowed_freelancer_slots = patch.allowedFreelancerSlots;
+  if (patch.allowedEstablishmentSlots !== undefined) dbPatch.allowed_establishment_slots = patch.allowedEstablishmentSlots;
+  if (patch.includeFreelancerAd !== undefined) dbPatch.include_freelancer_ad = patch.includeFreelancerAd;
+  if (patch.includeEstablishmentAd !== undefined) dbPatch.include_establishment_ad = patch.includeEstablishmentAd;
+
   if (patch.adImages !== undefined) {
     dbPatch.ad_images = patch.adImages;
     dbPatch.home_ads = patch.adImages;
@@ -963,7 +985,6 @@ export async function dbUpdateUser(id: string, patch: Partial<User>): Promise<vo
     if (patch.address.lng !== undefined) dbPatch.address_lng = patch.address.lng;
   }
 
-  // Se houver alteração de VIP de estabelecimento, usa a função RPC para contornar o bloqueio de CORS/PATCH
   if (patch.estVipTier !== undefined) {
     const { error: rpcError } = await supabase.rpc('admin_update_user_vip', {
       p_user_id: id,
@@ -1117,7 +1138,6 @@ export async function dbInsertWalletTx(tx: WalletTx): Promise<void> {
 }
 
 export async function dbUpdateWalletBalance(userId: string, newBalance: number): Promise<void> {
-  // Utiliza exclusivamente a função RPC 'admin_update_wallet_balance' para evitar requisições PATCH diretas e erros de CORS
   const { error: rpcError } = await supabase.rpc('admin_update_wallet_balance', {
     p_user_id: userId,
     p_wallet_balance: newBalance
