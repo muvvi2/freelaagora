@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Upload, Trash2, Image as ImageIcon } from 'lucide-react';
+import { Check, Upload, Trash2, Image as ImageIcon, Link as LinkIcon } from 'lucide-react';
 import type { User } from '@/types';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
@@ -30,8 +30,9 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
   const [email, setEmail] = useState(establishment.email);
   const [cnpj, setCnpj] = useState(establishment.cnpj ?? '');
 
-  // Gerenciamento de Anúncios do Estabelecimento e filtragem de 60km para o Brasil inteiro
-  const [adImages, setAdImages] = useState<string[]>(establishment.adImages ?? []);
+  // Gerenciamento de Anúncios e Links do Estabelecimento
+  const [adImages, setAdImages] = useState<string[]>(establishment.homeAds || establishment.adImages ?? []);
+  const [adLinks, setAdLinks] = useState<string[]>(establishment.homeLinks ?? []);
   const nearbyAds = filterAdsByRadius(data.users, establishment);
 
   // Identificar se o plano atual permite anúncios e qual o limite
@@ -108,6 +109,7 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
     const reader = new FileReader();
     reader.onloadend = () => {
       setAdImages((prev) => [...prev, reader.result as string]);
+      setAdLinks((prev) => [...prev, '']);
       notify('Imagem de anúncio adicionada com sucesso!');
     };
     reader.readAsDataURL(file);
@@ -115,7 +117,16 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
 
   const handleRemoveAdImage = (index: number) => {
     setAdImages((prev) => prev.filter((_, i) => i !== index));
+    setAdLinks((prev) => prev.filter((_, i) => i !== index));
     notify('Anúncio removido', 'info');
+  };
+
+  const handleLinkChange = (index: number, val: string) => {
+    setAdLinks((prev) => {
+      const next = [...prev];
+      next[index] = val;
+      return next;
+    });
   };
 
   const handleSave = () => {
@@ -133,7 +144,9 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
       whatsapp, 
       email, 
       cnpj,
-      adImages: allowAds ? adImages : [] 
+      homeAds: allowAds ? adImages : [],
+      adImages: allowAds ? adImages : [],
+      homeLinks: allowAds ? adLinks : []
     }); 
     onClose(); 
     notify('Estabelecimento atualizado com sucesso!'); 
@@ -143,7 +156,7 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
     <Modal open={open} onClose={onClose} title="Editar estabelecimento" size="lg"
       footer={
         <div className="flex gap-2">
-          <Button variant="ghost" fullWidth onClick={onClose}>Cancelar</Button>
+          <Button variant="ghost" fullWidth onClose={() => onClose()}>Cancelar</Button>
           <Button fullWidth onClick={handleSave}>
             <Check className="h-4 w-4" /> Salvar
           </Button>
@@ -198,48 +211,65 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
           </div>
         </div>
 
-        {/* Gerenciamento de Anúncios Dinâmicos Conforme o Plano VIP */}
+        {/* Gerenciamento de Anúncios Dinâmicos com Links */}
         <div className="sm:col-span-2 border-t border-neutral-200 dark:border-neutral-800 pt-4 mt-2">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <ImageIcon className="h-5 w-5 text-amber-500" />
-              <h3 className="font-display font-bold text-neutral-900 dark:text-white">Meus Anúncios / Banners Promocionais</h3>
+              <h3 className="font-display font-bold text-neutral-900 dark:text-white">Meus Anúncios / Banners e Links</h3>
             </div>
             <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
               {adImages.length} de {maxAds} permitidos ({currentPlan?.label ?? currentTier.toUpperCase()})
             </span>
-
           </div>
 
           {allowAds ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                Adicione imagens de propaganda que aparecerão em destaque no carrossel da home (exibidas para usuários num raio de até 60km).
+                Adicione imagens verticais (600x900) e os respectivos links de redirecionamento. Ao clicar na arte no carrossel, o link abrirá em outra aba.
               </p>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {adImages.map((imgUrl, index) => (
-                  <div key={index} className="relative group rounded-xl overflow-hidden border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 aspect-video">
-                    <img src={imgUrl} alt={`Anúncio ${index + 1}`} className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveAdImage(index)}
-                      className="absolute top-2 right-2 p-1.5 rounded-lg bg-red-600/80 hover:bg-red-600 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Remover anúncio"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                  <div key={index} className="flex flex-col gap-3 p-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-neutral-500">Slot #{index + 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAdImage(index)}
+                        className="text-xs text-red-500 hover:underline flex items-center gap-1 font-medium"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> Remover
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <img src={imgUrl} alt={`Anúncio ${index + 1}`} className="w-20 h-28 object-cover rounded-lg border border-neutral-200 dark:border-neutral-700 shrink-0" />
+                      <div className="flex-1 space-y-2 w-full">
+                        <div className="relative">
+                          <LinkIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400" />
+                          <input 
+                            type="text" 
+                            placeholder="Link de redirecionamento (https://...)" 
+                            value={adLinks[index] || ''}
+                            onChange={(e) => handleLinkChange(index, e.target.value)}
+                            className="w-full rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 py-1.5 pl-8 pr-2.5 text-xs text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          />
+                        </div>
+                        <span className="text-[10px] text-neutral-400 block">Insira o link completo onde o cliente deve ir ao clicar.</span>
+                      </div>
+                    </div>
                   </div>
                 ))}
-
-                {adImages.length < maxAds && (
-                  <label className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer aspect-video transition-colors">
-                    <Upload className="h-5 w-5 text-neutral-400 mb-1" />
-                    <span className="text-xs font-medium text-neutral-600 dark:text-neutral-300">Adicionar Anúncio</span>
-                    <input type="file" accept="image/*" className="hidden" onChange={handleAddAdImage} />
-                  </label>
-                )}
               </div>
+
+              {adImages.length < maxAds && (
+                <label className="flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer p-4 transition-colors">
+                  <Upload className="h-4 w-4 text-neutral-400" />
+                  <span className="text-xs font-medium text-neutral-600 dark:text-neutral-300">Adicionar novo banner de anúncio (600x900)</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleAddAdImage} />
+                </label>
+              )}
             </div>
           ) : (
             <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-800/40 text-center">
