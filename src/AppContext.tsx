@@ -589,5 +589,5 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return <div className="flex min-h-screen items-center justify-center bg-neutral-950 text-white"><div className="animate-pulse text-sm">Carregando FreelaAgora…</div></div>;
   }
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+    return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
