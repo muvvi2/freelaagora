@@ -963,7 +963,22 @@ export async function dbUpdateUser(id: string, patch: Partial<User>): Promise<vo
     if (patch.address.lng !== undefined) dbPatch.address_lng = patch.address.lng;
   }
 
-  if (Object.keys(dbPatch).length > 0) {
+  // Se houver alteração de VIP de estabelecimento, usa a função RPC para contornar o bloqueio de CORS/PATCH
+  if (patch.estVipTier !== undefined) {
+    const { error: rpcError } = await supabase.rpc('admin_update_user_vip', {
+      p_user_id: id,
+      p_est_vip_tier: patch.estVipTier,
+      p_last_admin_edit: patch.lastAdminEdit ?? new Date().toISOString()
+    });
+    if (rpcError) {
+      console.error('❌ Erro no RPC admin_update_user_vip:', rpcError.message);
+      // Fallback para update direto caso o RPC não exista
+      if (Object.keys(dbPatch).length > 0) {
+        const { error } = await supabase.from('users').update(dbPatch).eq('id', id);
+        if (error) throw new Error(`Erro ao atualizar usuário: ${error.message}`);
+      }
+    }
+  } else if (Object.keys(dbPatch).length > 0) {
     const { error } = await supabase.from('users').update(dbPatch).eq('id', id);
     if (error) throw new Error(`Erro ao atualizar usuário: ${error.message}`);
   }
