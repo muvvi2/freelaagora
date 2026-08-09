@@ -6,7 +6,7 @@ import { Button } from './ui/Button';
 import { Input, Select } from './ui/Field';
 import { useApp } from '@/AppContext';
 import { useToast } from './ui/Toast';
-import { maskCNPJ, maskPhone, maskCEP } from '@/utils';
+import { maskCNPJ, maskPhone, maskCEP, filterAdsByRadius } from '@/utils';
 
 export function EstablishmentEditModal({ establishment, open, onClose }: { establishment: User; open: boolean; onClose: () => void }) {
   const { updateUser, data } = useApp();
@@ -30,8 +30,9 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
   const [email, setEmail] = useState(establishment.email);
   const [cnpj, setCnpj] = useState(establishment.cnpj ?? '');
 
-  // Gerenciamento de Anúncios do Estabelecimento
+  // Gerenciamento de Anúncios do Estabelecimento e filtragem de 60km para o Brasil inteiro
   const [adImages, setAdImages] = useState<string[]>(establishment.adImages ?? []);
+  const nearbyAds = filterAdsByRadius(data.users, establishment);
 
   // Identificar se o plano atual permite anúncios e qual o limite
   const isOnTrial = establishment.trialEndsAt ? new Date(establishment.trialEndsAt) > new Date() : false;
