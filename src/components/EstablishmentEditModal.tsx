@@ -32,14 +32,25 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
   const [email, setEmail] = useState(establishment.email);
   const [cnpj, setCnpj] = useState(establishment.cnpj ?? '');
 
-  // Apenas duas abas agora: Freelancers e Estabelecimentos
   const [activeModalTab, setActiveModalTab] = useState<'freelancers' | 'establishments'>('freelancers');
 
-  const allowedFreelancerSlots = establishment.allowedFreelancerSlots ?? [];
-  const allowedEstablishmentSlots = establishment.allowedEstablishmentSlots ?? [];
+  // --- AUTORIDADE DO PAINEL ADMIN & TRIAL ---
+  const isOnTrial = establishment.trialEndsAt ? new Date(establishment.trialEndsAt) > new Date() : false;
+  const currentTier = isOnTrial ? 'trial' : (establishment.estVipTier ?? 'free');
+  const currentPlan = data.estVipPlans.find((p) => p.tier === currentTier) ?? data.estVipPlans[0];
 
-  const hasFreelancerPermission = establishment.includeFreelancerAd ?? (allowedFreelancerSlots.length > 0);
-  const hasEstablishmentPermission = establishment.includeEstablishmentAd ?? (allowedEstablishmentSlots.length > 0);
+  // O Painel Admin manda: se allowAds for true no plano, anúncios são permitidos
+  const allowAds = currentPlan?.allowAds ?? false;
+  const maxAds = currentPlan?.maxAds ?? 0;
+
+  // Se o plano no Admin define maxAds (ex: 1, 2 ou 3), geramos os slots correspondentes automaticamente para o estabelecimento
+  const defaultSlots = maxAds > 0 ? Array.from({ length: Math.min(maxAds, 3) }, (_, i) => i + 1) : [];
+
+  const allowedFreelancerSlots = establishment.allowedFreelancerSlots?.length > 0 ? establishment.allowedFreelancerSlots : defaultSlots;
+  const allowedEstablishmentSlots = establishment.allowedEstablishmentSlots?.length > 0 ? establishment.allowedEstablishmentSlots : defaultSlots;
+
+  const hasFreelancerPermission = (establishment.includeFreelancerAd || allowedFreelancerSlots.length > 0) && allowAds;
+  const hasEstablishmentPermission = (establishment.includeEstablishmentAd || allowedEstablishmentSlots.length > 0) && allowAds;
 
   // Armazenamento dos banners por slot (1, 2 e 3)
   const [freelancerImages, setFreelancerImages] = useState<string[]>(establishment.freelancerAds ?? []);
@@ -49,11 +60,6 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
   const [establishmentLinks, setEstablishmentLinks] = useState<string[]>(establishment.establishmentLinks ?? []);
 
   const nearbyAds = filterAdsByRadius(data.users, establishment);
-
-  const isOnTrial = establishment.trialEndsAt ? new Date(establishment.trialEndsAt) > new Date() : false;
-  const currentTier = isOnTrial ? 'trial' : (establishment.estVipTier ?? 'free');
-  const currentPlan = data.estVipPlans.find((p) => p.tier === currentTier);
-  const allowAds = currentPlan?.allowAds ?? false;
 
   const activeImagesList = activeModalTab === 'freelancers' ? freelancerImages : establishmentImages;
   const activeLinksList = activeModalTab === 'freelancers' ? freelancerLinks : establishmentLinks;
@@ -176,6 +182,10 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
       homeAds: [],
       adImages: [],
       homeLinks: [],
+      includeFreelancerAd: hasFreelancerPermission,
+      includeEstablishmentAd: hasEstablishmentPermission,
+      allowedFreelancerSlots,
+      allowedEstablishmentSlots,
       freelancerAds: allowAds ? freelancerImages : [],
       freelancerLinks: allowAds ? freelancerLinks : [],
       establishmentAds: allowAds ? establishmentImages : [],
@@ -243,7 +253,7 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
               <h3 className="font-display font-bold text-neutral-900 dark:text-white">Gerenciamento de Posicionamento de Anúncios (600x900px)</h3>
             </div>
             <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
-              Plano: {currentPlan?.label ?? currentTier.toUpperCase()}
+              Plano: {isOnTrial ? 'TESTE GRATUITO (TRIAL)' : (currentPlan?.label ?? currentTier.toUpperCase())}
             </span>
           </div>
 
