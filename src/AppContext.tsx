@@ -43,24 +43,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, []);
 
-  // --- SINCRONIZAÇÃO AUTOMÁTICA EM SEGUNDO PLANO ---
-  // Garante que alterações feitas pelo Admin (como saldo e planos) apareçam para o usuário sem precisar de F5
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const dbData = await loadAllData();
-        if (dbData) {
-          setDataState(dbData);
-        }
-      } catch (e) {
-        console.warn("⚠️ Erro ao atualizar dados em segundo plano", e);
-      }
-    }, 10000); // Atualiza a cada 10 segundos
-
-    return () => clearInterval(interval);
-  }, []);
-  // ------------------------------------------------
-
   useEffect(() => {
     if (data?.paymentSettings) {
       setPaymentSettings(data.paymentSettings ?? { activeProvider: 'asaas', configs: {} });
@@ -130,7 +112,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [setData, data]);
 
   const adminUpdateUser = useCallback((id: string, patch: Partial<User>) => {
-    // Se o admin definiu um plano VIP pago, limpamos a data do trial automaticamente para evitar conflito
     let cleanPatch = { ...patch };
     if (patch.estVipTier && patch.estVipTier !== 'free' && patch.estVipTier !== 'trial') {
       cleanPatch = { ...cleanPatch, trialEndsAt: null as any };
