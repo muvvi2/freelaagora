@@ -7,7 +7,7 @@ import { formatCurrency, timeAgo } from '@/utils';
 import { AdminProfileModal } from './AdminView';
 import type { AppNotification } from '@/types';
 
-export function Header() {
+export function Header({ onNavigateHome, onNavigateVip }: { onNavigateHome?: () => void; onNavigateVip?: () => void }) {
   const { currentUser, logout, userNotifications, markAllNotificationsRead, markNotificationRead, isAdmin, adminTab, setAdminTab, adminMode, exitAdminMode } = useApp();
   const { theme, toggle } = useTheme();
   const [notifOpen, setNotifOpen] = useState(false);
@@ -56,8 +56,12 @@ export function Header() {
           
           <button
             onClick={() => {
-              // Redireciona ou limpa estados para voltar à home/painel principal
-              window.location.href = '/';
+              if (onNavigateHome) {
+                onNavigateHome();
+              } else {
+                window.history.pushState({}, '', '/');
+                window.dispatchEvent(new Event('popstate'));
+              }
             }}
             className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
           >
