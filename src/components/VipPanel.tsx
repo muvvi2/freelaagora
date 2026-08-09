@@ -19,14 +19,10 @@ const BILLING_OPTIONS: { id: BillingType; label: string; icon: typeof QrCode }[]
   { id: 'CREDIT_CARD', label: 'Cartão', icon: CreditCard },
 ];
 
+const SLOT_NAMES = ["Topo da Página", "Centro do Feed", "Rodapé da Página"];
+
 const tierIcon: Record<Tier, typeof Crown> = { 
-  free: Sparkles, 
-  vip1: Star, 
-  vip2: ShieldCheck, 
-  vip3: Diamond, 
-  vip4: Crown, 
-  vip5: Crown, 
-  vip6: Crown 
+  free: Sparkles, vip1: Star, vip2: ShieldCheck, vip3: Diamond, vip4: Crown, vip5: Crown, vip6: Crown 
 };
 
 const tierTone: Record<Tier, string> = {
@@ -72,26 +68,19 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
   const [billingType, setBillingType] = useState<BillingType>('WALLET');
   const [pixData, setPixData] = useState<{ qrCode: string; payload: string } | null>(null);
 
-  // Estados de seleção de slots específicos nas páginas de Freela e Estabelecimentos
   const [selectedFreelancerSlots, setSelectedFreelancerSlots] = useState<number[]>([]);
   const [selectedEstablishmentSlots, setSelectedEstablishmentSlots] = useState<number[]>([]);
 
   const paymentReady = isPaymentConfigured();
   const providerInfo = getActiveProviderInfo();
 
-  if (!currentUser || !data) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-neutral-950 text-neutral-400">
-        <p>Carregando informações dos planos...</p>
-      </div>
-    );
-  }
+  if (!currentUser || !data) return <div className="flex min-h-screen items-center justify-center bg-neutral-950 text-neutral-400">Carregando...</div>;
 
   const applyCoupon = () => {
     if (!couponCode.trim()) { setCouponError('Digite um código.'); return; }
     const c = validateCoupon(couponCode);
-    if (!c.coupon) { setCouponError(c.error || 'Cupom inválido ou expirado.'); setAppliedCoupon(null); return; }
-    setAppliedCoupon(c.coupon); setCouponError(''); notify(`Cupom ${c.coupon.code} aplicado: ${c.coupon.discountPercentage}% de desconto!`);
+    if (!c.coupon) { setCouponError(c.error || 'Cupom inválido.'); setAppliedCoupon(null); return; }
+    setAppliedCoupon(c.coupon); setCouponError(''); notify(`Cupom aplicado: ${c.coupon.discountPercentage}% de desconto!`);
   };
 
   const currentTier: Tier = currentUser?.vipTier ?? 'free';
@@ -105,14 +94,31 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
   const currentPlan = getPlan(currentTier, vipPlansList);
   const currentEstPlan = getEstPlan(currentEstTier, estVipPlansList);
 
-  // Cálculo de preço somando o valor unitário por slot escolhido
+  // Cálculo de preço com desconto progressivo para anúncios
   const calculateTotalPlanPrice = (planObj: any) => {
     let basePrice = planObj.prices[period];
     if (accountType === 'establishment' && planObj.allowAds) {
-      const slotPrice = planObj.establishmentAdPrice ?? 25;
-      const totalSlotsCount = selectedFreelancerSlots.length + selectedEstablishmentSlots.length;
-      basePrice += totalSlotsCount * slotPrice;
+      const slotPrices = [planObj.priceSlot1 ?? 30, planObj.priceSlot2 ?? 25, planObj.priceSlot3 ?? 20];
+      const freelancerCost = selectedFreelancerSlots.reduce((sum, id) => sum + (slotPrices[id - 1] || 0), 0);
+      const estCost = selectedEstablishmentSlots.reduce((sum, id) => sum + (slotPrices[id - 1] || 0), 0);
+      
+      let adsTotal = freelancerCost + estCost;
+      const totalAdsCount = selectedFreelancerSlots.length + selectedEstablishmentSlots.length;
+      const hasFreelancerAds = selectedFreelancerSlots.length > 0;
+      const hasEstablishmentAds = selectedEstablishmentSlots.length > 0;
+
+      // Regras de descontos progressivos:
+      // - 3 ou mais anúncios OU selecionar as 2 páginas (Freela + Estab) = 20% de desconto
+      // - Exatamente 2 anúncios na mesma página = 10% de desconto
+      if (totalAdsCount >= 3 || (hasFreelancerAds && hasEstablishmentAds)) {
+        adsTotal *= 0.80; // 20% de desconto
+      } else if (totalAdsCount === 2) {
+        adsTotal *= 0.90; // 10% de desconto
+      }
+
+      basePrice += adsTotal;
     }
+
     return appliedCoupon ? Math.round(basePrice * (1 - appliedCoupon.discountPercentage / 100) * 100) / 100 : basePrice;
   };
 
@@ -271,31 +277,45 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
           </div>
         </div>
 
-        {/* Seleção de slots por página de anúncios (Freela e Estabelecimentos) */}
+        {/* Seleção de posições por página de anúncios com desconto progressivo */}
         {accountType === 'establishment' && (() => {
           const activeEstPlan = estVipPlansList.find(p => p.tier === (currentUser?.estVipTier ?? 'free'));
           const canAdvertise = activeEstPlan?.allowAds ?? false;
           if (!canAdvertise) return null;
 
-          const slotPrice = activeEstPlan.establishmentAdPrice ?? 25;
+          const slotPrices = [
+            activeEstPlan.priceSlot1 ?? 30,
+            activeEstPlan.priceSlot2 ?? 25,
+            activeEstPlan.priceSlot3 ?? 20
+          ];
+
+          const totalAdsCount = selectedFreelancerSlots.length + selectedEstablishmentSlots.length;
+          const hasFreelancerAds = selectedFreelancerSlots.length > 0;
+          const hasEstablishmentAds = selectedEstablishmentSlots.length > 0;
+          const isBothPages = hasFreelancerAds && hasEstablishmentAds;
 
           return (
             <div className="rounded-2xl border border-amber-500/30 bg-neutral-900 p-6 shadow-lg space-y-6">
               <div>
                 <h3 className="font-display text-base font-bold text-white mb-1 flex items-center gap-2">
-                  <Crown className="h-5 w-5 text-amber-400" /> Seleção de Páginas e Slots Rotativos (600x900px)
+                  <Crown className="h-5 w-5 text-amber-400" /> Seleção de Posicionamento e Banners Rotativos (600x900px)
                 </h3>
                 <p className="text-xs text-neutral-400">
-                  Os banners rotacionam automaticamente nas páginas a cada 4 segundos. Escolha quais slots (1, 2 ou 3) deseja ocupar. Cada slot adiciona {formatCurrency(slotPrice)} ao plano.
+                  Os banners rotacionam automaticamente nas páginas a cada 4 segundos. Escolha em quais posições deseja aparecer. <span className="text-success-400 font-bold">Descontos: Ambas as páginas ou 3+ anúncios = 20% OFF | 2 anúncios na mesma página = 10% OFF!</span>
                 </p>
+                {(totalAdsCount >= 2 || isBothPages) && (
+                  <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-success-500/20 border border-success-500/30 text-success-300 text-xs font-bold">
+                    🎉 Desconto aplicado nos anúncios: {(totalAdsCount >= 3 || isBothPages) ? '20% OFF' : '10% OFF'}!
+                  </div>
+                )}
               </div>
 
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-4 space-y-3">
                   <span className="text-xs font-bold text-white flex items-center gap-2">
-                    <Users className="h-4 w-4 text-amber-400" /> Página de Freelancers (Até 3 slots)
+                    <Users className="h-4 w-4 text-amber-400" /> Página de Freelancers
                   </span>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 gap-2">
                     {[1, 2, 3].map((slotNum) => {
                       const isSelected = selectedFreelancerSlots.includes(slotNum);
                       return (
@@ -303,10 +323,10 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
                           key={slotNum}
                           type="button"
                           onClick={() => toggleSlotSelection('freelancers', slotNum)}
-                          className={`py-2 px-3 rounded-lg border text-xs font-bold transition flex flex-col items-center gap-1 ${isSelected ? 'border-amber-500 bg-amber-500/20 text-amber-300' : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:border-neutral-700'}`}
+                          className={`py-2 px-3 rounded-lg border text-xs font-bold transition flex items-center justify-between ${isSelected ? 'border-amber-500 bg-amber-500/20 text-amber-300' : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:border-neutral-700'}`}
                         >
-                          <span>Slot #{slotNum}</span>
-                          <span className="text-[10px] font-normal">{isSelected ? 'Selecionado' : 'Disponível'}</span>
+                          <span>{SLOT_NAMES[slotNum - 1]}</span>
+                          <span className="text-[10px] font-normal">{isSelected ? `Selecionado (+${formatCurrency(slotPrices[slotNum - 1])})` : formatCurrency(slotPrices[slotNum - 1])}</span>
                         </button>
                       );
                     })}
@@ -315,9 +335,9 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
 
                 <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-4 space-y-3">
                   <span className="text-xs font-bold text-white flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-amber-400" /> Página de Estabelecimentos (Até 3 slots)
+                    <Building2 className="h-4 w-4 text-amber-400" /> Página de Estabelecimentos
                   </span>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 gap-2">
                     {[1, 2, 3].map((slotNum) => {
                       const isSelected = selectedEstablishmentSlots.includes(slotNum);
                       return (
@@ -325,10 +345,10 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
                           key={slotNum}
                           type="button"
                           onClick={() => toggleSlotSelection('establishments', slotNum)}
-                          className={`py-2 px-3 rounded-lg border text-xs font-bold transition flex flex-col items-center gap-1 ${isSelected ? 'border-amber-500 bg-amber-500/20 text-amber-300' : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:border-neutral-700'}`}
+                          className={`py-2 px-3 rounded-lg border text-xs font-bold transition flex items-center justify-between ${isSelected ? 'border-amber-500 bg-amber-500/20 text-amber-300' : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:border-neutral-700'}`}
                         >
-                          <span>Slot #{slotNum}</span>
-                          <span className="text-[10px] font-normal">{isSelected ? 'Selecionado' : 'Disponível'}</span>
+                          <span>{SLOT_NAMES[slotNum - 1]}</span>
+                          <span className="text-[10px] font-normal">{isSelected ? `Selecionado (+${formatCurrency(slotPrices[slotNum - 1])})` : formatCurrency(slotPrices[slotNum - 1])}</span>
                         </button>
                       );
                     })}
