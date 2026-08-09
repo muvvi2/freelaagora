@@ -13,52 +13,102 @@ type Route = 'app' | 'terms' | 'vip_freela' | 'vip_estab';
 
 function MainContent() {
   const { currentUser, isAdmin, adminMode } = useApp();
-  const [route, setRoute] = useState<Route>(() => {
+
+  const getRouteFromPath = (): Route => {
     const path = window.location.pathname;
     if (path === '/terms') return 'terms';
     if (path === '/freela') return 'vip_freela';
     if (path === '/estab') return 'vip_estab';
-    if (path === '/vip') return currentUser?.accountType === 'establishment' ? 'vip_estab' : 'vip_freela';
+    if (path === '/vip') {
+      return currentUser?.accountType === 'establishment' ? 'vip_estab' : 'vip_freela';
+    }
     return 'app';
-  });
+  };
 
-  // Atualiza a rota se o usuário navegar via histórico ou URL direta
+  const [route, setRoute] = useState<Route>(getRouteFromPath);
+
+  // Sincroniza a rota com o histórico do navegador e cliques em links
   useEffect(() => {
-    const handlePopState = () => {
-      const path = window.location.pathname;
-      if (path === '/terms') setRoute('terms');
-      else if (path === '/freela') setRoute('vip_freela');
-      else if (path === '/estab') setRoute('vip_estab');
-      else if (path === '/vip') setRoute(currentUser?.accountType === 'establishment' ? 'vip_estab' : 'vip_freela');
-      else setRoute('app');
+    const handleLocationChange = () => {
+      setRoute(getRouteFromPath());
     };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+
+    // Intercepta pushState para atualizar o estado ao navegar via código/links
+    const originalPushState = window.history.pushState;
+    window.history.pushState = function (state, title, url) {
+      originalPushState.apply(this, [state, title, url]);
+      window.dispatchEvent(new Event('popstate'));
+    };
+
+    window.addEventListener('popstate', handleLocationChange);
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange);
+      window.history.pushState = originalPushState;
+    };
   }, [currentUser]);
 
   if (route === 'terms') {
-    return <TermsPage onBack={() => { window.history.pushState({}, '', '/'); setRoute('app'); }} />;
+    return (
+      <TermsPage
+        onBack={() => {
+          window.history.pushState({}, '', '/');
+        }}
+      />
+    );
   }
 
-  // Se o usuário estiver logado e acessou /freela ou /estab, exibe o VipPanel correspondente
   if (currentUser) {
     if (route === 'vip_freela') {
-      return <VipPanel userId={currentUser.id} accountType="freelancer" onBack={() => { window.history.pushState({}, '', '/'); setRoute('app'); }} />;
+      return (
+        <VipPanel
+          userId={currentUser.id}
+          accountType="freelancer"
+          onBack={() => {
+            window.history.pushState({}, '', '/');
+          }}
+        />
+      );
     }
     if (route === 'vip_estab') {
-      return <VipPanel userId={currentUser.id} accountType="establishment" onBack={() => { window.history.pushState({}, '', '/'); setRoute('app'); }} />;
+      return (
+        <VipPanel
+          userId={currentUser.id}
+          accountType="establishment"
+          onBack={() => {
+            window.history.pushState({}, '', '/');
+          }}
+        />
+      );
     }
   }
 
   if (!currentUser) {
-    return <LandingPage onNavigateTerms={() => { window.history.pushState({}, '', '/terms'); setRoute('terms'); }} />;
+    return (
+      <LandingPage
+        onNavigateTerms={() => {
+          window.history.pushState({}, '', '/terms');
+        }}
+      />
+    );
   }
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
       <Header />
       <main className="pb-16">
-        {isAdmin ? (adminMode ? <AdminView /> : currentUser.accountType === 'establishment' ? <ContractorView /> : <FreelancerView />) : currentUser.accountType === 'establishment' ? <ContractorView /> : <FreelancerView />}
+        {isAdmin ? (
+          adminMode ? (
+            <AdminView />
+          ) : currentUser.accountType === 'establishment' ? (
+            <ContractorView />
+          ) : (
+            <FreelancerView />
+          )
+        ) : currentUser.accountType === 'establishment' ? (
+          <ContractorView />
+        ) : (
+          <FreelancerView />
+        )}
       </main>
       <footer className="border-t border-neutral-200 py-6 text-center text-xs text-neutral-400 dark:border-neutral-800">
         FreelaAgora · Plataforma fintech de freelancers · {new Date().getFullYear()}
