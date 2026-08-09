@@ -15,7 +15,7 @@ import { VipSquareWidget } from './VipSquareWidget';
 import { EscrowFlowModal } from './EscrowFlowModal';
 import { ReviewModal } from './ReviewModal';
 
-import { formatCurrency, getPlan, countAvailableSlots, maskCEP, maskDocumentDisplay, formatDateTime } from '@/utils';
+import { formatCurrency, getPlan, countAvailableSlots, maskCEP, maskDocumentDisplay, formatDateTime, filterAdsByRadius } from '@/utils';
 import type { Contract, ShiftSlot, Address } from '@/types';
 import { CATEGORIES, MACRO_CATEGORIES } from '@/mockData';
 
@@ -34,6 +34,9 @@ export function FreelancerView() {
   const myContracts = data.contracts.filter((c) => c.freelancerId === me.id);
   const openJobs = data.jobs.filter((j) => j.status === 'active');
   const reviewsAboutMe = reviewsFor(me.id);
+
+  // Filtra os anúncios VIP aplicando a regra de até 60km para o Brasil inteiro
+  const nearbyAds = filterAdsByRadius(data.users, me);
 
   const tabs = [
     { id: 'opportunities' as const, label: 'Oportunidades e Propostas', icon: Megaphone },
@@ -163,9 +166,9 @@ export function FreelancerView() {
           )}
         </div>
 
-        {/* Sidebar: Widget VIP + Contracts */}
+        {/* Sidebar: Widget VIP (passando os anúncios filtrados a 60km) + Contracts */}
         <aside className="space-y-4">
-          <VipSquareWidget />
+          <VipSquareWidget ads={nearbyAds} />
 
           {myContracts.length > 0 && (
             <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
