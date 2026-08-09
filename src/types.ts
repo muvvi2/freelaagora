@@ -64,7 +64,13 @@ export interface User {
   estVipTier?: EstTier;
   estVipExpiresAt?: string;
   trialEndsAt?: string;
-  adImages?: string[]; // Armazena as imagens de propaganda do estabelecimento
+  adImages?: string[]; // Compatibilidade legada
+  homeAds?: string[];
+  homeLinks?: string[];
+  freelancerAds?: string[];
+  freelancerLinks?: string[];
+  establishmentAds?: string[];
+  establishmentLinks?: string[];
   // Admin-only
   isAdmin?: boolean;
   adminRole?: 'super' | 'regular';
@@ -121,8 +127,11 @@ export interface EstVipPlan {
   label: string;
   intermediationFee: number;
   maxActiveJobs: number;
-  allowAds?: boolean; // Habilita ou desabilita anúncios para o plano
-  maxAds?: number;    // Quantidade máxima de anúncios permitidos para este plano
+  allowAds?: boolean;
+  maxAds?: number;
+  homeAdPrice?: number;
+  freelancerAdPrice?: number;
+  establishmentAdPrice?: number;
   features: string[];
   prices: Record<Period, number>;
 }
