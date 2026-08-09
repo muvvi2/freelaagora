@@ -71,7 +71,6 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
   const [selectedFreelancerSlots, setSelectedFreelancerSlots] = useState<number[]>([]);
   const [selectedEstablishmentSlots, setSelectedEstablishmentSlots] = useState<number[]>([]);
 
-  // Sincroniza e trava a URL amigável (/vip, /freela, /estab) para não perder o estado ao atualizar a página
   useEffect(() => {
     let path = '/vip';
     if (accountType === 'freelancer') path = '/freela';
@@ -137,10 +136,6 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
       const totalSelected = selectedFreelancerSlots.length + selectedEstablishmentSlots.length;
       if (totalSelected === 0) {
         notify('Este plano inclui anúncios. Por favor, selecione ao menos uma posição (slot) acima antes de prosseguir.', 'error');
-        return;
-      }
-      if (plan.maxAds && totalSelected > plan.maxAds) {
-        notify(`O plano ${plan.label} permite no máximo ${plan.maxAds} anúncio(s). Você selecionou ${totalSelected}.`, 'error');
         return;
       }
     }
@@ -309,7 +304,6 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
           </div>
         </div>
 
-        {/* Seleção de anúncios em 3 colunas por bloco */}
         {accountType === 'establishment' && (
           <div className="rounded-2xl border border-amber-500/30 bg-neutral-900 p-6 shadow-lg space-y-6">
             <div>
@@ -322,7 +316,6 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
-              {/* Página de Freelancers - 3 colunas */}
               <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-4 space-y-3">
                 <span className="text-xs font-bold text-white flex items-center gap-2">
                   <Users className="h-4 w-4 text-amber-400" /> Página de Freelancers
@@ -347,7 +340,6 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
                 </div>
               </div>
 
-              {/* Página de Estabelecimentos - 3 colunas */}
               <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-4 space-y-3">
                 <span className="text-xs font-bold text-white flex items-center gap-2">
                   <Building2 className="h-4 w-4 text-amber-400" /> Página de Estabelecimentos
