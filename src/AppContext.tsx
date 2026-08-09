@@ -43,6 +43,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, []);
 
+  // --- SINCRONIZAÇÃO AUTOMÁTICA EM SEGUNDO PLANO ---
+  // Garante que alterações feitas pelo Admin (como saldo e planos) apareçam para o usuário sem precisar de F5
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const dbData = await loadAllData();
+        if (dbData) {
+          setDataState(dbData);
+        }
+      } catch (e) {
+        console.warn("⚠️ Erro ao atualizar dados em segundo plano", e);
+      }
+    }, 10000); // Atualiza a cada 10 segundos
+
+    return () => clearInterval(interval);
+  }, []);
+  // ------------------------------------------------
+
   useEffect(() => {
     if (data?.paymentSettings) {
       setPaymentSettings(data.paymentSettings ?? { activeProvider: 'asaas', configs: {} });
@@ -181,7 +199,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     const expiry = (tier === 'free' || tier === 'trial') ? undefined : new Date(Date.now() + (period === 'annual' ? 365 : period === 'semestral' ? 180 : 30) * 86400000).toISOString();
-    // Se assinou um plano pago, remove o trial da data
     const newTrialEndsAt = (tier !== 'free' && tier !== 'trial') ? null : user?.trialEndsAt;
     const newTxs: WalletTx[] = price > 0 ? [{ id: uid('wt'), userId: id, type: 'vip_charge_est', amount: -price, description: `Assinatura ${getEstPlan(tier, data.estVipPlans).label} (${period})`, date: new Date().toISOString() }] : [];
     
