@@ -14,6 +14,7 @@ import {
   dbInsertCoupon, dbToggleCoupon, dbDeleteCoupon,
   dbInsertAuditLog, dbUpdateDefaultFeePercent, dbUpdatePaymentSettings,
   dbUpsertVipPlan, dbDeleteVipPlan, dbUpsertEstVipPlan, dbDeleteEstVipPlan,
+  dbInsertAdmin
 } from '@/services/db';
 
 export { useApp };
@@ -35,7 +36,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setDataState(dbData);
         }
       } catch (e) {
-        console.warn("⚠️ Falha ao carregar do Supabase relacional:", e);
+        console.warn("⚠️ Falha ao carregar do Supabase:", e);
       } finally {
         if (!cancelled) setLoaded(true);
       }
@@ -94,31 +95,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => setData((d) => ({ ...d, currentUserId: null })), [setData]);
 
   const updateUser = useCallback((id: string, patch: Partial<User>) => {
-    if (patch.adImages && data) {
-      const user = data.users.find(u => u.id === id);
-      if (user && user.accountType === 'establishment') {
-        const hasActiveVip = user.estVipTier && user.estVipTier !== 'free' && user.estVipTier !== 'trial';
-        const isOnTrial = !hasActiveVip && (user.trialEndsAt ? new Date(user.trialEndsAt) > new Date() : false);
-        const currentTier = isOnTrial ? 'trial' : (user.estVipTier ?? 'free');
-        const plan = data.estVipPlans.find(p => p.tier === currentTier);
-
-        if (!plan?.allowAds || patch.adImages.length > (plan.maxAds ?? 0)) {
-          return; 
-        }
-      }
-    }
     setData((d) => ({ ...d, users: d.users.map((u) => (u.id === id ? { ...u, ...patch } : u)) }));
     void dbUpdateUser(id, patch).catch(() => {});
-  }, [setData, data]);
+  }, [setData]);
 
   const adminUpdateUser = useCallback((id: string, patch: Partial<User>) => {
-    let cleanPatch = { ...patch };
-    if (patch.estVipTier && patch.estVipTier !== 'free' && patch.estVipTier !== 'trial') {
-      cleanPatch = { ...cleanPatch, trialEndsAt: null as any };
-    }
-
-    const stampedPatch = { ...cleanPatch, lastAdminEdit: new Date().toISOString() };
-    const auditLog = { id: uid('al'), adminId: currentAdminId, action: `Admin alterou campos do usuário ${id}`, targetUserId: id, createdAt: new Date().toISOString() };
+    const stampedPatch = { ...patch, lastAdminEdit: new Date().toISOString() };
+    const auditLog = { id: uid('al'), adminId: currentAdminId, action: `Admin alterou dados do usuário ${id}`, targetUserId: id, createdAt: new Date().toISOString() };
     
     setData((d) => ({
       ...d,
@@ -256,19 +239,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!data) return { ok: false, error: 'Sistema carregando.' };
     const est = data.users.find((u) => u.id === j.establishmentId);
     if (!est) return { ok: false, error: 'Estabelecimento não encontrado.' };
-
-    const hasActiveVip = est.estVipTier && est.estVipTier !== 'free' && est.estVipTier !== 'trial';
-    const isOnTrial = !hasActiveVip && (est.trialEndsAt ? new Date(est.trialEndsAt) > new Date() : false);
-    const currentTier = isOnTrial ? 'trial' : (est.estVipTier ?? 'free');
-    const matchedPlan = data.estVipPlans?.find((p) => p.tier === currentTier);
-    const effectiveMaxJobs = matchedPlan?.maxActiveJobs ?? 2;
-    const oneWeekAgo = Date.now() - 7 * 86400000;
-    const jobsThisWeekCount = data.jobs.filter((job) => job.establishmentId === est.id && new Date(job.createdAt).getTime() >= oneWeekAgo).length;
-
-    if (jobsThisWeekCount >= effectiveMaxJobs) {
-      return { ok: false, error: `Limite semanal atingido (${effectiveMaxJobs} vagas).` };
-    }
-
     setData((d) => ({ ...d, jobs: [j, ...d.jobs] }));
     void dbInsertJob(j).catch(() => {});
     return { ok: true };
@@ -367,8 +337,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const confirmAvailability = useCallback((contractId: string) => {
     if (!data) return;
-    const c = data.contracts.find((x) => x.id === contractId);
-    if (!c) return;
     setData((d) => ({ ...d, contracts: d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'confirmed', history: [...ct.history, { status: 'confirmed', at: new Date().toISOString() }] } : ct) }));
     void dbUpdateContractStatus(contractId, 'confirmed').catch(() => {});
   }, [data, setData]);
@@ -413,8 +381,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const cancelContract = useCallback((contractId: string) => {
     if (!data) return;
-    const c = data.contracts.find((x) => x.id === contractId);
-    if (!c) return;
     setData((d) => ({
       ...d,
       contracts: d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'cancelled', history: [...ct.history, { status: 'cancelled', at: new Date().toISOString() }] } : ct)
@@ -430,6 +396,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [data, setData]);
 
   const reviewsFor = useCallback((userId: string) => data?.reviews.filter((r) => r.toId === userId) ?? [], [data?.reviews]);
+  
   const setDefaultFeePercent = useCallback((n: number) => {
     setData((d) => ({ ...d, config: { ...d.config, defaultFeePercent: n } }));
     void dbUpdateDefaultFeePercent(n).catch(() => {});
@@ -447,14 +414,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const forceRefund = useCallback((contractId: string) => {
     if (!data) return;
-    const c = data.contracts.find((x) => x.id === contractId);
-    if (!c) return;
     setData((d) => ({ ...d, contracts: d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'cancelled' } : ct) }));
     void dbUpdateContractStatus(contractId, 'cancelled').catch(() => {});
-  }, [data, setData]);
+  }, [setData, data]);
 
   const coupons = useMemo(() => data?.coupons ?? [], [data?.coupons]);
-  const validateCoupon = useCallback((code: string, userId?: string) => {
+  
+  const validateCoupon = useCallback((code: string) => {
     if (!data) return { error: 'Carregando.' };
     const c = data.coupons.find((cp) => cp.code.toUpperCase() === code.toUpperCase().trim() && cp.isActive);
     if (!c) return { error: 'Cupom inválido.' };
@@ -464,7 +430,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addCoupon = useCallback((coupon: Omit<Coupon, 'id' | 'createdAt'>) => {
     const newCoupon = { ...coupon, id: uid('cp'), usedBy: [], createdAt: new Date().toISOString() };
     setData((d) => ({ ...d, coupons: [newCoupon, ...d.coupons] }));
-    void dbInsertCoupon(coupon).catch(() => {});
+    void dbInsertCoupon(newCoupon).catch(() => {});
   }, [setData]);
 
   const toggleCoupon = useCallback((id: string) => {
@@ -488,9 +454,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     void dbInsertAuditLog(auditLog).catch(() => {});
   }, [setData, currentAdminId]);
 
-  const adminCreateUser = useCallback((user: any) => { return { ok: true }; }, []);
-  const adminCreateAdmin = useCallback((user: any) => { return { ok: true }; }, []);
-  const removeAdmin = useCallback((id: string) => {}, []);
+  const adminCreateUser = useCallback(async (user: User) => { 
+    setData((d) => ({ ...d, users: [...d.users, user] }));
+    await dbInsertUser(user);
+    return { ok: true };
+  }, [setData]);
+
+  const adminCreateAdmin = useCallback(async (user: any) => {
+    const adminUser = { ...user, id: uid('adm'), isAdmin: true };
+    setData((d) => ({ ...d, users: [...d.users, adminUser] }));
+    await dbInsertAdmin(adminUser);
+    return { ok: true };
+  }, [setData]);
+
+  const adminRemoveAdmin = useCallback((id: string) => {
+    setData((d) => ({ ...d, users: d.users.filter((u) => u.id !== id) }));
+    void dbDeleteUser(id).catch(() => {});
+  }, [setData]);
   
   const adjustWallet = useCallback((userId: string, amount: number, description: string) => {
     if (!data) return;
@@ -509,14 +489,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       targetUserId: userId, 
       createdAt: new Date().toISOString() 
     };
-
     setData((d) => ({
       ...d,
       users: d.users.map((u) => (u.id === userId ? { ...u, walletBalance: Math.max(0, (u.walletBalance ?? 0) + amount) } : u)),
       walletTxs: [tx, ...d.walletTxs],
       adminAuditLogs: [auditLog, ...d.adminAuditLogs]
     }));
-
     void dbInsertWalletTx(tx).catch(() => {});
     const user = data.users.find((u) => u.id === userId);
     if (user) {
@@ -526,8 +504,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     void dbInsertAuditLog(auditLog).catch(() => {});
   }, [setData, currentAdminId, data]);
 
-  const deleteReview = useCallback((reviewId: string) => {}, []);
-  const broadcastNotification = useCallback((title: string, body: string) => {}, []);
+  const deleteReview = useCallback((reviewId: string) => {
+    setData((d) => ({ ...d, reviews: d.reviews.filter((r) => r.id !== reviewId) }));
+    void dbDeleteReview(reviewId).catch(() => {});
+  }, [setData]);
+
+  const broadcastNotification = useCallback((title: string, body: string) => {
+    data?.users.forEach(u => {
+        notifyUser(u.id, 'announcement', title, body);
+    });
+  }, [data, notifyUser]);
 
   const updateVipPlan = useCallback((tier: Tier, patch: Partial<VipPlan>) => {
     setData((d) => ({ ...d, vipPlans: d.vipPlans.map((p) => p.tier === tier ? { ...p, ...patch } : p) }));
@@ -584,7 +570,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     freelancers, establishments, nearbyFreelancers, categoryById,
     adminTab, setAdminTab, adminMode, exitAdminMode, enterAdminMode,
     coupons, validateCoupon, addCoupon, toggleCoupon, deleteCoupon, applyCouponToPurchase,
-    auditLogs, logAdminAction, adminCreateUser, adminCreateAdmin, removeAdmin, adjustWallet, deleteReview, broadcastNotification,
+    auditLogs, logAdminAction, adminCreateUser, adminCreateAdmin, removeAdmin: adminRemoveAdmin, adjustWallet, deleteReview, broadcastNotification,
     updateVipPlan, addVipPlan, removeVipPlan, updateEstVipPlan, addEstVipPlan, removeEstVipPlan,
   }), [
     data, currentUser, isAdmin, isSuperAdmin, login, register, logout, updateUser, adminUpdateUser, deleteEntity, banUser, unbanUser, setVipTier, setEstVipTier, setTermsAcceptance,
@@ -595,7 +581,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     reviewsFor, setDefaultFeePercent, updatePaymentSettings, overrideContractStatus, forceRefund, resetData, freelancers, establishments, nearbyFreelancers, categoryById,
     adminTab, setAdminTab, adminMode, exitAdminMode, enterAdminMode,
     coupons, validateCoupon, addCoupon, toggleCoupon, deleteCoupon, applyCouponToPurchase,
-    auditLogs, logAdminAction, adminCreateUser, adminCreateAdmin, removeAdmin, adjustWallet, deleteReview, broadcastNotification,
+    auditLogs, logAdminAction, adminCreateUser, adminCreateAdmin, adminRemoveAdmin, adjustWallet, deleteReview, broadcastNotification,
     updateVipPlan, addVipPlan, removeVipPlan, updateEstVipPlan, addEstVipPlan, removeEstVipPlan,
   ]);
 
