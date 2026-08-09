@@ -1117,7 +1117,7 @@ export async function dbInsertWalletTx(tx: WalletTx): Promise<void> {
 }
 
 export async function dbUpdateWalletBalance(userId: string, newBalance: number): Promise<void> {
-  // Utiliza a função RPC segura para atualizar a carteira e contornar bloqueios de CORS/PATCH na API REST
+  // Utiliza exclusivamente a função RPC 'admin_update_wallet_balance' para evitar requisições PATCH diretas e erros de CORS
   const { error: rpcError } = await supabase.rpc('admin_update_wallet_balance', {
     p_user_id: userId,
     p_wallet_balance: newBalance
@@ -1125,14 +1125,8 @@ export async function dbUpdateWalletBalance(userId: string, newBalance: number):
 
   if (rpcError) {
     console.error('❌ Erro no RPC admin_update_wallet_balance:', rpcError.message);
-    const { error } = await supabase.from('users').update({ wallet_balance: newBalance }).eq('id', userId);
-    if (error) throw new Error(`Erro ao atualizar saldo: ${error.message}`);
+    throw new Error(`Erro ao atualizar saldo: ${rpcError.message}`);
   }
-
-  const { error: e2 } = await supabase.from('freelancer_profiles').update({ wallet_balance: newBalance }).eq('user_id', userId);
-  if (e2 && !e2.message.includes('no rows')) { /* may not have a profile */ }
-  const { error: e3 } = await supabase.from('establishment_profiles').update({ wallet_balance: newBalance }).eq('user_id', userId);
-  if (e3 && !e3.message.includes('no rows')) { /* may not have a profile */ }
 }
 
 export async function dbInsertNotification(n: AppNotification): Promise<void> {
