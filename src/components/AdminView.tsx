@@ -733,31 +733,6 @@ function AdminCreateUserModal({ open, onClose }: { open: boolean; onClose: () =>
   );
 }
 
-function AdminBroadcastModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { broadcastNotification } = useApp();
-  const { notify } = useToast();
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
-
-  const send = () => {
-    if (!title.trim() || !body.trim()) { notify('Preencha título e mensagem', 'warning'); return; }
-    broadcastNotification(title.trim(), body.trim());
-    setTitle(''); setBody(''); onClose();
-    notify('Comunicado enviado para todos os usuários!');
-  };
-
-  return (
-    <Modal open={open} onClose={onClose} title="Enviar comunicado em massa (Admin)" size="sm"
-      footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={onClose}>Cancelar</Button><Button fullWidth onClick={send}><Megaphone className="h-4 w-4" /> Enviar</Button></div>}>
-      <div className="space-y-3">
-        <Input label="Título" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Manutenção programada" />
-        <div><label className="mb-1 block text-xs font-semibold text-neutral-500">Mensagem</label><textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100" placeholder="No dia 15/08 das 03h às 05h a plataforma ficará indisponível..." /></div>
-        <p className="text-xs text-neutral-400">Todos os usuários (freelancers e estabelecimentos) receberão esta notificação instantaneamente.</p>
-      </div>
-    </Modal>
-  );
-}
-
 function ActionMenu({ items }: { items: { icon: typeof Pencil; label: string; onClick: () => void; danger?: boolean; disabled?: boolean }[] }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -903,10 +878,10 @@ function VipPlanEditor({ plan, onUpdate, onRemove, isEst }: {
               <label className="flex cursor-pointer items-center justify-between">
                 <div>
                   <p className="text-sm font-bold text-neutral-900 dark:text-white flex items-center gap-1.5">
-                    <ImageIcon className="h-4 w-4 text-amber-500" /> Permitir Anúncios / Propagandas (Carrossel Home e Widgets)
+                    <ImageIcon className="h-4 w-4 text-amber-500" /> Permitir Anúncios / Propagandas (Páginas Freela e Estabelecimentos)
                   </p>
                   <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                    Ao ativar, os estabelecimentos deste plano poderão cadastrar imagens de propaganda no loop infinito da home e widgets.
+                    Ao ativar, os estabelecimentos deste plano poderão cadastrar imagens de propaganda rotativas (600x900px) nas páginas de freelancers e estabelecimentos.
                   </p>
                 </div>
                 <input
@@ -919,28 +894,16 @@ function VipPlanEditor({ plan, onUpdate, onRemove, isEst }: {
 
               <div className="pt-2 border-t border-amber-500/20 space-y-3">
                 <Input
-                  label="Quantidade máxima de anúncios permitidos neste plano"
+                  label="Quantidade máxima de anúncios permitidos por slot"
                   type="number"
                   value={String(estPlan?.maxAds ?? 0)}
                   onChange={(e) => onUpdate({ maxAds: Number(e.target.value) || 0 } as Partial<EstVipPlan>)}
                 />
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <Input
-                    label="Adicional Carrossel Home (R$)"
+                    label="Preço por slot rotativo (R$)"
                     type="number"
-                    value={String((estPlan as any)?.homeAdPrice ?? 30)}
-                    onChange={(e) => onUpdate({ homeAdPrice: Number(e.target.value) || 0 } as Partial<EstVipPlan>)}
-                  />
-                  <Input
-                    label="Adicional Pág. Freelancers (R$)"
-                    type="number"
-                    value={String((estPlan as any)?.freelancerAdPrice ?? 20)}
-                    onChange={(e) => onUpdate({ freelancerAdPrice: Number(e.target.value) || 0 } as Partial<EstVipPlan>)}
-                  />
-                  <Input
-                    label="Adicional Pág. Estabelecimentos (R$)"
-                    type="number"
-                    value={String((estPlan as any)?.establishmentAdPrice ?? 20)}
+                    value={String((estPlan as any)?.establishmentAdPrice ?? 25)}
                     onChange={(e) => onUpdate({ establishmentAdPrice: Number(e.target.value) || 0 } as Partial<EstVipPlan>)}
                   />
                 </div>
@@ -993,41 +956,6 @@ function AdminsTab({ admins, currentAdminId, onRemove, onEdit, onAdd }: { admins
         </div>
       ))}
     </div>
-  );
-}
-
-function AdminCreateAdminModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { adminCreateAdmin } = useApp();
-  const { notify } = useToast();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('admin123');
-  const [adminRole, setAdminRole] = useState<'super' | 'regular'>('regular');
-  const [photo, setPhoto] = useState('');
-
-  const create = () => {
-    if (!name.trim() || !email.trim() || !password.trim()) { notify('Preencha nome, e-mail e senha', 'warning'); return; }
-    const result = adminCreateAdmin({ name: name.trim(), email: email.trim(), password, adminRole, photo: photo.trim() || undefined });
-    if (result.ok) { notify(`${adminRole === 'super' ? 'Super Admin' : 'Moderador'} criado com sucesso!`); setName(''); setEmail(''); setPassword('admin123'); setAdminRole('regular'); setPhoto(''); onClose(); }
-    else notify(result.error ?? 'Erro ao criar admin', 'warning');
-  };
-
-  return (
-    <Modal open={open} onClose={onClose} title="Adicionar novo administrador" size="sm"
-      footer={<div className="flex gap-2"><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={create}><UserPlus className="h-4 w-4" /> Criar</Button></div>}>
-      <div className="space-y-4">
-        <div className="flex gap-1.5 rounded-xl border border-neutral-200 bg-neutral-50 p-1 dark:border-neutral-700 dark:bg-neutral-800">
-          {(['regular', 'super'] as const).map((r) => (
-            <button key={r} onClick={() => setAdminRole(r)} className={`flex-1 rounded-lg py-2 text-sm font-semibold transition ${adminRole === r ? 'bg-white text-primary-600 shadow-sm dark:bg-neutral-700 dark:text-primary-400' : 'text-neutral-500'}`}>{r === 'super' ? 'Super Admin' : 'Moderador'}</button>
-          ))}
-        </div>
-        <Input label="Nome" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do administrador" />
-        <Input label="E-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@freelaagora.com" />
-        <Input label="Senha" value={password} onChange={(e) => setPassword(e.target.value)} />
-        <Input label="URL da foto (opcional)" value={photo} onChange={(e) => setPhoto(e.target.value)} placeholder="https://..." />
-        <p className="text-xs text-neutral-400">Moderadores podem gerenciar usuários, vagas e avaliações. Apenas Super Admins podem alterar taxas e gerenciar outros admins.</p>
-      </div>
-    </Modal>
   );
 }
 
