@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Crown, Check, Sparkles, ShieldCheck, Diamond, Star, Store, Percent, Ticket, QrCode, CreditCard, FileText, Wallet, AlertCircle, Copy, Upload, ArrowLeft, Home, Users, Building2, Link as LinkIcon, Lock } from 'lucide-react';
+import { Crown, Check, Sparkles, ShieldCheck, Diamond, Star, Store, Percent, Ticket, QrCode, CreditCard, FileText, Wallet, AlertCircle, Copy, ArrowLeft, Users, Building2 } from 'lucide-react';
 import { useApp } from '@/AppContext';
 import { supabase } from '@/lib/supabase';
 import { useToast } from './ui/Toast';
@@ -72,11 +72,9 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
   const [billingType, setBillingType] = useState<BillingType>('WALLET');
   const [pixData, setPixData] = useState<{ qrCode: string; payload: string } | null>(null);
 
-  // Estados de locais e custos de anúncios (vinculados ao perfil ou salvos para validação)
-  const [activeAdTab, setActiveAdTab] = useState<'home' | 'freelancers' | 'establishments'>('home');
-  const [includeHomeAd, setIncludeHomeAd] = useState(true);
-  const [includeFreelancerAd, setIncludeFreelancerAd] = useState(false);
-  const [includeEstablishmentAd, setIncludeEstablishmentAd] = useState(false);
+  // Estados de seleção de slots específicos nas páginas de Freela e Estabelecimentos
+  const [selectedFreelancerSlots, setSelectedFreelancerSlots] = useState<number[]>([]);
+  const [selectedEstablishmentSlots, setSelectedEstablishmentSlots] = useState<number[]>([]);
 
   const paymentReady = isPaymentConfigured();
   const providerInfo = getActiveProviderInfo();
@@ -107,13 +105,13 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
   const currentPlan = getPlan(currentTier, vipPlansList);
   const currentEstPlan = getEstPlan(currentEstTier, estVipPlansList);
 
-  // Soma automática dos preços extras definidos pelo admin
+  // Cálculo de preço somando o valor unitário por slot escolhido
   const calculateTotalPlanPrice = (planObj: any) => {
     let basePrice = planObj.prices[period];
     if (accountType === 'establishment' && planObj.allowAds) {
-      if (includeHomeAd) basePrice += (planObj.homeAdPrice ?? 30);
-      if (includeFreelancerAd) basePrice += (planObj.freelancerAdPrice ?? 20);
-      if (includeEstablishmentAd) basePrice += (planObj.establishmentAdPrice ?? 20);
+      const slotPrice = planObj.establishmentAdPrice ?? 25;
+      const totalSlotsCount = selectedFreelancerSlots.length + selectedEstablishmentSlots.length;
+      basePrice += totalSlotsCount * slotPrice;
     }
     return appliedCoupon ? Math.round(basePrice * (1 - appliedCoupon.discountPercentage / 100) * 100) / 100 : basePrice;
   };
@@ -123,11 +121,12 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
     const finalPrice = calculateTotalPlanPrice(planObj);
     const userBalance = currentUser?.walletBalance ?? 0;
 
-    // Salva quais locais o usuário contratou no perfil para travar o painel de anúncios
-    const purchasedLocations = {
-      includeHomeAd: type === 'establishment' ? includeHomeAd : true,
-      includeFreelancerAd: type === 'establishment' ? includeFreelancerAd : false,
-      includeEstablishmentAd: type === 'establishment' ? includeEstablishmentAd : false,
+    const adPermissionsConfig = {
+      includeHomeAd: false,
+      includeFreelancerAd: selectedFreelancerSlots.length > 0,
+      includeEstablishmentAd: selectedEstablishmentSlots.length > 0,
+      allowedFreelancerSlots: selectedFreelancerSlots,
+      allowedEstablishmentSlots: selectedEstablishmentSlots,
     };
 
     if (billingType === 'WALLET') {
@@ -151,8 +150,7 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
         } else {
           setEstVipTier(userId, et, period);
         }
-        // Atualiza também os locais de anúncios permitidos para este estabelecimento
-        updateUser(userId, purchasedLocations);
+        updateUser(userId, adPermissionsConfig);
         notify(`Plano ${getEstPlan(et, estVipPlansList).label} ativado com sucesso!`);
       }
       setConfirmTier(null);
@@ -163,14 +161,9 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
         const { data: sessionData } = await supabase.auth.getSession();
         const token = sessionData?.session?.access_token || supabase.supabaseKey;
 
-        const rawDocument = accountType === 'establishment' 
-          ? (currentUser?.cnpj || '') 
-          : (currentUser?.cpf || currentUser?.cpfCnpj || '');
-
+        const rawDocument = accountType === 'establishment' ? (currentUser?.cnpj || '') : (currentUser?.cpf || currentUser?.cpfCnpj || '');
         const cleanDocument = rawDocument.replace(/\D/g, '');
-        const validCpfCnpj = (cleanDocument.length === 11 || cleanDocument.length === 14) 
-          ? cleanDocument 
-          : '47690623000';
+        const validCpfCnpj = (cleanDocument.length === 11 || cleanDocument.length === 14) ? cleanDocument : '47690623000';
 
         const res = await fetch(`${supabaseUrl}/functions/v1/asaas-payment`, {
           method: 'POST',
@@ -231,6 +224,18 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
     setCouponCode('');
   };
 
+  const toggleSlotSelection = (page: 'freelancers' | 'establishments', slotNumber: number) => {
+    if (page === 'freelancers') {
+      setSelectedFreelancerSlots(prev => 
+        prev.includes(slotNumber) ? prev.filter(s => s !== slotNumber) : [...prev, slotNumber].sort()
+      );
+    } else {
+      setSelectedEstablishmentSlots(prev => 
+        prev.includes(slotNumber) ? prev.filter(s => s !== slotNumber) : [...prev, slotNumber].sort()
+      );
+    }
+  };
+
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 p-4 sm:p-8">
       <div className="mx-auto max-w-7xl space-y-8">
@@ -266,48 +271,69 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
           </div>
         </div>
 
-        {/* Seleção de locais de anúncios para soma automática na contratação */}
+        {/* Seleção de slots por página de anúncios (Freela e Estabelecimentos) */}
         {accountType === 'establishment' && (() => {
           const activeEstPlan = estVipPlansList.find(p => p.tier === (currentUser?.estVipTier ?? 'free'));
           const canAdvertise = activeEstPlan?.allowAds ?? false;
           if (!canAdvertise) return null;
 
-          const homePrice = activeEstPlan.homeAdPrice ?? 30;
-          const freelancerPrice = activeEstPlan.freelancerAdPrice ?? 20;
-          const establishmentPrice = activeEstPlan.establishmentAdPrice ?? 20;
+          const slotPrice = activeEstPlan.establishmentAdPrice ?? 25;
 
           return (
-            <div className="rounded-2xl border border-amber-500/30 bg-neutral-900 p-6 shadow-lg">
-              <h3 className="font-display text-base font-bold text-white mb-2 flex items-center gap-2">
-                <Crown className="h-5 w-5 text-amber-400" /> Selecione os Locais de Anúncio Desejados
-              </h3>
-              <p className="text-xs text-neutral-400 mb-4">
-                Escolha onde sua marca será exibida. O sistema só liberará o painel de upload para os locais selecionados aqui durante a assinatura.
-              </p>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <label className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition ${includeHomeAd ? 'border-amber-500 bg-amber-500/10' : 'border-neutral-800 bg-neutral-950'}`}>
-                  <div className="flex items-center gap-2.5">
-                    <input type="checkbox" checked={includeHomeAd} onChange={(e) => setIncludeHomeAd(e.target.checked)} className="h-4 w-4 rounded text-amber-500" />
-                    <span className="text-xs font-semibold text-white">Carrossel Home</span>
-                  </div>
-                  <span className="text-xs font-bold text-amber-400">+{formatCurrency(homePrice)}</span>
-                </label>
+            <div className="rounded-2xl border border-amber-500/30 bg-neutral-900 p-6 shadow-lg space-y-6">
+              <div>
+                <h3 className="font-display text-base font-bold text-white mb-1 flex items-center gap-2">
+                  <Crown className="h-5 w-5 text-amber-400" /> Seleção de Páginas e Slots Rotativos (600x900px)
+                </h3>
+                <p className="text-xs text-neutral-400">
+                  Os banners rotacionam automaticamente nas páginas a cada 4 segundos. Escolha quais slots (1, 2 ou 3) deseja ocupar. Cada slot adiciona {formatCurrency(slotPrice)} ao plano.
+                </p>
+              </div>
 
-                <label className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition ${includeFreelancerAd ? 'border-amber-500 bg-amber-500/10' : 'border-neutral-800 bg-neutral-950'}`}>
-                  <div className="flex items-center gap-2.5">
-                    <input type="checkbox" checked={includeFreelancerAd} onChange={(e) => setIncludeFreelancerAd(e.target.checked)} className="h-4 w-4 rounded text-amber-500" />
-                    <span className="text-xs font-semibold text-white">Pág. Freelancers</span>
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-4 space-y-3">
+                  <span className="text-xs font-bold text-white flex items-center gap-2">
+                    <Users className="h-4 w-4 text-amber-400" /> Página de Freelancers (Até 3 slots)
+                  </span>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[1, 2, 3].map((slotNum) => {
+                      const isSelected = selectedFreelancerSlots.includes(slotNum);
+                      return (
+                        <button
+                          key={slotNum}
+                          type="button"
+                          onClick={() => toggleSlotSelection('freelancers', slotNum)}
+                          className={`py-2 px-3 rounded-lg border text-xs font-bold transition flex flex-col items-center gap-1 ${isSelected ? 'border-amber-500 bg-amber-500/20 text-amber-300' : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:border-neutral-700'}`}
+                        >
+                          <span>Slot #{slotNum}</span>
+                          <span className="text-[10px] font-normal">{isSelected ? 'Selecionado' : 'Disponível'}</span>
+                        </button>
+                      );
+                    })}
                   </div>
-                  <span className="text-xs font-bold text-amber-400">+{formatCurrency(freelancerPrice)}</span>
-                </label>
+                </div>
 
-                <label className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition ${includeEstablishmentAd ? 'border-amber-500 bg-amber-500/10' : 'border-neutral-800 bg-neutral-950'}`}>
-                  <div className="flex items-center gap-2.5">
-                    <input type="checkbox" checked={includeEstablishmentAd} onChange={(e) => setIncludeEstablishmentAd(e.target.checked)} className="h-4 w-4 rounded text-amber-500" />
-                    <span className="text-xs font-semibold text-white">Pág. Estabelecimentos</span>
+                <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-4 space-y-3">
+                  <span className="text-xs font-bold text-white flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-amber-400" /> Página de Estabelecimentos (Até 3 slots)
+                  </span>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[1, 2, 3].map((slotNum) => {
+                      const isSelected = selectedEstablishmentSlots.includes(slotNum);
+                      return (
+                        <button
+                          key={slotNum}
+                          type="button"
+                          onClick={() => toggleSlotSelection('establishments', slotNum)}
+                          className={`py-2 px-3 rounded-lg border text-xs font-bold transition flex flex-col items-center gap-1 ${isSelected ? 'border-amber-500 bg-amber-500/20 text-amber-300' : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:border-neutral-700'}`}
+                        >
+                          <span>Slot #{slotNum}</span>
+                          <span className="text-[10px] font-normal">{isSelected ? 'Selecionado' : 'Disponível'}</span>
+                        </button>
+                      );
+                    })}
                   </div>
-                  <span className="text-xs font-bold text-amber-400">+{formatCurrency(establishmentPrice)}</span>
-                </label>
+                </div>
               </div>
             </div>
           );
@@ -415,235 +441,6 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
             </div>
           </div>
         )}
-
-        {/* Gerenciamento de Anúncios por Local com Trava de Compra e Validação 600x900 */}
-        {accountType === 'establishment' && (() => {
-          const activeEstPlan = estVipPlansList.find(p => p.tier === (currentUser?.estVipTier ?? 'free'));
-          const canAdvertise = activeEstPlan?.allowAds ?? false;
-          const maxAllowedAds = activeEstPlan?.maxAds ?? 0;
-
-          if (!canAdvertise) return null;
-
-          // Flags que determinam se o usuário adquiriu permissão para aquele local
-          const hasHomePermission = currentUser?.includeHomeAd ?? true;
-          const hasFreelancerPermission = currentUser?.includeFreelancerAd ?? false;
-          const hasEstablishmentPermission = currentUser?.includeEstablishmentAd ?? false;
-
-          const homeImages = currentUser?.homeAds || currentUser?.adImages || [];
-          const homeLinks = currentUser?.homeLinks || [];
-
-          const freelancerImages = currentUser?.freelancerAds || [];
-          const freelancerLinks = currentUser?.freelancerLinks || [];
-
-          const establishmentImages = currentUser?.establishmentAds || [];
-          const establishmentLinks = currentUser?.establishmentLinks || [];
-
-          const activeImagesList = activeAdTab === 'home' ? homeImages : activeAdTab === 'freelancers' ? freelancerImages : establishmentImages;
-          const activeLinksList = activeAdTab === 'home' ? homeLinks : activeAdTab === 'freelancers' ? freelancerLinks : establishmentLinks;
-
-          const handleUpdateLocationImages = (newImages: string[]) => {
-            if (activeAdTab === 'home') {
-              updateUser(userId, { homeAds: newImages, adImages: newImages });
-            } else if (activeAdTab === 'freelancers') {
-              updateUser(userId, { freelancerAds: newImages });
-            } else {
-              updateUser(userId, { establishmentAds: newImages });
-            }
-          };
-
-          const handleUpdateLocationLinks = (newLinks: string[]) => {
-            if (activeAdTab === 'home') {
-              updateUser(userId, { homeLinks: newLinks });
-            } else if (activeAdTab === 'freelancers') {
-              updateUser(userId, { freelancerLinks: newLinks });
-            } else {
-              updateUser(userId, { establishmentLinks: newLinks });
-            }
-          };
-
-          // Função de Upload com Trava Estrita de 600x900 Pixels
-          const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-
-            const img = new Image();
-            const objectUrl = URL.createObjectURL(file);
-
-            img.onload = () => {
-              URL.revokeObjectURL(objectUrl);
-              const width = img.naturalWidth;
-              const height = img.naturalHeight;
-
-              if (width !== 600 || height !== 900) {
-                notify(`❌ Imagem inválida! O tamanho exigido é exatamente 600x900 pixels. A imagem enviada tem ${width}x${height}px.`, 'error');
-                return;
-              }
-
-              // Dimensão correta aprovada, faz o carregamento
-              const reader = new FileReader();
-              reader.onloadend = () => {
-                const newImages = [...activeImagesList];
-                newImages[index] = reader.result as string;
-                handleUpdateLocationImages(newImages);
-                notify(`Anúncio #${index + 1} carregado com sucesso! (600x900px)`);
-              };
-              reader.readAsDataURL(file);
-            };
-
-            img.onerror = () => {
-              URL.revokeObjectURL(objectUrl);
-              notify('Erro ao processar o arquivo de imagem.', 'error');
-            };
-
-            img.src = objectUrl;
-          };
-
-          return (
-            <div className="mt-10 rounded-2xl border border-amber-500/30 bg-neutral-900 p-6 sm:p-8 shadow-xl">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                    <Crown className="h-7 w-7" />
-                  </div>
-                  <div>
-                    <h2 className="font-display text-xl font-bold text-white">Gerenciamento de Anúncios e Links por Local</h2>
-                    <p className="text-xs sm:text-sm text-neutral-400">Plano Ativo: <strong>{activeEstPlan?.label ?? currentUser?.estVipTier?.toUpperCase()}</strong></p>
-                  </div>
-                </div>
-                <Badge tone="vip" className="px-3 py-1 text-xs font-bold">
-                  Limite: {maxAllowedAds} imagem(ns) por local
-                </Badge>
-              </div>
-
-              <div className="flex flex-wrap gap-2 mb-6 border-b border-neutral-800 pb-4">
-                <button
-                  type="button"
-                  onClick={() => setActiveAdTab('home')}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition ${activeAdTab === 'home' ? 'bg-amber-500 text-neutral-950 shadow-lg' : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'}`}
-                >
-                  <Home className="h-4 w-4" /> Carrossel Home {hasHomePermission ? '' : '🔒'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveAdTab('freelancers')}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition ${activeAdTab === 'freelancers' ? 'bg-amber-500 text-neutral-950 shadow-lg' : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'}`}
-                >
-                  <Users className="h-4 w-4" /> Página de Freelancers {hasFreelancerPermission ? '' : '🔒'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveAdTab('establishments')}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition ${activeAdTab === 'establishments' ? 'bg-amber-500 text-neutral-950 shadow-lg' : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'}`}
-                >
-                  <Building2 className="h-4 w-4" /> Página de Estabelecimentos {hasEstablishmentPermission ? '' : '🔒'}
-                </button>
-              </div>
-
-              {/* Mensagem de Bloqueio caso não tenha contratado o local */}
-              {((activeAdTab === 'home' && !hasHomePermission) ||
-                (activeAdTab === 'freelancers' && !hasFreelancerPermission) ||
-                (activeAdTab === 'establishments' && !hasEstablishmentPermission)) ? (
-                <div className="rounded-2xl border border-error-500/30 bg-error-500/10 p-8 text-center space-y-3">
-                  <Lock className="mx-auto h-10 w-10 text-error-400" />
-                  <h3 className="text-lg font-bold text-white">Local não contratado no seu plano</h3>
-                  <p className="text-sm text-neutral-300 max-w-md mx-auto">
-                    Você não selecionou a opção de anúncios para esta página durante a contratação do seu plano VIP. Renove ou atualize seu plano selecionando este local para desbloquear os slots.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div className="mb-6 rounded-xl bg-amber-500/10 p-4 border border-amber-500/20 text-xs sm:text-sm text-amber-200 space-y-1.5">
-                    <p className="font-bold">📐 Instruções de Anúncio e Redirecionamento:</p>
-                    <p>• Tamanho obrigatório e estrito: <strong>600 x 900 pixels</strong> (Imagens fora deste padrão serão rejeitadas).</p>
-                    <p>• Informe o <strong>Link de Redirecionamento</strong> (ex: seu site, WhatsApp ou Instagram).</p>
-                  </div>
-
-                  <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
-                    {Array.from({ length: maxAllowedAds }).map((_, index) => {
-                      const imageUrl = activeImagesList[index] || '';
-                      const linkUrl = activeLinksList[index] || '';
-
-                      return (
-                        <div key={index} className="flex flex-col gap-4 rounded-xl border border-neutral-800 bg-neutral-950 p-5 shadow-md">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold uppercase tracking-wider text-neutral-300">
-                              Slot #{index + 1} ({activeAdTab === 'home' ? 'Home' : activeAdTab === 'freelancers' ? 'Freelancers' : 'Estabelecimentos'})
-                            </span>
-                            {imageUrl && (
-                              <button 
-                                type="button" 
-                                onClick={() => {
-                                  const newImages = [...activeImagesList];
-                                  newImages[index] = '';
-                                  handleUpdateLocationImages(newImages);
-                                  notify('Imagem removida com sucesso', 'info');
-                                }}
-                                className="text-xs text-error-400 hover:underline font-medium"
-                              >
-                                Remover imagem
-                              </button>
-                            )}
-                          </div>
-
-                          <div className="flex flex-col sm:flex-row items-center gap-4">
-                            <div className="h-32 w-24 shrink-0 rounded-xl overflow-hidden bg-neutral-900 border border-neutral-800 flex items-center justify-center">
-                              {imageUrl ? (
-                                <img src={imageUrl} alt={`Anúncio ${index + 1}`} className="h-full w-full object-cover" />
-                              ) : (
-                                <span className="text-xs text-neutral-500">Sem imagem</span>
-                              )}
-                            </div>
-
-                            <div className="flex-1 w-full space-y-3">
-                              <input 
-                                type="text" 
-                                placeholder="Link da imagem..."
-                                value={imageUrl.startsWith('data:') ? '[Arquivo carregado do dispositivo]' : imageUrl}
-                                disabled={imageUrl.startsWith('data:')}
-                                onChange={(e) => {
-                                  const newImages = [...activeImagesList];
-                                  newImages[index] = e.target.value;
-                                  handleUpdateLocationImages(newImages);
-                                }}
-                                className="w-full rounded-xl border border-neutral-700 bg-neutral-900 px-3.5 py-2 text-xs text-neutral-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 disabled:opacity-60"
-                              />
-
-                              <div className="relative">
-                                <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400" />
-                                <input 
-                                  type="text" 
-                                  placeholder="Link de destino (https://... ou wa.me/...)"
-                                  value={linkUrl}
-                                  onChange={(e) => {
-                                    const newLinks = [...activeLinksList];
-                                    newLinks[index] = e.target.value;
-                                    handleUpdateLocationLinks(newLinks);
-                                  }}
-                                  className="w-full rounded-xl border border-neutral-700 bg-neutral-900 py-2 pl-9 pr-3 text-xs text-neutral-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
-                                />
-                              </div>
-
-                              <label className="cursor-pointer inline-flex items-center justify-center gap-2 w-full px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-neutral-950 font-bold text-xs transition shadow-md">
-                                <Upload className="h-4 w-4" />
-                                <span>Carregar Arquivo (Exato 600x900)</span>
-                                <input 
-                                  type="file" 
-                                  accept="image/*" 
-                                  className="hidden" 
-                                  onChange={(e) => handleFileChange(e, index)} 
-                                />
-                              </label>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
-            </div>
-          );
-        })()}
 
         <Modal open={!!confirmTier} onClose={() => setConfirmTier(null)} title="Confirmar assinatura" size="sm"
           footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={() => setConfirmTier(null)}>Cancelar</Button><Button variant="warning" fullWidth onClick={() => confirmTier && handleProceedPayment(confirmTier, 'freelancer')}><Check className="h-4 w-4" /> Confirmar</Button></div>}>
