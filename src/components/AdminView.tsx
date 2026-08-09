@@ -4,6 +4,7 @@ import {
   RotateCcw, Trash2, Pencil, Megaphone, Wallet, Ban, CheckCircle2, Crown, AlertCircle,
   User as UserIcon, MapPin, Tags, Calendar, Save, Ticket, Terminal, RotateCcw as RefundIcon, Plus,
   Search, Star, UserPlus, Eye, EyeOff, UserCog, Camera, Lock, DollarSign, MoreVertical, Image as ImageIcon,
+  Check, X
 } from 'lucide-react';
 import { useApp } from '@/AppContext';
 import { useToast } from './ui/Toast';
@@ -21,7 +22,6 @@ import type { Contract, User, Tier, EstTier, ContractStatus, ShiftSlot, Period, 
 
 type Tab = 'overview' | 'freelancers' | 'establishments' | 'contracts' | 'jobs' | 'reviews' | 'coupons' | 'audit' | 'wallet' | 'vip' | 'admins';
 
-// Cores exclusivas e sofisticadas para cada nível VIP (destacando a partir do VIP 4)
 const getPlanTierColor = (tier: string) => {
   if (tier === 'vip6') return 'text-rose-500';
   if (tier === 'vip5') return 'text-purple-500';
@@ -165,7 +165,7 @@ export function AdminView() {
                 <ActionMenu items={[
                   { icon: Pencil, label: 'Editar', onClick: () => setEditUser(f) },
                   { icon: Crown, label: 'Gerenciar VIP', onClick: () => setVipTarget(f) },
-                  ...(isSuperAdmin ? [{ icon: DollarSign, label: 'Ajustar carteira', onClick: () => setWalletTarget(f) }] : []),
+                  { icon: DollarSign, label: 'Ajustar carteira', onClick: () => setWalletTarget(f) },
                   ...(f.banned
                     ? [{ icon: CheckCircle2, label: 'Desbanir', onClick: () => { unbanUser(f.id); notify('Usuário desbanido'); } }]
                     : [{ icon: Ban, label: 'Banir', danger: true, onClick: () => setBanTarget(f) }]),
@@ -200,7 +200,7 @@ export function AdminView() {
                 <ActionMenu items={[
                   { icon: Pencil, label: 'Editar', onClick: () => setEditUser(e) },
                   { icon: Crown, label: 'Gerenciar VIP / Plano', onClick: () => setVipTarget(e) },
-                  ...(isSuperAdmin ? [{ icon: DollarSign, label: 'Ajustar carteira', onClick: () => setWalletTarget(e) }] : []),
+                  { icon: DollarSign, label: 'Ajustar carteira', onClick: () => setWalletTarget(e) },
                   ...(e.banned
                     ? [{ icon: CheckCircle2, label: 'Desbanir', onClick: () => { unbanUser(e.id); notify('Desbanido'); } }]
                     : [{ icon: Ban, label: 'Banir', danger: true, onClick: () => setBanTarget(e) }]),
@@ -413,7 +413,7 @@ export function AdminView() {
           <p className="text-sm text-neutral-600 dark:text-neutral-300">Confirmar reembolso direto de <strong>{formatCurrency(refundTarget.total)}</strong> para <strong>{refundTarget.establishmentName}</strong>? O contrato será cancelado e os valores devolvidos à carteira do estabelecimento.</p>
         </Modal>
       )}
-      <Modal open={confirmReset} onClose={() => setConfirmReset(false)} title="Restaurar dados" size="sm"
+      <Modal open={confirmReset} onClose={() => setConfirmReset(false)} title="Restaurator dados" size="sm"
         footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={() => setConfirmReset(false)}>Cancelar</Button><Button variant="danger" fullWidth onClick={() => { resetData(); setConfirmReset(false); notify('Dados restaurados', 'info'); }}><RotateCcw className="h-4 w-4" /> Resetar</Button></div>}>
         <p className="text-sm text-neutral-600 dark:text-neutral-300">Todas as alterações serão perdidas e os dados voltarão ao estado inicial.</p>
       </Modal>
@@ -568,18 +568,16 @@ export function AdminProfileModal({ open, onClose, admin, onSave }: { open: bool
   );
 }
 
+// Correção do modal VIP Admin para forçar a atualização direta sem validar saldo em carteira
 function AdminVipModal({ user, open, onClose }: { user: User; open: boolean; onClose: () => void }) {
-  const { data, setVipTier, setEstVipTier } = useApp();
+  const { adminUpdateUser } = useApp();
   const { notify } = useToast();
   const isEst = user.accountType === 'establishment';
   const [tier, setTier] = useState<any>(isEst ? user.estVipTier ?? 'free' : user.vipTier ?? 'free');
 
   const save = () => {
-    if (isEst) {
-      setEstVipTier(user.id, tier);
-    } else {
-      setVipTier(user.id, tier);
-    }
+    const patch = isEst ? { estVipTier: tier } : { vipTier: tier };
+    adminUpdateUser(user.id, patch);
     notify('Plano VIP / Trial atualizado com sucesso!');
     onClose();
   };
@@ -589,7 +587,22 @@ function AdminVipModal({ user, open, onClose }: { user: User; open: boolean; onC
       footer={<div className="flex gap-2"><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={save}><Crown className="h-4 w-4" /> Salvar</Button></div>}>
       <div className="space-y-4">
         <Select label="Selecionar Plano" value={tier} onChange={(e) => setTier(e.target.value)}>
-          {isEst ? data.estVipPlans.map((p) => <option key={p.tier} value={p.tier}>{p.label}</option>) : data.vipPlans.map((p) => <option key={p.tier} value={p.tier}>{p.label}</option>)}
+          {isEst ? [
+            <option key="free" value="free">Gratuito</option>,
+            <option key="trial" value="trial">Teste Gratuito (15 dias)</option>,
+            <option key="vip1" value="vip1">VIP 1</option>,
+            <option key="vip2" value="vip2">VIP 2</option>,
+            <option key="vip3" value="vip3">VIP 3</option>,
+            <option key="vip4" value="vip4">VIP 4 (Com Anúncios)</option>,
+            <option key="vip5" value="vip5">VIP 5 (Com Anúncios)</option>,
+            <option key="vip6" value="vip6">VIP 6 (Com Anúncios)</option>,
+          ] : [
+            <option key="free" value="free">Free</option>,
+            <option key="vip1" value="vip1">VIP 1</option>,
+            <option key="vip2" value="vip2">VIP 2</option>,
+            <option key="vip3" value="vip3">VIP 3</option>,
+            <option key="vip4" value="vip4">VIP 4</option>,
+          ]}
         </Select>
       </div>
     </Modal>
@@ -886,7 +899,6 @@ function VipPlanEditor({ plan, onUpdate, onRemove, isEst }: {
             )}
           </div>
 
-          {/* Opção universal de anúncios visível para QUALQUER plano de estabelecimento */}
           {isEst && (
             <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 dark:bg-amber-500/10 space-y-3">
               <label className="flex cursor-pointer items-center justify-between">
@@ -906,7 +918,6 @@ function VipPlanEditor({ plan, onUpdate, onRemove, isEst }: {
                 />
               </label>
 
-              {/* Caixa de quantidade disponível de forma universal e irrestrita */}
               <div className="pt-2 border-t border-amber-500/20">
                 <Input
                   label="Quantidade máxima de anúncios permitidos neste plano"
