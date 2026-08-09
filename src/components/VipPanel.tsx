@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Crown, Check, Sparkles, ShieldCheck, Diamond, Star, Store, Percent, Ticket, QrCode, CreditCard, FileText, Wallet, AlertCircle, Copy, ArrowLeft, Users, Building2, Upload, Trash2, ImageIcon, Link as LinkIcon } from 'lucide-react';
+import { Crown, Check, Sparkles, ShieldCheck, Diamond, Star, Store, Percent, Ticket, QrCode, CreditCard, FileText, Wallet, AlertCircle, Copy, ArrowLeft, Users, Building2, Upload, Trash2, ImageIcon, Link as LinkIcon, Plus } from 'lucide-react';
 import { useApp } from '@/AppContext';
 import { supabase } from '@/lib/supabase';
 import { useToast } from './ui/Toast';
@@ -76,11 +76,11 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
   const [selectedFreelancerSlots, setSelectedFreelancerSlots] = useState<number[]>(currentUser?.allowedFreelancerSlots ?? []);
   const [selectedEstablishmentSlots, setSelectedEstablishmentSlots] = useState<number[]>(currentUser?.allowedEstablishmentSlots ?? []);
 
-  // Biblioteca de imagens e links para os 6 locais (3 Freela + 3 Estab)
-  const [freelancerAds, setFreelancerAds] = useState<string[]>(currentUser?.freelancerAds ?? ['', '', '']);
-  const [establishmentAds, setEstablishmentAds] = useState<string[]>(currentUser?.establishmentAds ?? ['', '', '']);
-  const [freelancerLinks, setFreelancerLinks] = useState<string[]>(currentUser?.freelancerLinks ?? ['', '', '']);
-  const [establishmentLinks, setEstablishmentLinks] = useState<string[]>(currentUser?.establishmentLinks ?? ['', '', '']);
+  // Estrutura de arrays por slot para suportar múltiplos anúncios conforme o plano
+  const [freelancerAdsBySlot, setFreelancerAdsBySlot] = useState<string[][]>(currentUser?.freelancerAdsBySlot ?? [[], [], []]);
+  const [establishmentAdsBySlot, setEstablishmentAdsBySlot] = useState<string[][]>(currentUser?.establishmentAdsBySlot ?? [[], [], []]);
+  const [freelancerLinksBySlot, setFreelancerLinksBySlot] = useState<string[][]>(currentUser?.freelancerLinksBySlot ?? [[], [], []]);
+  const [establishmentLinksBySlot, setEstablishmentLinksBySlot] = useState<string[][]>(currentUser?.establishmentLinksBySlot ?? [[], [], []]);
 
   useEffect(() => {
     let path = '/vip';
@@ -112,7 +112,10 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
   const currentPlan = getPlan(currentTier, vipPlansList);
   const currentEstPlan = getEstPlan(currentEstTier, estVipPlansList);
 
-  const handleFileChange = (index: number, type: 'freelancers' | 'establishments') => (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Determina o limite máximo de anúncios por slot de acordo com o plano ativo do estabelecimento
+  const maxAdsPerSlot = currentEstTier === 'vip6' ? 5 : currentEstTier === 'vip5' ? 3 : currentEstTier === 'vip4' ? 1 : 3;
+
+  const handleFileChange = (slotIndex: number, type: 'freelancers' | 'establishments') => (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -121,50 +124,87 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
       const img = new Image();
       img.src = reader.result as string;
       img.onload = () => {
-        const requiredWidth = SLOT_DIMENSIONS[index].width;
-        const requiredHeight = SLOT_DIMENSIONS[index].height;
+        const requiredWidth = SLOT_DIMENSIONS[slotIndex].width;
+        const requiredHeight = SLOT_DIMENSIONS[slotIndex].height;
 
         if (img.width !== requiredWidth || img.height !== requiredHeight) {
-          notify(`Tamanho inválido! O ${SLOT_NAMES[index]} exige exatamente ${requiredWidth}x${requiredHeight} pixels. A imagem enviada tem ${img.width}x${img.height}px.`, 'error');
+          notify(`Tamanho inválido! O ${SLOT_NAMES[slotIndex]} exige exatamente ${requiredWidth}x${requiredHeight} pixels. A imagem enviada tem ${img.width}x${img.height}px.`, 'error');
           return;
         }
 
+        const base64Image = reader.result as string;
+
         if (type === 'freelancers') {
-          const newAds = [...freelancerAds];
-          newAds[index] = reader.result as string;
-          setFreelancerAds(newAds);
+          const currentList = freelancerAdsBySlot[slotIndex] || [];
+          if (currentList.length >= maxAdsPerSlot) {
+            notify(`O seu plano atual permite no máximo ${maxAdsPerSlot} anúncio(s) neste slot.`, 'error');
+            return;
+          }
+          const updated = [...freelancerAdsBySlot];
+          updated[slotIndex] = [...currentList, base64Image];
+          setFreelancerAdsBySlot(updated);
+
+          const currentLinks = freelancerLinksBySlot[slotIndex] || [];
+          const updatedLinks = [...freelancerLinksBySlot];
+          updatedLinks[slotIndex] = [...currentLinks, ''];
+          setFreelancerLinksBySlot(updatedLinks);
         } else {
-          const newAds = [...establishmentAds];
-          newAds[index] = reader.result as string;
-          setEstablishmentAds(newAds);
+          const currentList = establishmentAdsBySlot[slotIndex] || [];
+          if (currentList.length >= maxAdsPerSlot) {
+            notify(`O seu plano atual permite no máximo ${maxAdsPerSlot} anúncio(s) neste slot.`, 'error');
+            return;
+          }
+          const updated = [...establishmentAdsBySlot];
+          updated[slotIndex] = [...currentList, base64Image];
+          setEstablishmentAdsBySlot(updated);
+
+          const currentLinks = establishmentLinksBySlot[slotIndex] || [];
+          const updatedLinks = [...establishmentLinksBySlot];
+          updatedLinks[slotIndex] = [...currentLinks, ''];
+          setEstablishmentLinksBySlot(updatedLinks);
         }
-        notify(`Imagem carregada com sucesso no ${SLOT_NAMES[index]}!`, 'success');
+
+        notify(`Anúncio adicionado ao ${SLOT_NAMES[slotIndex]} com sucesso!`, 'success');
       };
     };
     reader.readAsDataURL(file);
   };
 
-  const handleLinkChange = (index: number, type: 'freelancers' | 'establishments', value: string) => {
+  const handleLinkChange = (slotIndex: number, adIndex: number, type: 'freelancers' | 'establishments', value: string) => {
     if (type === 'freelancers') {
-      const newLinks = [...freelancerLinks];
-      newLinks[index] = value;
-      setFreelancerLinks(newLinks);
+      const updated = [...freelancerLinksBySlot];
+      if (!updated[slotIndex]) updated[slotIndex] = [];
+      updated[slotIndex][adIndex] = value;
+      setFreelancerLinksBySlot(updated);
     } else {
-      const newLinks = [...establishmentLinks];
-      newLinks[index] = value;
-      setEstablishmentLinks(newLinks);
+      const updated = [...establishmentLinksBySlot];
+      if (!updated[slotIndex]) updated[slotIndex] = [];
+      updated[slotIndex][adIndex] = value;
+      setEstablishmentLinksBySlot(updated);
     }
   };
 
-  const handleRemoveAd = (index: number, type: 'freelancers' | 'establishments') => {
+  const handleRemoveAd = (slotIndex: number, adIndex: number, type: 'freelancers' | 'establishments') => {
     if (type === 'freelancers') {
-      const newAds = [...freelancerAds];
-      newAds[index] = '';
-      setFreelancerAds(newAds);
+      const updatedAds = [...freelancerAdsBySlot];
+      updatedAds[slotIndex] = updatedAds[slotIndex].filter((_, i) => i !== adIndex);
+      setFreelancerAdsBySlot(updatedAds);
+
+      const updatedLinks = [...freelancerLinksBySlot];
+      if (updatedLinks[slotIndex]) {
+        updatedLinks[slotIndex] = updatedLinks[slotIndex].filter((_, i) => i !== adIndex);
+        setFreelancerLinksBySlot(updatedLinks);
+      }
     } else {
-      const newAds = [...establishmentAds];
-      newAds[index] = '';
-      setEstablishmentAds(newAds);
+      const updatedAds = [...establishmentAdsBySlot];
+      updatedAds[slotIndex] = updatedAds[slotIndex].filter((_, i) => i !== adIndex);
+      setEstablishmentAdsBySlot(updatedAds);
+
+      const updatedLinks = [...establishmentLinksBySlot];
+      if (updatedLinks[slotIndex]) {
+        updatedLinks[slotIndex] = updatedLinks[slotIndex].filter((_, i) => i !== adIndex);
+        setEstablishmentLinksBySlot(updatedLinks);
+      }
     }
     notify('Anúncio removido', 'info');
   };
@@ -221,10 +261,15 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
       includeEstablishmentAd: selectedEstablishmentSlots.length > 0,
       allowedFreelancerSlots: selectedFreelancerSlots,
       allowedEstablishmentSlots: selectedEstablishmentSlots,
-      freelancerAds,
-      establishmentAds,
-      freelancerLinks,
-      establishmentLinks,
+      freelancerAdsBySlot,
+      establishmentAdsBySlot,
+      freelancerLinksBySlot,
+      establishmentLinksBySlot,
+      // Compatibilidade legada com arrays simples se necessário
+      freelancerAds: freelancerAdsBySlot.flat(),
+      establishmentAds: establishmentAdsBySlot.flat(),
+      freelancerLinks: freelancerLinksBySlot.flat(),
+      establishmentLinks: establishmentLinksBySlot.flat(),
     };
 
     if (billingType === 'WALLET') {
@@ -341,48 +386,75 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
     referencePlan?.priceSlot3 ?? 20
   ];
 
-  const renderLibrarySlots = (ads: string[], links: string[], type: 'freelancers' | 'establishments') => (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      {ads.map((ad, idx) => (
-        <div key={idx} className="p-4 border border-neutral-800 rounded-xl bg-neutral-950 flex flex-col justify-between space-y-3">
-          <div className="text-center">
-            <span className="text-xs font-bold text-white block">{SLOT_NAMES[idx]}</span>
-            <span className="text-[10px] text-amber-400 font-semibold">Exato: {SLOT_DIMENSIONS[idx].label}</span>
-          </div>
+  const renderSlotBoxes = (adsBySlot: string[][], linksBySlot: string[][], type: 'freelancers' | 'establishments') => (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {SLOT_NAMES.map((slotName, slotIndex) => {
+        const adsList = adsBySlot[slotIndex] || [];
+        const linksList = linksBySlot[slotIndex] || [];
+        const canAddMore = adsList.length < maxAdsPerSlot;
 
-          {ad ? (
-            <div className="relative group w-full flex flex-col items-center">
-              <img src={ad} className="h-28 w-full object-cover rounded-lg border border-neutral-700 mb-2" />
-              <button 
-                type="button" 
-                onClick={() => handleRemoveAd(idx, type)} 
-                className="w-full py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs font-bold rounded-lg flex items-center justify-center gap-1 transition"
-              >
-                <Trash2 className="h-3 w-3" /> Remover Imagem
-              </button>
+        return (
+          <div key={slotIndex} className="p-4 border border-neutral-800 rounded-xl bg-neutral-950 flex flex-col justify-between space-y-4">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-bold text-white uppercase">{slotName}</span>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-neutral-900 text-amber-400 font-semibold border border-neutral-800">
+                  {SLOT_DIMENSIONS[slotIndex].label}
+                </span>
+              </div>
+              <p className="text-[10px] text-neutral-400">
+                Anúncios neste local: {adsList.length} / {maxAdsPerSlot} (Plano atual)
+              </p>
             </div>
-          ) : (
-            <label className="cursor-pointer border-2 border-dashed border-neutral-800 hover:border-amber-500 w-full h-28 flex flex-col items-center justify-center rounded-lg bg-neutral-900 transition">
-              <Upload className="h-5 w-5 text-neutral-500 mb-1" />
-              <span className="text-xs font-bold text-neutral-400">Carregar Imagem</span>
-              <input type="file" accept="image/*" className="hidden" onChange={handleFileChange(idx, type)} />
-            </label>
-          )}
 
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1 flex items-center gap-1">
-              <LinkIcon className="h-3 w-3 text-amber-400" /> Link de Redirecionamento
-            </label>
-            <input 
-              type="text" 
-              value={links[idx] || ''} 
-              onChange={(e) => handleLinkChange(idx, type, e.target.value)}
-              placeholder="https://seuwebsite.com.br"
-              className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-amber-500 transition"
-            />
+            <div className="space-y-4">
+              {adsList.map((adImg, adIndex) => (
+                <div key={adIndex} className="p-3 border border-neutral-800 rounded-lg bg-neutral-900 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-neutral-400">Anúncio #{adIndex + 1}</span>
+                    <button 
+                      type="button" 
+                      onClick={() => handleRemoveAd(slotIndex, adIndex, type)} 
+                      className="text-red-400 hover:text-red-300 text-xs p-1 transition"
+                      title="Remover Anúncio"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+
+                  <img src={adImg} className="h-24 w-full object-cover rounded border border-neutral-700" />
+
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1 flex items-center gap-1">
+                      <LinkIcon className="h-3 w-3 text-amber-400" /> Link de Redirecionamento
+                    </label>
+                    <input 
+                      type="text" 
+                      value={linksList[adIndex] || ''} 
+                      onChange={(e) => handleLinkChange(slotIndex, adIndex, type, e.target.value)}
+                      placeholder="https://seuwebsite.com.br"
+                      className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-amber-500 transition"
+                    />
+                  </div>
+                </div>
+              ))}
+
+              {canAddMore ? (
+                <label className="cursor-pointer border-2 border-dashed border-neutral-800 hover:border-amber-500 w-full h-24 flex flex-col items-center justify-center rounded-lg bg-neutral-900 transition">
+                  <Plus className="h-5 w-5 text-neutral-400 mb-1" />
+                  <span className="text-xs font-bold text-neutral-300">Adicionar Anúncio</span>
+                  <span className="text-[9px] text-neutral-500">Exato: {SLOT_DIMENSIONS[slotIndex].label}</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleFileChange(slotIndex, type)} />
+                </label>
+              ) : (
+                <p className="text-center text-[10px] text-neutral-500 italic py-2">
+                  Limite de anúncios atingido para este slot no seu plano.
+                </p>
+              )}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 
@@ -588,7 +660,7 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
           </div>
         )}
 
-        {/* A BIBLIOTECA DE IMAGENS FICA AQUI NO RODAPÉ, ABAIXO DOS PLANOS, COM BLOQUEIO DE TAMANHO EXATO E LINK DE REDIRECIONAMENTO */}
+        {/* A BIBLIOTECA DE IMAGENS FICA NO RODAPÉ, ABAIXO DOS PLANOS, COM AS 3 CAIXINHAS (TOPO, CENTRO, RODAPÉ) E MÚLTIPLOS ANÚNCIOS CONFORME O PLANO */}
         {accountType === 'establishment' && (
           <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 shadow-lg space-y-6">
             <div className="flex items-center gap-2">
@@ -596,7 +668,7 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
               <h3 className="font-display text-base font-bold text-white">Biblioteca de Imagens dos Anúncios</h3>
             </div>
             <p className="text-xs text-neutral-400">
-              Faça o upload dos banners respeitando estritamente as dimensões exigidas. O sistema bloqueará imagens com tamanhos diferentes:
+              Faça o upload dos banners em suas respectivas caixas abaixo. O sistema bloqueia tamanhos diferentes e respeita o limite de anúncios ativos do seu plano atual:
               <br />• <strong className="text-white">Topo da Página:</strong> Exatamente 600x900 pixels
               <br />• <strong className="text-white">Centro do Feed:</strong> Exatamente 600x500 pixels
               <br />• <strong className="text-white">Rodapé da Página:</strong> Exatamente 600x200 pixels
@@ -605,16 +677,16 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
             <div className="space-y-6">
               <div>
                 <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 mb-3 flex items-center gap-2">
-                  <Users className="h-3.5 w-3.5" /> Página de Freelancers (3 Locais)
+                  <Users className="h-3.5 w-3.5" /> Página de Freelancers
                 </h4>
-                {renderLibrarySlots(freelancerAds, freelancerLinks, 'freelancers')}
+                {renderSlotBoxes(freelancerAdsBySlot, freelancerLinksBySlot, 'freelancers')}
               </div>
 
               <div className="border-t border-neutral-800 pt-6">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 mb-3 flex items-center gap-2">
-                  <Building2 className="h-3.5 w-3.5" /> Página de Estabelecimentos (3 Locais)
+                  <Building2 className="h-3.5 w-3.5" /> Página de Estabelecimentos
                 </h4>
-                {renderLibrarySlots(establishmentAds, establishmentLinks, 'establishments')}
+                {renderSlotBoxes(establishmentAdsBySlot, establishmentLinksBySlot, 'establishments')}
               </div>
             </div>
           </div>
@@ -690,7 +762,7 @@ function BillingTypeSelector({ billingType, setBillingType, paymentReady, provid
       {!paymentReady && (
         <div className="mt-2 flex items-start gap-2 rounded-lg bg-warning-50 p-2.5 text-xs text-warning-700 dark:bg-warning-500/10 dark:text-warning-400">
           <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          <span>Pagamento via {providerLabel} não configurado. O admin precisa ativar em Painel Admin → Pagamentos. Por favor, utilize a carteira enquanto isso.</span>
+          <span>Pagamento via {providerLabel} não configurado. O admin precisa ativar em Painel Admin → Pagamentos. Por favor, utilize a carteira enquanto isso.</i>
         </div>
       )}
     </div>
