@@ -86,7 +86,6 @@ export function getIntermediationFeePercent(user: User, plans?: EstVipPlan[]): n
 export function isEstablishmentOnTrial(user: User): boolean {
   if (user.accountType !== 'establishment') return false;
   
-  // Se o admin já definiu um plano VIP pago, o trial é encerrado imediatamente
   if (user.estVipTier && user.estVipTier !== 'free' && user.estVipTier !== 'trial') {
     return false;
   }
@@ -217,7 +216,7 @@ export function maskCEP(v: string): string {
 }
 
 // ============================================================
-// CPF / CNPJ ALGORITHMIC VALIDATION (cálculo de dígitos verificadores)
+// CPF / CNPJ ALGORITHMIC VALIDATION
 // ============================================================
 export function validateCPF(cpf: string): boolean {
   const nums = cpf.replace(/\D/g, '');
@@ -266,7 +265,7 @@ export function validateDocument(doc: string, type: 'cpf' | 'cnpj'): boolean {
 }
 
 // ============================================================
-// MASKED DISPLAY (for privacy / profiles)
+// MASKED DISPLAY
 // ============================================================
 export function maskDocumentDisplay(doc: string): string {
   const nums = doc.replace(/\D/g, '');
