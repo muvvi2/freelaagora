@@ -30,7 +30,7 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
   const [email, setEmail] = useState(establishment.email);
   const [cnpj, setCnpj] = useState(establishment.cnpj ?? '');
 
-  // Gerenciamento de Anúncios e Links do Estabelecimento (Correção aplicada aqui)
+  // Gerenciamento de Anúncios e Links do Estabelecimento
   const [adImages, setAdImages] = useState<string[]>((establishment.homeAds || establishment.adImages) ?? []);
   const [adLinks, setAdLinks] = useState<string[]>(establishment.homeLinks ?? []);
   const nearbyAds = filterAdsByRadius(data.users, establishment);
@@ -97,6 +97,7 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
     }
   };
 
+  // Validação estrita de dimensões 600x900 pixels
   const handleAddAdImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -108,9 +109,19 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      setAdImages((prev) => [...prev, reader.result as string]);
-      setAdLinks((prev) => [...prev, '']);
-      notify('Imagem de anúncio adicionada com sucesso!');
+      const img = new Image();
+      img.src = reader.result as string;
+
+      img.onload = () => {
+        if (img.width !== 600 || img.height !== 900) {
+          notify(`Dimensões inválidas! O banner precisa ter exatamente 600x900px. A sua imagem tem ${img.width}x${img.height}px e ficaria distorcida.`, 'error');
+          return;
+        }
+
+        setAdImages((prev) => [...prev, reader.result as string]);
+        setAdLinks((prev) => [...prev, '']);
+        notify('Imagem de anúncio adicionada com sucesso!', 'success');
+      };
     };
     reader.readAsDataURL(file);
   };
@@ -224,7 +235,7 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
           {allowAds ? (
             <div className="space-y-4">
               <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                Adicione imagens verticais (600x900) e os respectivos links de redirecionamento. Ao clicar na arte no carrossel, o link abrirá em outra aba.
+                Adicione imagens estritamente verticais (600x900px). Arquivos fora dessa proporção serão rejeitados automaticamente.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
