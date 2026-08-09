@@ -78,13 +78,20 @@ export function estPlanPrice(tier: EstTier, period: Period, plans?: EstVipPlan[]
 
 export function getIntermediationFeePercent(user: User, plans?: EstVipPlan[]): number {
   if (user.accountType !== 'establishment') return 15.0;
-  if (user.trialEndsAt && new Date(user.trialEndsAt) > new Date()) return 0;
+  if (isEstablishmentOnTrial(user)) return 0;
   const plan = getEstPlan(user.estVipTier ?? 'free', plans);
   return plan.intermediationFee;
 }
 
 export function isEstablishmentOnTrial(user: User): boolean {
-  return user.accountType === 'establishment' && !!user.trialEndsAt && new Date(user.trialEndsAt) > new Date();
+  if (user.accountType !== 'establishment') return false;
+  
+  // Se o admin já definiu um plano VIP pago, o trial é encerrado imediatamente
+  if (user.estVipTier && user.estVipTier !== 'free' && user.estVipTier !== 'trial') {
+    return false;
+  }
+  
+  return !!user.trialEndsAt && new Date(user.trialEndsAt) > new Date();
 }
 
 export function trialDaysLeft(user: User): number {
