@@ -9,7 +9,7 @@ import { AdminView } from './components/AdminView';
 import { TermsPage } from './components/TermsPage';
 import { VipPanel } from './components/VipPanel';
 
-type Route = 'app' | 'terms' | 'vip' | 'estab_home' | 'freela_home';
+type Route = 'app' | 'terms' | 'vip' | 'estab' | 'freela';
 
 function MainContent() {
   const { currentUser, isAdmin, adminMode } = useApp();
@@ -18,8 +18,8 @@ function MainContent() {
     const path = window.location.pathname;
     if (path === '/terms') return 'terms';
     if (path === '/vip') return 'vip';
-    if (path === '/estab') return 'estab_home';
-    if (path === '/freela') return 'freela_home';
+    if (path === '/estab') return 'estab';
+    if (path === '/freela') return 'freela';
     return 'app';
   };
 
@@ -49,15 +49,25 @@ function MainContent() {
   };
 
   if (route === 'terms') {
-    return <TermsPage onBack={() => navigate('app', '/')} />;
+    return (
+      <TermsPage
+        onBack={() => {
+          navigate('app', currentUser ? (currentUser.accountType === 'establishment' ? '/estab' : '/freela') : '/');
+        }}
+      />
+    );
   }
 
+  // Se a rota for /vip, exibe estritamente o VipPanel de Planos VIP
   if (currentUser && route === 'vip') {
     return (
       <VipPanel
         userId={currentUser.id}
         accountType={currentUser.accountType}
-        onBack={() => navigate('app', currentUser.accountType === 'establishment' ? '/estab' : '/freela')}
+        onBack={() => {
+          const homePath = currentUser.accountType === 'establishment' ? '/estab' : '/freela';
+          navigate('app', homePath);
+        }}
       />
     );
   }
@@ -65,7 +75,9 @@ function MainContent() {
   if (!currentUser) {
     return (
       <LandingPage
-        onNavigateTerms={() => navigate('terms', '/terms')}
+        onNavigateTerms={() => {
+          navigate('terms', '/terms');
+        }}
       />
     );
   }
@@ -77,18 +89,20 @@ function MainContent() {
           const homePath = currentUser.accountType === 'establishment' ? '/estab' : '/freela';
           navigate('app', homePath);
         }}
-        onNavigateVip={() => navigate('vip', '/vip')}
+        onNavigateVip={() => {
+          navigate('vip', '/vip');
+        }}
       />
       <main className="pb-16">
         {isAdmin ? (
           adminMode ? (
             <AdminView />
-          ) : route === 'estab_home' || currentUser.accountType === 'establishment' ? (
+          ) : route === 'estab' || currentUser.accountType === 'establishment' ? (
             <ContractorView />
           ) : (
             <FreelancerView />
           )
-        ) : route === 'estab_home' || currentUser.accountType === 'establishment' ? (
+        ) : route === 'estab' || currentUser.accountType === 'establishment' ? (
           <ContractorView />
         ) : (
           <FreelancerView />
