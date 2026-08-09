@@ -57,6 +57,12 @@ export interface DbUser {
   admin_role: string | null;
   trial_ends_at: string | null;
   ad_images: string[] | null;
+  home_ads: string[] | null;
+  home_links: string[] | null;
+  freelancer_ads: string[] | null;
+  freelancer_links: string[] | null;
+  establishment_ads: string[] | null;
+  establishment_links: string[] | null;
 }
 
 export interface DbFreelancerProfile {
@@ -340,7 +346,13 @@ function mapDbUserToUser(
     termsAcceptance: row.terms_acceptance_json as { timestamp: string; ip: string; userAgent: string; legalVersion: string } | undefined,
     lastAdminEdit: row.last_admin_edit ?? undefined,
     createdAt: row.created_at,
-    adImages: row.ad_images ?? [],
+    adImages: row.ad_images ?? row.home_ads ?? [],
+    homeAds: row.home_ads ?? row.ad_images ?? [],
+    homeLinks: row.home_links ?? [],
+    freelancerAds: row.freelancer_ads ?? [],
+    freelancerLinks: row.freelancer_links ?? [],
+    establishmentAds: row.establishment_ads ?? [],
+    establishmentLinks: row.establishment_links ?? [],
   };
 }
 
@@ -389,7 +401,13 @@ function mapUserToDbUser(user: User): Partial<DbUser> {
     is_admin: user.isAdmin ?? false,
     admin_role: user.adminRole ?? null,
     trial_ends_at: user.trialEndsAt ?? null,
-    ad_images: user.adImages ?? [],
+    ad_images: user.adImages ?? user.homeAds ?? [],
+    home_ads: user.homeAds ?? user.adImages ?? [],
+    home_links: user.homeLinks ?? [],
+    freelancer_ads: user.freelancerAds ?? [],
+    freelancer_links: user.freelancerLinks ?? [],
+    establishment_ads: user.establishmentAds ?? [],
+    establishment_links: user.establishmentLinks ?? [],
   };
 }
 
@@ -888,6 +906,10 @@ export async function dbInsertUser(user: User): Promise<void> {
   }
 }
 
+export async function dbInsertAdmin(user: User): Promise<void> {
+  await dbInsertUser(user);
+}
+
 export async function dbUpdateUser(id: string, patch: Partial<User>): Promise<void> {
   const dbPatch: Record<string, unknown> = {};
 
@@ -913,7 +935,21 @@ export async function dbUpdateUser(id: string, patch: Partial<User>): Promise<vo
   if (patch.estVipTier !== undefined) dbPatch.est_vip_tier = patch.estVipTier;
   if (patch.vipExpiresAt !== undefined) dbPatch.vip_expires_at = patch.vipExpiresAt;
   if (patch.estVipExpiresAt !== undefined) dbPatch.est_vip_expires_at = patch.estVipExpiresAt;
-  if (patch.adImages !== undefined) dbPatch.ad_images = patch.adImages;
+  
+  // Sincronização dos campos de anúncios e links
+  if (patch.adImages !== undefined) {
+    dbPatch.ad_images = patch.adImages;
+    dbPatch.home_ads = patch.adImages;
+  }
+  if (patch.homeAds !== undefined) {
+    dbPatch.home_ads = patch.homeAds;
+    dbPatch.ad_images = patch.homeAds;
+  }
+  if (patch.homeLinks !== undefined) dbPatch.home_links = patch.homeLinks;
+  if (patch.freelancerAds !== undefined) dbPatch.freelancer_ads = patch.freelancerAds;
+  if (patch.freelancerLinks !== undefined) dbPatch.freelancer_links = patch.freelancerLinks;
+  if (patch.establishmentAds !== undefined) dbPatch.establishment_ads = patch.establishmentAds;
+  if (patch.establishmentLinks !== undefined) dbPatch.establishment_links = patch.establishmentLinks;
 
   if (patch.address) {
     if (patch.address.city !== undefined) dbPatch.city = patch.address.city;
