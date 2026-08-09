@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { AppContext, type AppContextValue, useApp } from './context';
 import { initialData, CATEGORIES, metroNearby, emptyAvailability } from './mockData';
 import { uid, getPlan, canSelectCategories, getEstPlan, getIntermediationFeePercent, calculateFees } from './utils';
@@ -20,20 +20,38 @@ import {
 export { useApp };
 
 const ADMIN_ID = '00000000-0000-0000-0000-000000000001';
+const STORAGE_KEY = 'freelaagora_current_user'; // Chave exclusiva para este navegador
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [data, setDataState] = useState<AppData>(initialData);
+  // Inicializa o estado buscando do localStorage deste navegador específico (se houver)
+  const [data, setDataState] = useState<AppData>(() => {
+    try {
+      const savedUserId = localStorage.getItem(STORAGE_KEY);
+      if (savedUserId) {
+        return { ...initialData, currentUserId: savedUserId };
+      }
+    } catch (e) {
+      // Ignora erros de localStorage (ex: modo privado estrito)
+    }
+    return initialData;
+  });
+
   const [loaded, setLoaded] = useState(false);
   const [adminTab, setAdminTab] = useState('overview');
   const [adminMode, setAdminMode] = useState(true);
 
+  // Carrega os dados do Supabase ao iniciar
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const dbData = await loadAllData();
         if (!cancelled && dbData) {
-          setDataState(dbData);
+          setDataState((prev) => ({
+            ...dbData,
+            // Mantém o usuário logado neste navegador específico se ele já estava salvo
+            currentUserId: prev.currentUserId ?? dbData.currentUserId,
+          }));
         }
       } catch (e) {
         console.warn("⚠️ Falha ao carregar do Supabase:", e);
@@ -50,11 +68,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [data?.paymentSettings]);
 
+  // Função centralizada para atualizar o estado e sincronizar o login com o localStorage deste navegador
   const setData = useCallback((updater: AppData | ((prev: AppData) => AppData)) => {
-    setDataState((prev) => (typeof updater === 'function' ? (updater as (p: AppData) => AppData)(prev) : updater));
+    setDataState((prev) => {
+      const next = typeof updater === 'function' ? (updater as (p: AppData) => AppData)(prev) : updater;
+      
+      try {
+        if (next.currentUserId) {
+          localStorage.setItem(STORAGE_KEY, next.currentUserId);
+        } else {
+          localStorage.removeItem(STORAGE_KEY);
+        }
+      } catch (e) {
+        // Ignora erros de armazenamento local
+      }
+
+      return next;
+    });
   }, []);
 
-  const resetData = useCallback(() => setDataState(initialData), []);
+  const resetData = useCallback(() => {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {}
+    setDataState(initialData);
+  }, []);
 
   const currentUser = useMemo(() => data?.users.find((u) => u.id === data.currentUserId) ?? null, [data?.users, data?.currentUserId]);
   const isAdmin = !!currentUser?.isAdmin;
@@ -67,6 +105,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return { ok: false, error: 'E-mail não cadastrado.' };
     if (user.password !== password) return { ok: false, error: 'Senha incorreta.' };
     if (user.banned) return { ok: false, error: 'Esta conta foi banida.' };
+    
     setData((d) => ({ ...d, currentUserId: user.id }));
     return { ok: true };
   }, [data?.users, setData]);
@@ -92,7 +131,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return { ok: true };
   }, [data, setData]);
 
-  const logout = useCallback(() => setData((d) => ({ ...d, currentUserId: null })), [setData]);
+  // Ao deslogar, limpa explicitamente o armazenamento deste navegador
+  const logout = useCallback(() => {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {}
+    setData((d) => ({ ...d, currentUserId: null }));
+  }, [setData]);
 
   const updateUser = useCallback((id: string, patch: Partial<User>) => {
     setData((d) => ({ ...d, users: d.users.map((u) => (u.id === id ? { ...u, ...patch } : u)) }));
