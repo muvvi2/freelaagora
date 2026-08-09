@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Crown, ExternalLink } from 'lucide-react';
 import { useApp } from '@/AppContext';
 
-// Adicionamos a prop 'pageType' para o widget saber de qual página ele está sendo chamado
+// Widget para exibir os banners rotativos nas páginas de Freela e Estabelecimento
 export function VipSquareWidget({ pageType = 'freelancers' }: { pageType?: 'freelancers' | 'establishments' }) {
   const { data } = useApp();
   
@@ -15,7 +15,7 @@ export function VipSquareWidget({ pageType = 'freelancers' }: { pageType?: 'free
       const plan = data.estVipPlans.find((p) => p.tier === currentTier);
 
       if (plan?.allowAds) {
-        // Seleciona os arrays de imagem e links de acordo com a página atual
+        // Pega as imagens e links filtrando de acordo com a página atual
         const images = pageType === 'freelancers' ? (u.freelancerAds || []) : (u.establishmentAds || []);
         const links = pageType === 'freelancers' ? (u.freelancerLinks || []) : (u.establishmentLinks || []);
 
@@ -24,7 +24,7 @@ export function VipSquareWidget({ pageType = 'freelancers' }: { pageType?: 'free
             activeAds.push({
               establishmentName: u.name,
               imageUrl: img,
-              linkUrl: links[idx] || '', // O link correspondente à imagem
+              linkUrl: links[idx] || '',
               city: u.address?.city || '',
               state: u.address?.state || '',
             });
@@ -36,11 +36,12 @@ export function VipSquareWidget({ pageType = 'freelancers' }: { pageType?: 'free
 
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  // Intervalo ajustado para 4 segundos (fluido, nem rápido nem lento demais)
   useEffect(() => {
     if (activeAds.length <= 1) return;
     const timer = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % activeAds.length);
-    }, 10000); // 10 segundos
+    }, 4000); 
     return () => clearInterval(timer);
   }, [activeAds.length]);
 
@@ -69,7 +70,6 @@ export function VipSquareWidget({ pageType = 'freelancers' }: { pageType?: 'free
     </div>
   );
 
-  // Se houver link, o componente inteiro é envolto em um link que abre em nova aba
   if (currentAd.linkUrl) {
     return (
       <a href={currentAd.linkUrl} target="_blank" rel="noopener noreferrer" className="block w-full">
