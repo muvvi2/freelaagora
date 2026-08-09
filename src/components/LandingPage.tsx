@@ -9,18 +9,6 @@ import { emailValid, maskCPF, maskCNPJ, maskPhone, maskCEP, validateCPF, validat
 import { LEGAL_VERSION, MACRO_CATEGORIES, CATEGORIES } from '@/mockData';
 import type { AccountType, User, Address, TermsAcceptance } from '@/types';
 
-const STATES = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
-
-const ESTABLISHMENT_TYPES = [
-  'Bar & Restaurante', 'Restaurante', 'Bar', 'Lanchonete / Fast Food', 'Buffet & Eventos', 'Padaria & Confeitaria', 'Pizzaria', 'Churrascaria', 'Cafeteria & Barista', 'Cervejaria & Choperia', 'Sorveteria & Gelateria', 'Cozinha Industrial / Coletiva',
-  'Hotel', 'Pousada', 'Resort', 'Hostel', 'Casa de Shows & Eventos', 'Espaço de Festas',
-  'Supermercado & Hipermercado', 'Loja de Shopping / Varejo', 'Farmácia & Perfumaria', 'Comércio de Hortifrúti', 'Loja de E-commerce / Centro de Distribuição', 'Posto de Combustíveis & Conveniência',
-  'Clínica Médica / Home Care', 'Clínica Odontológica', 'Salão de Beleza & Barbearia', 'Estúdio de Estética & Spa', 'Academia & Centro Esportivo', 'Clínica Veterinária & Pet Shop',
-  'Construtora & Incorporadora', 'Empresa de Engenharia & Arquitetura', 'Loja de Materiais de Construção', 'Condomínio Residencial / Predial', 'Administradora de Imóveis',
-  'Escritório de Advocacia', 'Escritório de Contabilidade', 'Agência de Marketing & Publicidade', 'Empresa de TI / Tecnologia', 'Consultoria & Gestão',
-  'Empresa de Logística & Transportes', 'Indústria & Fábrica', 'Fazenda & Produtor Rural', 'Cooperativa Agrícola', 'Oficina Mecânica & Estética Automotiva', 'Outros / Geral'
-];
-
 export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void }) {
   const [authModal, setAuthModal] = useState<null | 'login' | 'register'>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -39,14 +27,12 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
-      notify('Para instalar no celular, abra o menu do navegador e selecione "Adicionar à Tela Inicial".', 'info');
+      notify('Abra o menu do navegador e selecione "Adicionar à Tela Inicial".', 'info');
       return;
     }
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      notify('Aplicativo instalado com sucesso!');
-    }
+    if (outcome === 'accepted') notify('Aplicativo instalado!');
     setDeferredPrompt(null);
     setShowInstallBtn(false);
   };
@@ -54,37 +40,31 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
   return (
     <div className="relative min-h-screen overflow-hidden bg-neutral-950 text-white">
       <div className="absolute inset-0 bg-gradient-to-br from-neutral-950 via-neutral-900 to-primary-950/40" />
-      <div className="absolute -left-32 top-1/4 h-96 w-96 rounded-full bg-primary-500/20 blur-3xl" />
-      <div className="absolute -right-32 bottom-1/4 h-96 w-96 rounded-full bg-secondary-500/15 blur-3xl" />
-
+      
       <div className="relative z-10 flex min-h-screen flex-col">
-        {/* Header Limpo */}
+        {/* Header limpo - apenas logo e termos */}
         <nav className="flex items-center justify-between px-4 py-3 sm:px-8">
-          <img src="/image.png" alt="FreelaAgora" className="h-10 w-auto max-w-[160px] object-contain sm:h-16 sm:max-w-[260px]" />
-          <div className="flex items-center gap-3">
-            {showInstallBtn && (
-              <Button size="sm" variant="outline" onClick={handleInstallClick} className="border-accent-400/50 bg-accent-500/10 text-accent-300 text-xs hidden sm:flex">
-                <Download className="h-3.5 w-3.5" /> Instalar App
-              </Button>
-            )}
-            <button onClick={onNavigateTerms} className="text-xs sm:text-sm font-medium text-neutral-400 hover:text-white">Termos</button>
-            <Button size="sm" onClick={() => setAuthModal('login')} className="bg-primary-500 text-white text-xs sm:text-sm"><LogIn className="h-3.5 w-3.5" /> Entrar</Button>
-          </div>
+          <img src="/image.png" alt="FreelaAgora" className="h-10 w-auto sm:h-16" />
+          <button onClick={onNavigateTerms} className="text-xs sm:text-sm font-medium text-neutral-400 hover:text-white">Termos</button>
         </nav>
 
-        {/* Hero limpa (sem carrossel) */}
+        {/* Hero com botões LADO A LADO */}
         <main className="flex flex-1 flex-col items-center justify-center px-4 pt-12 pb-12 text-center">
           <h1 className="font-display text-4xl font-extrabold leading-tight tracking-tight sm:text-6xl">
             Precisa de alguém?<br />
             <span className="bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent">Chame aqui!</span>
           </h1>
           <p className="mt-4 max-w-lg text-sm text-neutral-400">
-            O marketplace de contratação emergencial de freelancers para bares, restaurantes, buffets, eventos e logística.
+            O marketplace de contratação emergencial de freelancers para bares, restaurantes, buffets e eventos.
           </p>
 
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          {/* Botões LADO A LADO */}
+          <div className="mt-8 flex items-center justify-center gap-3">
+            <Button size="lg" onClick={() => setAuthModal('login')} variant="outline" className="border-white/20 text-white hover:bg-white/10 px-8">
+              <LogIn className="h-4 w-4 mr-2" /> Entrar
+            </Button>
             <Button size="lg" onClick={() => setAuthModal('register')} className="bg-primary-500 text-white shadow-glow px-8">
-              <UserPlus className="h-4 w-4" /> Cadastrar-se agora
+              <UserPlus className="h-4 w-4 mr-2" /> Cadastrar-se
             </Button>
           </div>
 
@@ -101,7 +81,7 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
   );
 }
 
-// --- Componentes Auxiliares ---
+// --- Componentes ---
 
 function FeatureCard({ icon: Icon, title, desc }: { icon: any; title: string; desc: string }) {
   return (
@@ -184,17 +164,4 @@ function RegisterForm({ onClose, onSwitch, onNavigateTerms }: { onClose: () => v
       </div>
     </Modal>
   );
-}
-
-function TypeCard({ active, onClick, icon: Icon, label, desc }: { active: boolean; onClick: () => void; icon: any; label: string; desc: string }) {
-  return (
-    <button onClick={onClick} className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 text-center transition ${active ? 'border-primary-400 bg-primary-50' : 'border-neutral-200'}`}>
-      <Icon className={`h-7 w-7 ${active ? 'text-primary-500' : 'text-neutral-400'}`} />
-      <p className="text-sm font-bold">{label}</p>
-    </button>
-  );
-}
-
-function defaultPhoto(type: AccountType): string {
-  return 'https://images.pexels.com/photos/804009/pexels-photo-804009.jpeg?auto=compress&cs=tinysrgb&h=650&w=940';
 }
