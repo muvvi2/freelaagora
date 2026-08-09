@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Crown, Check, Sparkles, ShieldCheck, Diamond, Star, Store, Percent, Ticket, QrCode, CreditCard, FileText, Wallet, AlertCircle, Copy, Upload, ArrowLeft, Home, Users, Building2 } from 'lucide-react';
+import { Crown, Check, Sparkles, ShieldCheck, Diamond, Star, Store, Percent, Ticket, QrCode, CreditCard, FileText, Wallet, AlertCircle, Copy, Upload, ArrowLeft, Home, Users, Building2, Link as LinkIcon } from 'lucide-react';
 import { useApp } from '@/AppContext';
 import { supabase } from '@/lib/supabase';
 import { useToast } from './ui/Toast';
@@ -72,7 +72,7 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
   const [billingType, setBillingType] = useState<BillingType>('WALLET');
   const [pixData, setPixData] = useState<{ qrCode: string; payload: string } | null>(null);
 
-  // Estados de seleção de locais de anúncio pelo estabelecimento
+  // Estados de locais e custos de anúncios
   const [activeAdTab, setActiveAdTab] = useState<'home' | 'freelancers' | 'establishments'>('home');
   const [includeHomeAd, setIncludeHomeAd] = useState(true);
   const [includeFreelancerAd, setIncludeFreelancerAd] = useState(false);
@@ -107,7 +107,7 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
   const currentPlan = getPlan(currentTier, vipPlansList);
   const currentEstPlan = getEstPlan(currentEstTier, estVipPlansList);
 
-  // Cálculo dinâmico do preço do plano + adicionais dos locais de anúncio escolhidos pelo admin
+  // Soma automática dos preços extras definidos pelo admin
   const calculateTotalPlanPrice = (planObj: any) => {
     let basePrice = planObj.prices[period];
     if (accountType === 'establishment' && planObj.allowAds) {
@@ -257,7 +257,7 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
           </div>
         </div>
 
-        {/* Seção de Seleção de Locais de Anúncio com Soma Automática */}
+        {/* Seleção opcional de locais de anúncios para soma automática */}
         {accountType === 'establishment' && (() => {
           const activeEstPlan = estVipPlansList.find(p => p.tier === (currentUser?.estVipTier ?? 'free'));
           const canAdvertise = activeEstPlan?.allowAds ?? false;
@@ -407,7 +407,7 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
           </div>
         )}
 
-        {/* Gerenciamento de Anúncios por Local */}
+        {/* Gerenciamento de Anúncios por Local + Link de Redirecionamento (target="_blank") */}
         {accountType === 'establishment' && (() => {
           const activeEstPlan = estVipPlansList.find(p => p.tier === (currentUser?.estVipTier ?? 'free'));
           const canAdvertise = activeEstPlan?.allowAds ?? false;
@@ -416,10 +416,16 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
           if (!canAdvertise) return null;
 
           const homeImages = currentUser?.homeAds || currentUser?.adImages || [];
+          const homeLinks = currentUser?.homeLinks || [];
+
           const freelancerImages = currentUser?.freelancerAds || [];
+          const freelancerLinks = currentUser?.freelancerLinks || [];
+
           const establishmentImages = currentUser?.establishmentAds || [];
+          const establishmentLinks = currentUser?.establishmentLinks || [];
 
           const activeImagesList = activeAdTab === 'home' ? homeImages : activeAdTab === 'freelancers' ? freelancerImages : establishmentImages;
+          const activeLinksList = activeAdTab === 'home' ? homeLinks : activeAdTab === 'freelancers' ? freelancerLinks : establishmentLinks;
 
           const handleUpdateLocationImages = (newImages: string[]) => {
             if (activeAdTab === 'home') {
@@ -431,6 +437,16 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
             }
           };
 
+          const handleUpdateLocationLinks = (newLinks: string[]) => {
+            if (activeAdTab === 'home') {
+              updateUser(userId, { homeLinks: newLinks });
+            } else if (activeAdTab === 'freelancers') {
+              updateUser(userId, { freelancerLinks: newLinks });
+            } else {
+              updateUser(userId, { establishmentLinks: newLinks });
+            }
+          };
+
           return (
             <div className="mt-10 rounded-2xl border border-amber-500/30 bg-neutral-900 p-6 sm:p-8 shadow-xl">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
@@ -439,7 +455,7 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
                     <Crown className="h-7 w-7" />
                   </div>
                   <div>
-                    <h2 className="font-display text-xl font-bold text-white">Gerenciamento de Anúncios por Local de Exibição</h2>
+                    <h2 className="font-display text-xl font-bold text-white">Gerenciamento de Anúncios e Links por Local</h2>
                     <p className="text-xs sm:text-sm text-neutral-400">Plano Ativo: <strong>{activeEstPlan?.label ?? currentUser?.estVipTier?.toUpperCase()}</strong></p>
                   </div>
                 </div>
@@ -473,13 +489,15 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
               </div>
 
               <div className="mb-6 rounded-xl bg-amber-500/10 p-4 border border-amber-500/20 text-xs sm:text-sm text-amber-200 space-y-1.5">
-                <p className="font-bold">📐 Padrão Obrigatório de Imagem (Vertical):</p>
-                <p>• Envie imagens exatamente no tamanho <strong>600 x 900 pixels</strong> (Proporção 2:3 / Estilo Story) para preenchimento perfeito no local selecionado.</p>
+                <p className="font-bold">📐 Instruções de Anúncio e Redirecionamento:</p>
+                <p>• Tamanho vertical recomendado: <strong>600 x 900 pixels</strong> (Estilo Story).</p>
+                <p>• Informe o <strong>Link de Redirecionamento</strong> (ex: seu site, WhatsApp ou Instagram). Quando o cliente clicar na imagem, ela abrirá diretamente em outra aba.</p>
               </div>
 
               <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
                 {Array.from({ length: maxAllowedAds }).map((_, index) => {
                   const imageUrl = activeImagesList[index] || '';
+                  const linkUrl = activeLinksList[index] || '';
 
                   return (
                     <div key={index} className="flex flex-col gap-4 rounded-xl border border-neutral-800 bg-neutral-950 p-5 shadow-md">
@@ -523,10 +541,26 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
                               newImages[index] = e.target.value;
                               handleUpdateLocationImages(newImages);
                             }}
-                            className="w-full rounded-xl border border-neutral-700 bg-neutral-900 px-3.5 py-2.5 text-xs text-neutral-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 disabled:opacity-60"
+                            className="w-full rounded-xl border border-neutral-700 bg-neutral-900 px-3.5 py-2 text-xs text-neutral-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 disabled:opacity-60"
                           />
 
-                          <label className="cursor-pointer inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-neutral-950 font-bold text-xs transition shadow-md">
+                          {/* Input para o Link de Redirecionamento ao clicar */}
+                          <div className="relative">
+                            <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400" />
+                            <input 
+                              type="text" 
+                              placeholder="Link de destino (https://... ou wa.me/...)"
+                              value={linkUrl}
+                              onChange={(e) => {
+                                const newLinks = [...activeLinksList];
+                                newLinks[index] = e.target.value;
+                                handleUpdateLocationLinks(newLinks);
+                              }}
+                              className="w-full rounded-xl border border-neutral-700 bg-neutral-900 py-2 pl-9 pr-3 text-xs text-neutral-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                            />
+                          </div>
+
+                          <label className="cursor-pointer inline-flex items-center justify-center gap-2 w-full px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-neutral-950 font-bold text-xs transition shadow-md">
                             <Upload className="h-4 w-4" />
                             <span>Carregar Arquivo (600x900)</span>
                             <input 
