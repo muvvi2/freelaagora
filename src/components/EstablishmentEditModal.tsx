@@ -30,8 +30,8 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
   const [email, setEmail] = useState(establishment.email);
   const [cnpj, setCnpj] = useState(establishment.cnpj ?? '');
 
-  // Gerenciamento de Anúncios e Links do Estabelecimento
-  const [adImages, setAdImages] = useState<string[]>(establishment.homeAds || establishment.adImages ?? []);
+  // Gerenciamento de Anúncios e Links do Estabelecimento (Correção aplicada aqui)
+  const [adImages, setAdImages] = useState<string[]>((establishment.homeAds || establishment.adImages) ?? []);
   const [adLinks, setAdLinks] = useState<string[]>(establishment.homeLinks ?? []);
   const nearbyAds = filterAdsByRadius(data.users, establishment);
 
@@ -186,7 +186,6 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
         
         <Input label="CNPJ" value={cnpj} onChange={(e) => setCnpj(maskCNPJ(e.target.value))} />
         
-        {/* Endereço com Busca por CEP e Geolocalização Automática para o Raio de 60km */}
         <div className="sm:col-span-2">
             <Input label="CEP" value={cep} onChange={(e) => handleCepChange(e.target.value)} placeholder="00000-000" />
         </div>
@@ -211,7 +210,6 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
           </div>
         </div>
 
-        {/* Gerenciamento de Anúncios Dinâmicos com Links */}
         <div className="sm:col-span-2 border-t border-neutral-200 dark:border-neutral-800 pt-4 mt-2">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
