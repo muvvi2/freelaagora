@@ -15,12 +15,14 @@ export function VipSquareWidget({ pageType = 'freelancers' }: { pageType?: 'free
       const plan = data.estVipPlans.find((p) => p.tier === currentTier);
 
       if (plan?.allowAds) {
-        // Pega as imagens e links filtrando de acordo com a página atual
+        // Pega as imagens e links filtrando de acordo com a página atual e posições permitidas/contratadas
         const images = pageType === 'freelancers' ? (u.freelancerAds || []) : (u.establishmentAds || []);
         const links = pageType === 'freelancers' ? (u.freelancerLinks || []) : (u.establishmentLinks || []);
+        const allowedSlots = pageType === 'freelancers' ? (u.allowedFreelancerSlots || [1]) : (u.allowedEstablishmentSlots || [1]);
 
         images.forEach((img, idx) => {
-          if (img && img.trim() !== '') {
+          const slotNumber = idx + 1;
+          if (img && img.trim() !== '' && allowedSlots.includes(slotNumber)) {
             activeAds.push({
               establishmentName: u.name,
               imageUrl: img,
