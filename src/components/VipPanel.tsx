@@ -762,7 +762,7 @@ function BillingTypeSelector({ billingType, setBillingType, paymentReady, provid
       {!paymentReady && (
         <div className="mt-2 flex items-start gap-2 rounded-lg bg-warning-50 p-2.5 text-xs text-warning-700 dark:bg-warning-500/10 dark:text-warning-400">
           <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          <span>Pagamento via {providerLabel} não configurado. O admin precisa ativar em Painel Admin → Pagamentos. Por favor, utilize a carteira enquanto isso.</i>
+          <span>Pagamento via {providerLabel} não configurado. O admin precisa ativar em Painel Admin → Pagamentos. Por favor, utilize a carteira enquanto isso.</span>
         </div>
       )}
     </div>
