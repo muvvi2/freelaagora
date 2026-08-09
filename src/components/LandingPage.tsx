@@ -89,7 +89,7 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
             O marketplace de contratação emergencial de freelancers para bares, restaurantes, buffets, eventos, serviços gerais, saúde, oficinas e logística.
           </p>
 
-          {/* Carrossel de Anúncios com Loop Infinito Real (Move-se Continuamente) */}
+          {/* Carrossel de Anúncios com Loop Infinito Real e Raio de 60km */}
           <div className="w-full max-w-6xl my-4">
             <VipEstablishmentsCarousel />
           </div>
@@ -111,23 +111,57 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
   );
 }
 
-// Carrossel com Loop Infinito Real (Movimento contínuo garantido)
+// Funções auxiliares de cálculo de distância (Haversine) para o raio de 60km
+function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371; // Raio da Terra em km
+  const dLat = deg2rad(lat2 - lat1);
+  const dLon = deg2rad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function deg2rad(deg: number) {
+  return deg * (Math.PI / 180);
+}
+
+// Carrossel com Loop Infinito Real e filtro de 60km geolocalizado
 function VipEstablishmentsCarousel() {
-  const { data } = useApp();
+  const { data, currentUser } = useApp();
   const activeAds: { establishmentName: string; imageUrl: string; city: string; state: string }[] = [];
   
+  const userLat = currentUser?.address?.lat;
+  const userLng = currentUser?.address?.lng;
+
   data.users.forEach((u) => {
     if (u.accountType === 'establishment' && u.adImages && u.adImages.length > 0) {
-      u.adImages.forEach((img) => {
-        if (img && typeof img === 'string' && img.trim() !== '') {
-          activeAds.push({
-            establishmentName: u.name,
-            imageUrl: img,
-            city: u.address?.city || '',
-            state: u.address?.state || '',
-          });
+      const estLat = u.address?.lat;
+      const estLng = u.address?.lng;
+
+      let showAd = true;
+      // Se o usuário estiver logado e houver coordenadas válidas, filtra por até 60km
+      if (userLat != null && userLng != null && estLat != null && estLng != null) {
+        const distanceKm = getDistanceFromLatLonInKm(userLat, userLng, estLat, estLng);
+        if (distanceKm > 60) {
+          showAd = false;
         }
-      });
+      }
+
+      if (showAd) {
+        u.adImages.forEach((img) => {
+          if (img && typeof img === 'string' && img.trim() !== '') {
+            activeAds.push({
+              establishmentName: u.name,
+              imageUrl: img,
+              city: u.address?.city || '',
+              state: u.address?.state || '',
+            });
+          }
+        });
+      }
     }
   });
 
@@ -142,7 +176,9 @@ function VipEstablishmentsCarousel() {
         <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-400 bg-amber-500/20 px-3 py-1 rounded-full">
           <Crown className="h-3.5 w-3.5" /> Vitrine de Estabelecimentos VIP
         </span>
-        <span className="text-xs text-neutral-400">Destaques da região</span>
+        <span className="text-xs text-neutral-400">
+          {currentUser ? `Destaques a até 60km de ${currentUser.address.city}` : 'Destaques Nacionais'}
+        </span>
       </div>
       
       {/* Container com rolagem contínua garantida por animação interna */}
