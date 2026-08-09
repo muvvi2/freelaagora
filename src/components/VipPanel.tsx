@@ -71,8 +71,11 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
   const [selectedFreelancerSlots, setSelectedFreelancerSlots] = useState<number[]>([]);
   const [selectedEstablishmentSlots, setSelectedEstablishmentSlots] = useState<number[]>([]);
 
+  // Sincroniza e trava a URL amigável (/vip, /freela, /estab) para não perder o estado ao atualizar a página
   useEffect(() => {
-    const path = accountType === 'freelancer' ? '/freela' : '/estab';
+    let path = '/vip';
+    if (accountType === 'freelancer') path = '/freela';
+    if (accountType === 'establishment') path = '/estab';
     window.history.replaceState(null, '', path);
   }, [accountType]);
 
@@ -102,7 +105,8 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
   const calculateTotalPlanPrice = (planObj: any) => {
     let basePrice = planObj.prices[period];
     if (accountType === 'establishment' && planObj.allowAds) {
-      const slotPrices = [planObj.priceSlot1 ?? 30, planObj.priceSlot2 ?? 25, planObj.priceSlot3 ?? 20];
+      const referencePlan = estVipPlansList.find(p => p.allowAds) || estVipPlansList[0];
+      const slotPrices = [referencePlan?.priceSlot1 ?? 30, referencePlan?.priceSlot2 ?? 25, referencePlan?.priceSlot3 ?? 20];
       const freelancerCost = selectedFreelancerSlots.reduce((sum, id) => sum + (slotPrices[id - 1] || 0), 0);
       const estCost = selectedEstablishmentSlots.reduce((sum, id) => sum + (slotPrices[id - 1] || 0), 0);
       
@@ -124,13 +128,11 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
   };
 
   const handleEstPlanClick = (plan: EstVipPlan) => {
-    // Se for o plano de teste, libera direto sem checagem de slots
     if (plan.tier === 'trial') {
       setConfirmEstTier(plan.tier);
       return;
     }
     
-    // Se o plano permite anúncios, obriga a seleção de ao menos um slot
     if (plan.allowAds) {
       const totalSelected = selectedFreelancerSlots.length + selectedEstablishmentSlots.length;
       if (totalSelected === 0) {
@@ -185,7 +187,6 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
       setConfirmTier(null);
       setConfirmEstTier(null);
     } else {
-      // ... (manter lógica de gateway existente)
       try {
         const supabaseUrl = supabase.supabaseUrl;
         const { data: sessionData } = await supabase.auth.getSession();
@@ -266,6 +267,13 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
     }
   };
 
+  const referencePlan = estVipPlansList.find(p => p.allowAds) || estVipPlansList[0];
+  const slotPrices = [
+    referencePlan?.priceSlot1 ?? 30,
+    referencePlan?.priceSlot2 ?? 25,
+    referencePlan?.priceSlot3 ?? 20
+  ];
+
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 p-4 sm:p-8">
       <div className="mx-auto max-w-7xl space-y-8">
@@ -301,7 +309,7 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
           </div>
         </div>
 
-        {/* Seleção de anúncios SEMPRE visível para estabelecimentos */}
+        {/* Seleção de anúncios em 3 colunas por bloco */}
         {accountType === 'establishment' && (
           <div className="rounded-2xl border border-amber-500/30 bg-neutral-900 p-6 shadow-lg space-y-6">
             <div>
@@ -314,32 +322,37 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
+              {/* Página de Freelancers - 3 colunas */}
               <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-4 space-y-3">
                 <span className="text-xs font-bold text-white flex items-center gap-2">
                   <Users className="h-4 w-4 text-amber-400" /> Página de Freelancers
                 </span>
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   {[1, 2, 3].map((slotNum) => {
                     const isSelected = selectedFreelancerSlots.includes(slotNum);
-                    const slotPrice = estVipPlansList[0]?.priceSlot1 ?? 30; // Preço base para referência visual
                     return (
                       <button
                         key={slotNum}
                         type="button"
                         onClick={() => toggleSlotSelection('freelancers', slotNum)}
-                        className={`py-2 px-3 rounded-lg border text-xs font-bold transition flex items-center justify-between ${isSelected ? 'border-amber-500 bg-amber-500/20 text-amber-300' : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:border-neutral-700'}`}
+                        className={`p-3 rounded-xl border text-xs font-bold transition flex flex-col items-center justify-center gap-1 text-center ${isSelected ? 'border-amber-500 bg-amber-500/20 text-amber-300' : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:border-neutral-700'}`}
                       >
-                        <span>{SLOT_NAMES[slotNum - 1]}</span>
+                        <span className="font-bold text-[11px]">{SLOT_NAMES[slotNum - 1]}</span>
+                        <span className="text-[10px] font-normal text-neutral-400">
+                          {isSelected ? 'Selecionado' : formatCurrency(slotPrices[slotNum - 1])}
+                        </span>
                       </button>
                     );
                   })}
                 </div>
               </div>
+
+              {/* Página de Estabelecimentos - 3 colunas */}
               <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-4 space-y-3">
                 <span className="text-xs font-bold text-white flex items-center gap-2">
                   <Building2 className="h-4 w-4 text-amber-400" /> Página de Estabelecimentos
                 </span>
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   {[1, 2, 3].map((slotNum) => {
                     const isSelected = selectedEstablishmentSlots.includes(slotNum);
                     return (
@@ -347,9 +360,12 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
                         key={slotNum}
                         type="button"
                         onClick={() => toggleSlotSelection('establishments', slotNum)}
-                        className={`py-2 px-3 rounded-lg border text-xs font-bold transition flex items-center justify-between ${isSelected ? 'border-amber-500 bg-amber-500/20 text-amber-300' : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:border-neutral-700'}`}
+                        className={`p-3 rounded-xl border text-xs font-bold transition flex flex-col items-center justify-center gap-1 text-center ${isSelected ? 'border-amber-500 bg-amber-500/20 text-amber-300' : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:border-neutral-700'}`}
                       >
-                        <span>{SLOT_NAMES[slotNum - 1]}</span>
+                        <span className="font-bold text-[11px]">{SLOT_NAMES[slotNum - 1]}</span>
+                        <span className="text-[10px] font-normal text-neutral-400">
+                          {isSelected ? 'Selecionado' : formatCurrency(slotPrices[slotNum - 1])}
+                        </span>
                       </button>
                     );
                   })}
@@ -359,10 +375,182 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
           </div>
         )}
 
-        {/* Resto do componente permanece igual... */}
-        {/* Renderização dos planos de freelancer ou estabelecimento */}
-        {/* (Mantém o código dos cards de planos original que você já tem no arquivo) */}
+        {accountType === 'freelancer' ? (
+          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            {vipPlansList.map((plan) => {
+              const Icon = tierIcon[plan.tier]; 
+              const active = currentTier === plan.tier; 
+              const finalPlanPrice = calculateTotalPlanPrice(plan);
+              return (
+                <div key={plan.tier} className={`relative flex flex-col justify-between rounded-2xl border-2 bg-neutral-900 p-6 transition shadow-xl ${tierTone[plan.tier]} ${active ? 'ring-2 ring-primary-500 bg-neutral-900/90' : 'hover:border-neutral-700'}`}>
+                  {active && <div className="absolute -top-3.5 left-5"><Badge tone="primary">Plano Ativo</Badge></div>}
+                  <div>
+                    <div className="mb-4 flex items-center gap-3">
+                      <div className="p-2.5 rounded-xl bg-neutral-800 border border-neutral-700">
+                        <Icon className={`h-6 w-6 ${getTierColor(plan.tier)}`} />
+                      </div>
+                      <div>
+                        <span className="font-display text-lg font-bold text-white">{plan.label}</span>
+                        <p className="text-xs uppercase tracking-wider text-neutral-400">{plan.tier}</p>
+                      </div>
+                    </div>
+                    <div className="my-5">
+                      <span className="font-display text-4xl font-extrabold text-white">
+                        {finalPlanPrice === 0 ? 'Grátis' : <>{appliedCoupon && <span className="mr-2 text-base text-neutral-500 line-through">{formatCurrency(plan.prices[period])}</span>}{formatCurrency(finalPlanPrice)}</>}
+                      </span>
+                      {finalPlanPrice > 0 && <span className="text-xs font-medium text-neutral-400">/{periodLabel(period).toLowerCase()}</span>}
+                    </div>
+                    <ul className="space-y-3 border-t border-neutral-800 pt-5">
+                      {plan.features.map((f) => (
+                        <li key={f} className="flex items-start gap-2.5 text-xs sm:text-sm text-neutral-300">
+                          <Check className="mt-0.5 h-4 w-4 shrink-0 text-success-400" /> {f}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="pt-6">
+                    {!active && (
+                      <Button fullWidth size="lg" variant={plan.tier === 'free' ? 'outline' : 'warning'} onClick={() => setConfirmTier(plan.tier)}>
+                        {plan.tier === 'free' ? 'Voltar para Free' : 'Assinar Plano'}
+                      </Button>
+                    )}
+                    {active && <p className="text-center text-sm font-bold text-primary-400 py-3">Você está neste plano</p>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 rounded-2xl bg-secondary-950/50 p-4 border border-secondary-500/30 text-secondary-200">
+              <Percent className="h-6 w-6 shrink-0 text-secondary-400" />
+              <p className="text-sm">
+                O seu plano empresarial define a <strong>taxa de intermediação</strong> cobrada em cada contrato. Quanto mais avançado o plano, menor é a taxa retida pela plataforma.
+              </p>
+            </div>
+
+            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
+              {estVipPlansList.map((plan) => {
+                const active = currentEstTier === plan.tier; 
+                const finalPlanPrice = calculateTotalPlanPrice(plan);
+                return (
+                  <div key={plan.tier} className={`relative flex flex-col justify-between rounded-2xl border-2 bg-neutral-900 p-6 transition shadow-xl ${estTierTone[plan.tier]} ${active ? 'ring-2 ring-primary-500 bg-neutral-900/90' : 'hover:border-neutral-700'}`}>
+                    {active && <div className="absolute -top-3.5 left-5"><Badge tone="primary">Plano Ativo</Badge></div>}
+                    <div>
+                      <div className="mb-4 flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <Store className={`h-5 w-5 ${getTierColor(plan.tier)}`} />
+                          <span className="font-display text-base font-bold text-white">{plan.label}</span>
+                        </div>
+                        <span className={`rounded-lg px-2.5 py-1 text-xs font-bold ${plan.intermediationFee === 0 ? 'bg-success-500/20 text-success-300 border border-success-500/30' : 'bg-warning-500/20 text-warning-300 border border-warning-500/30'}`}>
+                          {plan.intermediationFee === 0 ? '0% taxa' : `${plan.intermediationFee}% taxa`}
+                        </span>
+                      </div>
+
+                      <div className="my-5">
+                        <span className="font-display text-4xl font-extrabold text-white">
+                          {finalPlanPrice === 0 ? 'Grátis' : <>{appliedCoupon && <span className="mr-2 text-base text-neutral-500 line-through">{formatCurrency(plan.prices[period])}</span>}{formatCurrency(finalPlanPrice)}</>}
+                        </span>
+                        {finalPlanPrice > 0 && <span className="text-xs font-medium text-neutral-400">/{periodLabel(period).toLowerCase()}</span>}
+                      </div>
+
+                      <ul className="space-y-3 border-t border-neutral-800 pt-5">
+                        {plan.features.map((f) => (
+                          <li key={f} className="flex items-start gap-2.5 text-xs sm:text-sm text-neutral-300">
+                            <Check className="mt-0.5 h-4 w-4 shrink-0 text-success-400" /> {f}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="pt-6">
+                      {!active && plan.tier !== 'trial' && (
+                        <Button fullWidth size="lg" variant={plan.tier === 'free' ? 'outline' : 'warning'} onClick={() => handleEstPlanClick(plan)}>
+                          {plan.tier === 'free' ? 'Voltar para Free' : 'Assinar Plano'}
+                        </Button>
+                      )}
+                      {active && <p className="text-center text-sm font-bold text-primary-400 py-3">Você está neste plano</p>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <Modal open={!!confirmTier} onClose={() => setConfirmTier(null)} title="Confirmar assinatura" size="sm"
+          footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={() => setConfirmTier(null)}>Cancelar</Button><Button variant="warning" fullWidth onClick={() => confirmTier && handleProceedPayment(confirmTier, 'freelancer')}><Check className="h-4 w-4" /> Confirmar</Button></div>}>
+          {confirmTier && <div className="space-y-3"><div className="flex items-center gap-3 rounded-xl bg-warning-50 p-3 dark:bg-warning-500/10"><Crown className="h-8 w-8 text-warning-500" /><div><p className="font-bold text-neutral-900 dark:text-white">{getPlan(confirmTier, vipPlansList).label} — {periodLabel(period)}</p><p className="text-xs text-neutral-400">Total: {formatCurrency(calculateTotalPlanPrice(getPlan(confirmTier, vipPlansList)))}</p></div></div>
+          <BillingTypeSelector billingType={billingType} setBillingType={setBillingType} paymentReady={paymentReady} providerLabel={providerInfo.label} />
+          <p className="text-sm text-neutral-600 dark:text-neutral-300">{billingType === 'WALLET' ? 'Ao confirmar, o valor será debitado da sua carteira e seu plano será ativado imediatamente.' : `Ao confirmar, você será direcionado ao pagamento via ${providerInfo.label}.`}</p></div>}
+        </Modal>
+
+        <Modal open={!!confirmEstTier} onClose={() => setConfirmEstTier(null)} title="Confirmar assinatura empresarial" size="sm"
+          footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={() => setConfirmEstTier(null)}>Cancelar</Button><Button variant="warning" fullWidth onClick={() => confirmEstTier && handleProceedPayment(confirmEstTier, 'establishment')}><Check className="h-4 w-4" /> Confirmar</Button></div>}>
+          {confirmEstTier && <div className="space-y-3"><div className="flex items-center gap-3 rounded-xl bg-warning-50 p-3 dark:bg-warning-500/10"><Store className="h-8 w-8 text-warning-500" /><div><p className="font-bold text-neutral-900 dark:text-white">{getEstPlan(confirmEstTier, estVipPlansList).label} — {periodLabel(period)}</p><p className="text-xs text-neutral-400">Total: {formatCurrency(calculateTotalPlanPrice(getEstPlan(confirmEstTier, estVipPlansList)))} · Taxa: {getEstPlan(confirmEstTier, estVipPlansList).intermediationFee}%</p></div></div>
+          <BillingTypeSelector billingType={billingType} setBillingType={setBillingType} paymentReady={paymentReady} providerLabel={providerInfo.label} />
+          <p className="text-sm text-neutral-600 dark:text-neutral-300">{billingType === 'WALLET' ? 'Ao confirmar, o valor será debitado da sua carteira e sua nova taxa de intermediação será aplicada nas próximas contratações.' : `Ao confirmar, você será direcionado ao pagamento via ${providerInfo.label}.`}</p></div>}
+        </Modal>
+
+        <Modal open={!!pixData} onClose={() => setPixData(null)} title="Pagamento via PIX" size="sm">
+          {pixData && (
+            <div className="space-y-4 text-center">
+              <p className="text-sm text-neutral-600 dark:text-neutral-300">Escaneie o QR Code abaixo com o aplicativo do seu banco para realizar o pagamento:</p>
+              <div className="flex justify-center">
+                <img src={pixData.qrCode} alt="QR Code PIX" className="h-48 w-48 rounded-xl border border-neutral-200 p-2 dark:border-neutral-700" />
+              </div>
+              <div>
+                <p className="mb-1 text-xs font-semibold text-neutral-500">Ou copie o código Pix Copia e Cola:</p>
+                <div className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 p-2 dark:border-neutral-700 dark:bg-neutral-800">
+                  <input type="text" readOnly value={pixData.payload} className="w-full bg-transparent text-xs text-neutral-700 outline-none dark:text-neutral-300" />
+                  <Button size="sm" variant="outline" onClick={() => {
+                    navigator.clipboard.writeText(pixData.payload);
+                    notify('Chave PIX copiada para a área de transferência!');
+                  }}>
+                    <Copy className="h-3.5 w-3.5" /> Copiar
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </Modal>
+
+        <div className="max-w-md rounded-2xl border border-neutral-800 bg-neutral-900 p-5 shadow-lg">
+          <label className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-neutral-400"><Ticket className="h-4 w-4 text-primary-400" /> Cupom de desconto</label>
+          <div className="flex gap-2">
+            <Input value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} placeholder="BEMVINDO10" className="flex-1 bg-neutral-950 border-neutral-800 text-white" />
+            <Button size="sm" variant="outline" onClick={applyCoupon} className="border-neutral-700 text-white hover:bg-neutral-800">Aplicar</Button>
+          </div>
+          {couponError && <p className="mt-2 text-xs text-error-400">{couponError}</p>}
+          {appliedCoupon && <p className="mt-2 text-xs text-success-400 font-semibold">Cupom {appliedCoupon.code} aplicado: {appliedCoupon.discountPercentage}% OFF</p>}
+        </div>
       </div>
+    </div>
+  );
+}
+
+function BillingTypeSelector({ billingType, setBillingType, paymentReady, providerLabel }: { billingType: BillingType; setBillingType: (b: BillingType) => void; paymentReady: boolean; providerLabel: string }) {
+  const finalOptions = paymentReady ? BILLING_OPTIONS : BILLING_OPTIONS.filter((o) => o.id === 'WALLET');
+  return (
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-neutral-500">Forma de pagamento</label>
+      <div className="grid grid-cols-2 gap-2">
+        {finalOptions.map((opt) => {
+          const Icon = opt.icon;
+          const active = billingType === opt.id;
+          return (
+            <button key={opt.id} type="button" onClick={() => setBillingType(opt.id)} className={`flex items-center gap-2 rounded-xl border-2 px-3 py-2.5 text-sm font-semibold transition ${active ? 'border-primary-400 bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-400' : 'border-neutral-200 text-neutral-600 hover:border-neutral-300 dark:border-neutral-700 dark:text-neutral-300'}`}>
+              <Icon className="h-4 w-4" /> {opt.label}
+            </button>
+          );
+        })}
+      </div>
+      {!paymentReady && (
+        <div className="mt-2 flex items-start gap-2 rounded-lg bg-warning-50 p-2.5 text-xs text-warning-700 dark:bg-warning-500/10 dark:text-warning-400">
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>Pagamento via {providerLabel} não configurado. O admin precisa ativar em Painel Admin → Pagamentos. Por favor, utilize a carteira enquanto isso.</span>
+        </div>
+      )}
     </div>
   );
 }
