@@ -269,6 +269,45 @@ export function maskDocumentDisplay(doc: string): string {
 }
 
 // ============================================================
+// CAROUSEL / ADS RADIUS FILTER (Até 60km - Nacional)
+// ============================================================
+export function filterAdsByRadius(users: User[], currentUser: User | null) {
+  const activeAds: { establishmentName: string; imageUrl: string; city: string; state: string }[] = [];
+  const userLat = currentUser?.address?.lat;
+  const userLng = currentUser?.address?.lng;
+
+  users.forEach((u) => {
+    if (u.accountType === 'establishment' && u.adImages && u.adImages.length > 0) {
+      const estLat = u.address?.lat;
+      const estLng = u.address?.lng;
+
+      let showAd = true;
+      if (userLat != null && userLng != null && estLat != null && estLng != null) {
+        const distanceKm = haversineKm(userLat, userLng, estLat, estLng);
+        if (distanceKm > 60) {
+          showAd = false;
+        }
+      }
+
+      if (showAd) {
+        u.adImages.forEach((img) => {
+          if (img && typeof img === 'string' && img.trim() !== '') {
+            activeAds.push({
+              establishmentName: u.name,
+              imageUrl: img,
+              city: u.address?.city || '',
+              state: u.address?.state || '',
+            });
+          }
+        });
+      }
+    }
+  });
+
+  return activeAds;
+}
+
+// ============================================================
 // TAX RECEIPT (Comprovante Contábil) — printable HTML
 // ============================================================
 export function generateTaxReceipt(contract: {
