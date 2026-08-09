@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Crown, Check, Sparkles, ShieldCheck, Diamond, Star, Store, Percent, Ticket, QrCode, CreditCard, FileText, Wallet, AlertCircle, Copy, ArrowLeft, Users, Building2, Upload, Trash2, ImageIcon } from 'lucide-react';
+import { Crown, Check, Sparkles, ShieldCheck, Diamond, Star, Store, Percent, Ticket, QrCode, CreditCard, FileText, Wallet, AlertCircle, Copy, ArrowLeft, Users, Building2, Upload, Trash2, ImageIcon, Link as LinkIcon } from 'lucide-react';
 import { useApp } from '@/AppContext';
 import { supabase } from '@/lib/supabase';
 import { useToast } from './ui/Toast';
@@ -20,7 +20,11 @@ const BILLING_OPTIONS: { id: BillingType; label: string; icon: typeof QrCode }[]
 ];
 
 const SLOT_NAMES = ["Topo da Página", "Centro do Feed", "Rodapé da Página"];
-const SLOT_SIZES = ["600x900 pixels", "600x500 pixels", "600x200 pixels"];
+const SLOT_DIMENSIONS = [
+  { width: 600, height: 900, label: "600x900 pixels" },
+  { width: 600, height: 500, label: "600x500 pixels" },
+  { width: 600, height: 200, label: "600x200 pixels" },
+];
 
 const tierIcon: Record<Tier, typeof Crown> = { 
   free: Sparkles, vip1: Star, vip2: ShieldCheck, vip3: Diamond, vip4: Crown, vip5: Crown, vip6: Crown 
@@ -72,9 +76,11 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
   const [selectedFreelancerSlots, setSelectedFreelancerSlots] = useState<number[]>(currentUser?.allowedFreelancerSlots ?? []);
   const [selectedEstablishmentSlots, setSelectedEstablishmentSlots] = useState<number[]>(currentUser?.allowedEstablishmentSlots ?? []);
 
-  // Biblioteca de imagens para os 6 locais (3 Freela + 3 Estab)
+  // Biblioteca de imagens e links para os 6 locais (3 Freela + 3 Estab)
   const [freelancerAds, setFreelancerAds] = useState<string[]>(currentUser?.freelancerAds ?? ['', '', '']);
   const [establishmentAds, setEstablishmentAds] = useState<string[]>(currentUser?.establishmentAds ?? ['', '', '']);
+  const [freelancerLinks, setFreelancerLinks] = useState<string[]>(currentUser?.freelancerLinks ?? ['', '', '']);
+  const [establishmentLinks, setEstablishmentLinks] = useState<string[]>(currentUser?.establishmentLinks ?? ['', '', '']);
 
   useEffect(() => {
     let path = '/vip';
@@ -112,18 +118,42 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      if (type === 'freelancers') {
-        const newAds = [...freelancerAds];
-        newAds[index] = reader.result as string;
-        setFreelancerAds(newAds);
-      } else {
-        const newAds = [...establishmentAds];
-        newAds[index] = reader.result as string;
-        setEstablishmentAds(newAds);
-      }
-      notify(`Imagem carregada no ${SLOT_NAMES[index]}!`, 'success');
+      const img = new Image();
+      img.src = reader.result as string;
+      img.onload = () => {
+        const requiredWidth = SLOT_DIMENSIONS[index].width;
+        const requiredHeight = SLOT_DIMENSIONS[index].height;
+
+        if (img.width !== requiredWidth || img.height !== requiredHeight) {
+          notify(`Tamanho inválido! O ${SLOT_NAMES[index]} exige exatamente ${requiredWidth}x${requiredHeight} pixels. A imagem enviada tem ${img.width}x${img.height}px.`, 'error');
+          return;
+        }
+
+        if (type === 'freelancers') {
+          const newAds = [...freelancerAds];
+          newAds[index] = reader.result as string;
+          setFreelancerAds(newAds);
+        } else {
+          const newAds = [...establishmentAds];
+          newAds[index] = reader.result as string;
+          setEstablishmentAds(newAds);
+        }
+        notify(`Imagem carregada com sucesso no ${SLOT_NAMES[index]}!`, 'success');
+      };
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleLinkChange = (index: number, type: 'freelancers' | 'establishments', value: string) => {
+    if (type === 'freelancers') {
+      const newLinks = [...freelancerLinks];
+      newLinks[index] = value;
+      setFreelancerLinks(newLinks);
+    } else {
+      const newLinks = [...establishmentLinks];
+      newLinks[index] = value;
+      setEstablishmentLinks(newLinks);
+    }
   };
 
   const handleRemoveAd = (index: number, type: 'freelancers' | 'establishments') => {
@@ -193,6 +223,8 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
       allowedEstablishmentSlots: selectedEstablishmentSlots,
       freelancerAds,
       establishmentAds,
+      freelancerLinks,
+      establishmentLinks,
     };
 
     if (billingType === 'WALLET') {
@@ -309,32 +341,46 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
     referencePlan?.priceSlot3 ?? 20
   ];
 
-  const renderLibrarySlots = (ads: string[], type: 'freelancers' | 'establishments') => (
+  const renderLibrarySlots = (ads: string[], links: string[], type: 'freelancers' | 'establishments') => (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
       {ads.map((ad, idx) => (
-        <div key={idx} className="p-4 border border-neutral-800 rounded-xl bg-neutral-950 flex flex-col items-center justify-between">
-          <div className="text-center mb-3">
+        <div key={idx} className="p-4 border border-neutral-800 rounded-xl bg-neutral-950 flex flex-col justify-between space-y-3">
+          <div className="text-center">
             <span className="text-xs font-bold text-white block">{SLOT_NAMES[idx]}</span>
-            <span className="text-[10px] text-amber-400 font-semibold">Tamanho: {SLOT_SIZES[idx]}</span>
+            <span className="text-[10px] text-amber-400 font-semibold">Exato: {SLOT_DIMENSIONS[idx].label}</span>
           </div>
+
           {ad ? (
             <div className="relative group w-full flex flex-col items-center">
-              <img src={ad} className="h-32 w-full object-cover rounded-lg border border-neutral-700 mb-2" />
+              <img src={ad} className="h-28 w-full object-cover rounded-lg border border-neutral-700 mb-2" />
               <button 
                 type="button" 
                 onClick={() => handleRemoveAd(idx, type)} 
-                className="w-full py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs font-bold rounded-lg flex items-center justify-center gap-1 transition"
+                className="w-full py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs font-bold rounded-lg flex items-center justify-center gap-1 transition"
               >
-                <Trash2 className="h-3.5 w-3.5" /> Remover
+                <Trash2 className="h-3 w-3" /> Remover Imagem
               </button>
             </div>
           ) : (
-            <label className="cursor-pointer border-2 border-dashed border-neutral-800 hover:border-amber-500 w-full h-32 flex flex-col items-center justify-center rounded-lg bg-neutral-900 transition">
-              <Upload className="h-6 w-6 text-neutral-500 mb-1" />
-              <span className="text-xs font-bold text-neutral-400">Enviar Imagem</span>
+            <label className="cursor-pointer border-2 border-dashed border-neutral-800 hover:border-amber-500 w-full h-28 flex flex-col items-center justify-center rounded-lg bg-neutral-900 transition">
+              <Upload className="h-5 w-5 text-neutral-500 mb-1" />
+              <span className="text-xs font-bold text-neutral-400">Carregar Imagem</span>
               <input type="file" accept="image/*" className="hidden" onChange={handleFileChange(idx, type)} />
             </label>
           )}
+
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1 flex items-center gap-1">
+              <LinkIcon className="h-3 w-3 text-amber-400" /> Link de Redirecionamento
+            </label>
+            <input 
+              type="text" 
+              value={links[idx] || ''} 
+              onChange={(e) => handleLinkChange(idx, type, e.target.value)}
+              placeholder="https://seuwebsite.com.br"
+              className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-amber-500 transition"
+            />
+          </div>
         </div>
       ))}
     </div>
@@ -375,96 +421,64 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
           </div>
         </div>
 
+        {/* SELEÇÃO DE POSICIONAMENTO E OS PLANOS VIP FICAM AQUI EM CIMA */}
         {accountType === 'establishment' && (
-          <div className="space-y-6">
-            {/* SELEÇÃO DE POSICIONAMENTO */}
-            <div className="rounded-2xl border border-amber-500/30 bg-neutral-900 p-6 shadow-lg space-y-6">
-              <div>
-                <h3 className="font-display text-base font-bold text-white mb-1 flex items-center gap-2">
-                  <Crown className="h-5 w-5 text-amber-400" /> Seleção de Posicionamento e Banners Rotativos
-                </h3>
-                <p className="text-xs text-neutral-400">
-                  Os banners rotacionam automaticamente nas páginas a cada 4 segundos. Escolha em quais posições deseja aparecer. <span className="text-success-400 font-bold">Descontos: Ambas as páginas ou 3+ anúncios = 20% OFF | 2 anúncios na mesma página = 10% OFF!</span>
-                </p>
-              </div>
-
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-4 space-y-3">
-                  <span className="text-xs font-bold text-white flex items-center gap-2">
-                    <Users className="h-4 w-4 text-amber-400" /> Página de Freelancers
-                  </span>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[1, 2, 3].map((slotNum) => {
-                      const isSelected = selectedFreelancerSlots.includes(slotNum);
-                      return (
-                        <button
-                          key={slotNum}
-                          type="button"
-                          onClick={() => toggleSlotSelection('freelancers', slotNum)}
-                          className={`p-3 rounded-xl border text-xs font-bold transition flex flex-col items-center justify-center gap-1 text-center ${isSelected ? 'border-amber-500 bg-amber-500/20 text-amber-300' : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:border-neutral-700'}`}
-                        >
-                          <span className="font-bold text-[11px]">{SLOT_NAMES[slotNum - 1]}</span>
-                          <span className="text-[10px] font-normal text-neutral-400">
-                            {isSelected ? 'Selecionado' : formatCurrency(slotPrices[slotNum - 1])}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-4 space-y-3">
-                  <span className="text-xs font-bold text-white flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-amber-400" /> Página de Estabelecimentos
-                  </span>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[1, 2, 3].map((slotNum) => {
-                      const isSelected = selectedEstablishmentSlots.includes(slotNum);
-                      return (
-                        <button
-                          key={slotNum}
-                          type="button"
-                          onClick={() => toggleSlotSelection('establishments', slotNum)}
-                          className={`p-3 rounded-xl border text-xs font-bold transition flex flex-col items-center justify-center gap-1 text-center ${isSelected ? 'border-amber-500 bg-amber-500/20 text-amber-300' : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:border-neutral-700'}`}
-                        >
-                          <span className="font-bold text-[11px]">{SLOT_NAMES[slotNum - 1]}</span>
-                          <span className="text-[10px] font-normal text-neutral-400">
-                            {isSelected ? 'Selecionado' : formatCurrency(slotPrices[slotNum - 1])}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
+          <div className="rounded-2xl border border-amber-500/30 bg-neutral-900 p-6 shadow-lg space-y-6">
+            <div>
+              <h3 className="font-display text-base font-bold text-white mb-1 flex items-center gap-2">
+                <Crown className="h-5 w-5 text-amber-400" /> Seleção de Posicionamento e Banners Rotativos
+              </h3>
+              <p className="text-xs text-neutral-400">
+                Os banners rotacionam automaticamente nas páginas a cada 4 segundos. Escolha em quais posições deseja aparecer. <span className="text-success-400 font-bold">Descontos: Ambas as páginas ou 3+ anúncios = 20% OFF | 2 anúncios na mesma página = 10% OFF!</span>
+              </p>
             </div>
 
-            {/* A BIBLIOTECA DE IMAGENS (OS 6 LOCAIS COM AS DIMENSÕES EXATAS) */}
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 shadow-lg space-y-6">
-              <div className="flex items-center gap-2">
-                <ImageIcon className="h-5 w-5 text-amber-400" />
-                <h3 className="font-display text-base font-bold text-white">Biblioteca de Imagens dos Anúncios</h3>
-              </div>
-              <p className="text-xs text-neutral-400">
-                Faça o upload dos banners respeitando as dimensões indicadas para cada local abaixo:
-                <br />• <strong className="text-white">Topo da Página:</strong> 600x900 pixels
-                <br />• <strong className="text-white">Centro do Feed:</strong> 600x500 pixels
-                <br />• <strong className="text-white">Rodapé da Página:</strong> 600x200 pixels
-              </p>
-
-              <div className="space-y-6">
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 mb-3 flex items-center gap-2">
-                    <Users className="h-3.5 w-3.5" /> Página de Freelancers (3 Locais)
-                  </h4>
-                  {renderLibrarySlots(freelancerAds, 'freelancers')}
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-4 space-y-3">
+                <span className="text-xs font-bold text-white flex items-center gap-2">
+                  <Users className="h-4 w-4 text-amber-400" /> Página de Freelancers
+                </span>
+                <div className="grid grid-cols-3 gap-2">
+                  {[1, 2, 3].map((slotNum) => {
+                    const isSelected = selectedFreelancerSlots.includes(slotNum);
+                    return (
+                      <button
+                        key={slotNum}
+                        type="button"
+                        onClick={() => toggleSlotSelection('freelancers', slotNum)}
+                        className={`p-3 rounded-xl border text-xs font-bold transition flex flex-col items-center justify-center gap-1 text-center ${isSelected ? 'border-amber-500 bg-amber-500/20 text-amber-300' : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:border-neutral-700'}`}
+                      >
+                        <span className="font-bold text-[11px]">{SLOT_NAMES[slotNum - 1]}</span>
+                        <span className="text-[10px] font-normal text-neutral-400">
+                          {isSelected ? 'Selecionado' : formatCurrency(slotPrices[slotNum - 1])}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
+              </div>
 
-                <div className="border-t border-neutral-800 pt-6">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 mb-3 flex items-center gap-2">
-                    <Building2 className="h-3.5 w-3.5" /> Página de Estabelecimentos (3 Locais)
-                  </h4>
-                  {renderLibrarySlots(establishmentAds, 'establishments')}
+              <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-4 space-y-3">
+                <span className="text-xs font-bold text-white flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-amber-400" /> Página de Estabelecimentos
+                </span>
+                <div className="grid grid-cols-3 gap-2">
+                  {[1, 2, 3].map((slotNum) => {
+                    const isSelected = selectedEstablishmentSlots.includes(slotNum);
+                    return (
+                      <button
+                        key={slotNum}
+                        type="button"
+                        onClick={() => toggleSlotSelection('establishments', slotNum)}
+                        className={`p-3 rounded-xl border text-xs font-bold transition flex flex-col items-center justify-center gap-1 text-center ${isSelected ? 'border-amber-500 bg-amber-500/20 text-amber-300' : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:border-neutral-700'}`}
+                      >
+                        <span className="font-bold text-[11px]">{SLOT_NAMES[slotNum - 1]}</span>
+                        <span className="text-[10px] font-normal text-neutral-400">
+                          {isSelected ? 'Selecionado' : formatCurrency(slotPrices[slotNum - 1])}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -570,6 +584,38 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* A BIBLIOTECA DE IMAGENS FICA AQUI NO RODAPÉ, ABAIXO DOS PLANOS, COM BLOQUEIO DE TAMANHO EXATO E LINK DE REDIRECIONAMENTO */}
+        {accountType === 'establishment' && (
+          <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 shadow-lg space-y-6">
+            <div className="flex items-center gap-2">
+              <ImageIcon className="h-5 w-5 text-amber-400" />
+              <h3 className="font-display text-base font-bold text-white">Biblioteca de Imagens dos Anúncios</h3>
+            </div>
+            <p className="text-xs text-neutral-400">
+              Faça o upload dos banners respeitando estritamente as dimensões exigidas. O sistema bloqueará imagens com tamanhos diferentes:
+              <br />• <strong className="text-white">Topo da Página:</strong> Exatamente 600x900 pixels
+              <br />• <strong className="text-white">Centro do Feed:</strong> Exatamente 600x500 pixels
+              <br />• <strong className="text-white">Rodapé da Página:</strong> Exatamente 600x200 pixels
+            </p>
+
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 mb-3 flex items-center gap-2">
+                  <Users className="h-3.5 w-3.5" /> Página de Freelancers (3 Locais)
+                </h4>
+                {renderLibrarySlots(freelancerAds, freelancerLinks, 'freelancers')}
+              </div>
+
+              <div className="border-t border-neutral-800 pt-6">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 mb-3 flex items-center gap-2">
+                  <Building2 className="h-3.5 w-3.5" /> Página de Estabelecimentos (3 Locais)
+                </h4>
+                {renderLibrarySlots(establishmentAds, establishmentLinks, 'establishments')}
+              </div>
             </div>
           </div>
         )}
