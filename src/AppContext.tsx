@@ -93,12 +93,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => setData((d) => ({ ...d, currentUserId: null })), [setData]);
 
-  // Trava de segurança para limite de anúncios
   const updateUser = useCallback((id: string, patch: Partial<User>) => {
     if (patch.adImages && data) {
       const user = data.users.find(u => u.id === id);
       if (user && user.accountType === 'establishment') {
-        const isOnTrial = user.trialEndsAt ? new Date(user.trialEndsAt) > new Date() : false;
+        const hasActiveVip = user.estVipTier && user.estVipTier !== 'free' && user.estVipTier !== 'trial';
+        const isOnTrial = !hasActiveVip && (user.trialEndsAt ? new Date(user.trialEndsAt) > new Date() : false);
         const currentTier = isOnTrial ? 'trial' : (user.estVipTier ?? 'free');
         const plan = data.estVipPlans.find(p => p.tier === currentTier);
 
@@ -112,8 +112,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [setData, data]);
 
   const adminUpdateUser = useCallback((id: string, patch: Partial<User>) => {
-    const stampedPatch = { ...patch, lastAdminEdit: new Date().toISOString() };
+    // Se o admin definiu um plano VIP pago, limpamos a data do trial automaticamente para evitar conflito
+    let cleanPatch = { ...patch };
+    if (patch.estVipTier && patch.estVipTier !== 'free' && patch.estVipTier !== 'trial') {
+      cleanPatch = { ...cleanPatch, trialEndsAt: null as any };
+    }
+
+    const stampedPatch = { ...cleanPatch, lastAdminEdit: new Date().toISOString() };
     const auditLog = { id: uid('al'), adminId: currentAdminId, action: `Admin alterou campos do usuário ${id}`, targetUserId: id, createdAt: new Date().toISOString() };
+    
     setData((d) => ({
       ...d,
       users: d.users.map((u) => (u.id === id ? { ...u, ...stampedPatch } : u)),
@@ -138,7 +145,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     void dbUpdateUser(id, { banned: false }).catch(() => {});
   }, [setData]);
 
-  // Trava de saldo insuficiente na carteira para Freelancer
   const setVipTier = useCallback((id: string, tier: Tier, period: Period = 'monthly'): { ok: boolean; error?: string } => {
     if (!data) return { ok: false, error: 'Sistema carregando.' };
     const user = data.users.find(u => u.id === id);
@@ -165,7 +171,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return { ok: true };
   }, [setData, data]);
 
-  // Trava de saldo insuficiente na carteira para Estabelecimento
   const setEstVipTier = useCallback((id: string, tier: EstTier, period: Period = 'monthly'): { ok: boolean; error?: string } => {
     if (!data) return { ok: false, error: 'Sistema carregando.' };
     const user = data.users.find(u => u.id === id);
@@ -176,15 +181,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     const expiry = (tier === 'free' || tier === 'trial') ? undefined : new Date(Date.now() + (period === 'annual' ? 365 : period === 'semestral' ? 180 : 30) * 86400000).toISOString();
+    // Se assinou um plano pago, remove o trial da data
+    const newTrialEndsAt = (tier !== 'free' && tier !== 'trial') ? null : user?.trialEndsAt;
     const newTxs: WalletTx[] = price > 0 ? [{ id: uid('wt'), userId: id, type: 'vip_charge_est', amount: -price, description: `Assinatura ${getEstPlan(tier, data.estVipPlans).label} (${period})`, date: new Date().toISOString() }] : [];
     
     setData((d) => ({
       ...d,
-      users: d.users.map((u) => (u.id === id ? { ...u, estVipTier: tier, estVipExpiresAt: expiry, walletBalance: Math.max(0, (u.walletBalance ?? 0) - price) } : u)),
+      users: d.users.map((u) => (u.id === id ? { ...u, estVipTier: tier, estVipExpiresAt: expiry, trialEndsAt: newTrialEndsAt, walletBalance: Math.max(0, (u.walletBalance ?? 0) - price) } : u)),
       walletTxs: [...newTxs, ...d.walletTxs]
     }));
 
-    void dbUpdateUser(id, { estVipTier: tier, estVipExpiresAt: expiry }).catch(() => {});
+    void dbUpdateUser(id, { estVipTier: tier, estVipExpiresAt: expiry, trialEndsAt: newTrialEndsAt }).catch(() => {});
     if (price > 0 && newTxs[0]) {
       void dbInsertWalletTx(newTxs[0]).catch(() => {});
       if (user) void dbUpdateWalletBalance(id, Math.max(0, (user.walletBalance ?? 0) - price)).catch(() => {});
@@ -252,7 +259,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const est = data.users.find((u) => u.id === j.establishmentId);
     if (!est) return { ok: false, error: 'Estabelecimento não encontrado.' };
 
-    const isOnTrial = est.trialEndsAt ? new Date(est.trialEndsAt) > new Date() : false;
+    const hasActiveVip = est.estVipTier && est.estVipTier !== 'free' && est.estVipTier !== 'trial';
+    const isOnTrial = !hasActiveVip && (est.trialEndsAt ? new Date(est.trialEndsAt) > new Date() : false);
     const currentTier = isOnTrial ? 'trial' : (est.estVipTier ?? 'free');
     const matchedPlan = data.estVipPlans?.find((p) => p.tier === currentTier);
     const effectiveMaxJobs = matchedPlan?.maxActiveJobs ?? 2;
@@ -486,7 +494,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const adminCreateAdmin = useCallback((user: any) => { return { ok: true }; }, []);
   const removeAdmin = useCallback((id: string) => {}, []);
   
-  // Função adjustWallet restaurada e funcional
   const adjustWallet = useCallback((userId: string, amount: number, description: string) => {
     if (!data) return;
     const tx: WalletTx = { 
@@ -515,7 +522,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     void dbInsertWalletTx(tx).catch(() => {});
     const user = data.users.find((u) => u.id === userId);
     if (user) {
-      void dbUpdateWalletBalance(userId, Math.max(0, (user.walletBalance ?? 0) + amount)).catch(() => {});
+      const newBalance = Math.max(0, (user.walletBalance ?? 0) + amount);
+      void dbUpdateWalletBalance(userId, newBalance).catch(() => {});
     }
     void dbInsertAuditLog(auditLog).catch(() => {});
   }, [setData, currentAdminId, data]);
