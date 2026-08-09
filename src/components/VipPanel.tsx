@@ -93,7 +93,10 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
   const priceFor = (price: number) => appliedCoupon ? Math.round(price * (1 - appliedCoupon.discountPercentage / 100) * 100) / 100 : price;
 
   const currentTier: Tier = currentUser?.vipTier ?? 'free';
-  const isOnTrial = currentUser?.trialEndsAt ? new Date(currentUser.trialEndsAt) > new Date() : false;
+  
+  // CORREÇÃO AQUI: Se já tem um VIP ativo (diferente de free/trial), o trial é desconsiderado
+  const hasActiveVip = currentUser?.estVipTier && currentUser.estVipTier !== 'free' && currentUser.estVipTier !== 'trial';
+  const isOnTrial = !hasActiveVip && (currentUser?.trialEndsAt ? new Date(currentUser.trialEndsAt) > new Date() : false);
   const currentEstTier: EstTier = isOnTrial ? 'trial' : (currentUser?.estVipTier ?? 'free');
   
   const vipPlansList = data?.vipPlans ?? [];
