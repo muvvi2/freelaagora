@@ -22,6 +22,8 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
   const [neighborhood, setNeighborhood] = useState(establishment.address.neighborhood ?? '');
   const [city, setCity] = useState(establishment.address.city);
   const [state, setState] = useState(establishment.address.state);
+  const [lat, setLat] = useState<number | undefined>(establishment.address.lat);
+  const [lng, setLng] = useState<number | undefined>(establishment.address.lng);
   
   const [phone, setPhone] = useState(establishment.phone);
   const [whatsapp, setWhatsapp] = useState(establishment.whatsapp);
@@ -38,7 +40,7 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
   const allowAds = currentPlan?.allowAds ?? false;
   const maxAds = currentPlan?.maxAds ?? 0;
 
-  // Função para buscar CEP na API ViaCEP
+  // Função para buscar CEP na API ViaCEP e converter em coordenadas para o raio de 60km
   const handleCepChange = async (value: string) => {
     const masked = maskCEP(value);
     setCep(masked);
@@ -50,10 +52,28 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
         const dataRes = await response.json();
         
         if (!dataRes.erro) {
-          setStreet(dataRes.logradouro);
-          setNeighborhood(dataRes.bairro);
-          setCity(dataRes.localidade);
-          setState(dataRes.uf);
+          const newStreet = dataRes.logradouro || street;
+          const newNeighborhood = dataRes.bairro || neighborhood;
+          const newCity = dataRes.localidade || city;
+          const newState = dataRes.uf || state;
+
+          setStreet(newStreet);
+          setNeighborhood(newNeighborhood);
+          setCity(newCity);
+          setState(newState);
+
+          // Busca automática de Lat/Lng via Nominatim (OpenStreetMap) para o raio de 60km funcionar
+          try {
+            const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(`${newStreet}, ${newCity}, ${newState}, Brazil`)}`);
+            const geoData = await geoRes.json();
+            if (geoData && geoData.length > 0) {
+              setLat(parseFloat(geoData[0].lat));
+              setLng(parseFloat(geoData[0].lon));
+            }
+          } catch (geoErr) {
+            // Se falhar a geolocalização exata, prossegue sem travar
+          }
+
           notify('Endereço encontrado!', 'success');
         } else {
           notify('CEP não encontrado.', 'warning');
@@ -107,7 +127,7 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
       name, 
       photo, 
       establishmentType, 
-      address: { ...establishment.address, cep, street, neighborhood, city, state }, 
+      address: { ...establishment.address, cep, street, neighborhood, city, state, lat, lng }, 
       phone, 
       whatsapp, 
       email, 
@@ -152,7 +172,7 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
         
         <Input label="CNPJ" value={cnpj} onChange={(e) => setCnpj(maskCNPJ(e.target.value))} />
         
-        {/* Endereço com Busca por CEP */}
+        {/* Endereço com Busca por CEP e Geolocalização Automática para o Raio de 60km */}
         <div className="sm:col-span-2">
             <Input label="CEP" value={cep} onChange={(e) => handleCepChange(e.target.value)} placeholder="00000-000" />
         </div>
@@ -187,12 +207,13 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
             <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
               {adImages.length} de {maxAds} permitidos ({currentPlan?.label ?? currentTier.toUpperCase()})
             </span>
+
           </div>
 
           {allowAds ? (
             <div className="space-y-3">
               <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                Adicione imagens de propaganda que aparecerão em destaque no carrossel da home e widgets do aplicativo.
+                Adicione imagens de propaganda que aparecerão em destaque no carrossel da home (exibidas para usuários num raio de até 60km).
               </p>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
