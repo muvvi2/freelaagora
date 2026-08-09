@@ -71,6 +71,10 @@ export interface User {
   freelancerLinks?: string[];
   establishmentAds?: string[];
   establishmentLinks?: string[];
+  allowedFreelancerSlots?: number[];
+  allowedEstablishmentSlots?: number[];
+  includeFreelancerAd?: boolean;
+  includeEstablishmentAd?: boolean;
   // Admin-only
   isAdmin?: boolean;
   adminRole?: 'super' | 'regular';
@@ -132,6 +136,9 @@ export interface EstVipPlan {
   homeAdPrice?: number;
   freelancerAdPrice?: number;
   establishmentAdPrice?: number;
+  priceSlot1?: number;
+  priceSlot2?: number;
+  priceSlot3?: number;
   features: string[];
   prices: Record<Period, number>;
 }
