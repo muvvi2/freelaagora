@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Crown, Check, Sparkles, ShieldCheck, Diamond, Star, Store, Percent, Ticket, QrCode, CreditCard, FileText, Wallet, AlertCircle, Copy, ArrowLeft, Users, Building2, Upload, Trash2, ImageIcon, Link as LinkIcon, Plus } from 'lucide-react';
+import { Crown, Check, Sparkles, ShieldCheck, Diamond, Star, Store, Percent, Ticket, QrCode, CreditCard, FileText, Wallet, AlertCircle, Copy, ArrowLeft, Users, Building2, Upload, Trash2, ImageIcon, Link as LinkIcon } from 'lucide-react';
 import { useApp } from '@/AppContext';
 import { supabase } from '@/lib/supabase';
 import { useToast } from './ui/Toast';
@@ -21,9 +21,9 @@ const BILLING_OPTIONS: { id: BillingType; label: string; icon: typeof QrCode }[]
 
 const SLOT_NAMES = ["Topo da Página", "Centro do Feed", "Rodapé da Página"];
 const SLOT_DIMENSIONS = [
-  { width: 600, height: 900, label: "600x900 pixels" },
-  { width: 600, height: 500, label: "600x500 pixels" },
-  { width: 600, height: 200, label: "600x200 pixels" },
+  { width: 600, height: 900, label: "600x900 px" },
+  { width: 600, height: 500, label: "600x500 px" },
+  { width: 600, height: 200, label: "600x200 px" },
 ];
 
 const tierIcon: Record<Tier, typeof Crown> = { 
@@ -73,7 +73,7 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
   const [billingType, setBillingType] = useState<BillingType>('WALLET');
   const [pixData, setPixData] = useState<{ qrCode: string; payload: string } | null>(null);
 
-  // Estados de aba ativa para cada página (0: Topo, 1: Centro, 2: Rodapé)
+  // Abas para Freelancers e Estabelecimentos (0: Topo, 1: Centro, 2: Rodapé)
   const [activeFreelaTab, setActiveFreelaTab] = useState<number>(0);
   const [activeEstabTab, setActiveEstabTab] = useState<number>(0);
 
@@ -376,12 +376,12 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
     referencePlan?.priceSlot3 ?? 20
   ];
 
-  // Renderizador elegante em Abas (Tabs) para gerenciar os anúncios de forma compacta
-  const renderTabbedSlotManager = (adsBySlot: string[][], linksBySlot: string[][], type: 'freelancers' | 'establishments', activeTab: number, setActiveTab: (t: number) => void) => {
+  // Renderizador super compacto, elegante e com pré-visualização real da imagem carregada lado a lado
+  const renderCompactSlotManager = (adsBySlot: string[][], linksBySlot: string[][], type: 'freelancers' | 'establishments', activeTab: number, setActiveTab: (t: number) => void) => {
     return (
-      <div className="space-y-4">
-        {/* Abas Superiores */}
-        <div className="flex border-b border-neutral-800 gap-2">
+      <div className="space-y-3">
+        {/* Abas Superiores Compactas */}
+        <div className="flex border-b border-neutral-800 gap-1 overflow-x-auto">
           {SLOT_NAMES.map((slotName, idx) => {
             const isActive = activeTab === idx;
             return (
@@ -389,14 +389,14 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
                 key={idx}
                 type="button"
                 onClick={() => setActiveTab(idx)}
-                className={`px-4 py-2.5 text-xs font-bold transition border-b-2 flex items-center gap-2 ${
+                className={`px-3 py-2 text-xs font-bold transition border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
                   isActive 
-                    ? 'border-amber-500 text-amber-400 bg-neutral-900/50 rounded-t-lg' 
+                    ? 'border-amber-500 text-amber-400 bg-neutral-900 rounded-t-lg' 
                     : 'border-transparent text-neutral-400 hover:text-white'
                 }`}
               >
                 <span>{slotName}</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300">
+                <span className="text-[9px] px-1.5 py-0.2 rounded bg-neutral-800 text-neutral-300">
                   {SLOT_DIMENSIONS[idx].label}
                 </span>
               </button>
@@ -404,31 +404,22 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
           })}
         </div>
 
-        {/* Conteúdo da Aba Ativa */}
-        <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-950">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h5 className="text-xs font-bold text-white uppercase">{SLOT_NAMES[activeTab]}</h5>
-              <p className="text-[11px] text-neutral-400">
-                Dimensão obrigatória: <strong className="text-amber-400">{SLOT_DIMENSIONS[activeTab].label}</strong> · Limite do seu plano: <strong className="text-white">{maxAdsPerSlot} anúncios</strong>
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Caixa Compacta da Aba Ativa */}
+        <div className="p-3 rounded-xl border border-neutral-800 bg-neutral-950 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {Array.from({ length: maxAdsPerSlot }).map((_, adIndex) => {
               const adImg = adsBySlot[activeTab]?.[adIndex] || '';
               const adLink = linksBySlot[activeTab]?.[adIndex] || '';
 
               return (
-                <div key={adIndex} className="p-3 border border-neutral-800 rounded-xl bg-neutral-900 flex flex-col justify-between space-y-3 shadow-sm">
-                  <div className="flex items-center justify-between text-[11px] font-bold text-neutral-400">
+                <div key={adIndex} className="p-2.5 border border-neutral-800 rounded-lg bg-neutral-900 flex flex-col justify-between space-y-2">
+                  <div className="flex items-center justify-between text-[10px] font-bold text-neutral-400">
                     <span className="text-amber-400">Anúncio #{adIndex + 1}</span>
                     {adImg && (
                       <button 
                         type="button" 
                         onClick={() => handleRemoveAd(activeTab, adIndex, type)}
-                        className="text-red-400 hover:text-red-300 flex items-center gap-1 text-[10px]"
+                        className="text-red-400 hover:text-red-300 flex items-center gap-0.5 text-[10px]"
                       >
                         <Trash2 className="h-3 w-3" /> Remover
                       </button>
@@ -437,42 +428,38 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
 
                   {adImg ? (
                     <div className="space-y-2">
-                      <div className="relative group flex justify-center bg-neutral-950 p-2 rounded-lg border border-neutral-800">
-                        <img src={adImg} className="h-24 w-full object-contain rounded" />
+                      <div className="flex items-center gap-2 bg-neutral-950 p-1.5 rounded border border-neutral-800">
+                        <img src={adImg} className="h-12 w-16 object-cover rounded border border-neutral-700 shrink-0 shadow-sm" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] font-semibold text-success-400 truncate">Imagem carregada</p>
+                          <p className="text-[9px] text-neutral-500">{SLOT_DIMENSIONS[activeTab].label}</p>
+                        </div>
                       </div>
-                      <div>
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1 flex items-center gap-1">
-                          <LinkIcon className="h-3 w-3 text-amber-400" /> Link de Redirecionamento
-                        </label>
-                        <input 
-                          type="text" 
-                          value={adLink} 
-                          onChange={(e) => handleLinkChange(activeTab, adIndex, type, e.target.value)}
-                          placeholder="https://seuwebsite.com.br"
-                          className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-amber-500 transition"
-                        />
-                      </div>
+                      <input 
+                        type="text" 
+                        value={adLink} 
+                        onChange={(e) => handleLinkChange(activeTab, adIndex, type, e.target.value)}
+                        placeholder="Link de redirecionamento (https://...)"
+                        className="w-full bg-neutral-950 border border-neutral-800 rounded px-2 py-1 text-[11px] text-white outline-none focus:border-amber-500"
+                      />
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <label className="cursor-pointer border-2 border-dashed border-neutral-800 hover:border-amber-500 w-full h-24 flex flex-col items-center justify-center rounded-lg bg-neutral-950 transition text-xs text-neutral-400">
-                        <Upload className="h-4 w-4 text-amber-400 mb-1" />
-                        <span className="font-bold text-neutral-300 text-[11px]">Carregar Imagem</span>
-                        <span className="text-[9px] text-neutral-500">{SLOT_DIMENSIONS[activeTab].label}</span>
+                      <label className="cursor-pointer border border-dashed border-neutral-700 hover:border-amber-500 w-full h-14 flex items-center justify-center gap-1.5 rounded bg-neutral-950 transition text-xs text-neutral-400">
+                        <Upload className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                        <div className="text-left">
+                          <p className="font-bold text-neutral-300 text-[10px] leading-tight">Carregar Imagem</p>
+                          <p className="text-[9px] text-neutral-500">{SLOT_DIMENSIONS[activeTab].label}</p>
+                        </div>
                         <input type="file" accept="image/*" className="hidden" onChange={handleFileChange(activeTab, adIndex, type)} />
                       </label>
-                      <div>
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1 flex items-center gap-1">
-                          <LinkIcon className="h-3 w-3 text-amber-400" /> Link de Redirecionamento
-                        </label>
-                        <input 
-                          type="text" 
-                          value={adLink} 
-                          onChange={(e) => handleLinkChange(activeTab, adIndex, type, e.target.value)}
-                          placeholder="https://seuwebsite.com.br"
-                          className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-amber-500 transition"
-                        />
-                      </div>
+                      <input 
+                        type="text" 
+                        value={adLink} 
+                        onChange={(e) => handleLinkChange(activeTab, adIndex, type, e.target.value)}
+                        placeholder="Link de redirecionamento (https://...)"
+                        className="w-full bg-neutral-950 border border-neutral-800 rounded px-2 py-1 text-[11px] text-white outline-none focus:border-amber-500"
+                      />
                     </div>
                   )}
                 </div>
@@ -622,7 +609,7 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
                         {plan.tier === 'free' ? 'Voltar para Free' : 'Assinar Plano'}
                       </Button>
                     )}
-                    {active && <p className="text-center text-sm font-bold text-primary-400 py-3">Você está neste plano</p>}
+                    {active && <p className="text-center text-sm font-bold text-primary-400 py-3">You are on this plan</p>}
                   </div>
                 </div>
               );
@@ -686,32 +673,33 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
           </div>
         )}
 
-        {/* BIBLIOTECA DE IMAGENS ELEGANTE EM ABAS NO RODAPÉ */}
+        {/* BIBLIOTECA DE IMAGENS COMPACTA COM FREELANCERS E ESTABELECIMENTOS LADO A LADO */}
         {accountType === 'establishment' && (
           <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 shadow-lg space-y-6">
             <div className="flex items-center gap-2">
               <ImageIcon className="h-5 w-5 text-amber-400" />
-              <h3 className="font-display text-base font-bold text-white">Biblioteca de Imagens dos Anúncios</h3>
+              <h3 className="font-display text-base font-bold text-white">Biblioteca de Imagens e Links dos Anúncios</h3>
             </div>
             <p className="text-xs text-neutral-400">
-              Gerencie seus banners utilizando as abas abaixo para cada local. O sistema valida rigorosamente as dimensões e respeita o limite de anúncios do seu plano atual ({maxAdsPerSlot} por local).
+              Gerencie seus banners utilizando as abas. O sistema valida rigorosamente as dimensões exatas e respeita o limite do seu plano ({maxAdsPerSlot} anúncios por slot).
             </p>
 
-            <div className="space-y-8">
-              {/* Seção Freelancers */}
-              <div className="space-y-3">
+            {/* Grid lado a lado para Freelancers e Estabelecimentos (1 coluna em telas pequenas, 2 colunas em telas maiores) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Coluna Freelancers */}
+              <div className="space-y-2 bg-neutral-950/40 p-4 rounded-xl border border-neutral-800/80">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2">
-                  <Users className="h-3.5 w-3.5" /> Página de Freelancers
+                  <Users className="h-4 w-4" /> Página de Freelancers
                 </h4>
-                {renderTabbedSlotManager(freelancerAdsBySlot, freelancerLinksBySlot, 'freelancers', activeFreelaTab, setActiveFreelaTab)}
+                {renderCompactSlotManager(freelancerAdsBySlot, freelancerLinksBySlot, 'freelancers', activeFreelaTab, setActiveFreelaTab)}
               </div>
 
-              {/* Seção Estabelecimentos */}
-              <div className="space-y-3 border-t border-neutral-800 pt-6">
+              {/* Coluna Estabelecimentos */}
+              <div className="space-y-2 bg-neutral-950/40 p-4 rounded-xl border border-neutral-800/80">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2">
-                  <Building2 className="h-3.5 w-3.5" /> Página de Estabelecimentos
+                  <Building2 className="h-4 w-4" /> Página de Estabelecimentos
                 </h4>
-                {renderTabbedSlotManager(establishmentAdsBySlot, establishmentLinksBySlot, 'establishments', activeEstabTab, setActiveEstabTab)}
+                {renderCompactSlotManager(establishmentAdsBySlot, establishmentLinksBySlot, 'establishments', activeEstabTab, setActiveEstabTab)}
               </div>
             </div>
           </div>
