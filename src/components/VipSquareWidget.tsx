@@ -15,20 +15,32 @@ export function VipSquareWidget({ pageType = 'freelancers' }: { pageType?: 'free
       const plan = data.estVipPlans.find((p) => p.tier === currentTier);
 
       if (plan?.allowAds) {
-        // Pega as imagens e links filtrando de acordo com a página atual e posições permitidas/contratadas
-        const images = pageType === 'freelancers' ? (u.freelancerAds || []) : (u.establishmentAds || []);
-        const links = pageType === 'freelancers' ? (u.freelancerLinks || []) : (u.establishmentLinks || []);
-        const allowedSlots = pageType === 'freelancers' ? (u.allowedFreelancerSlots || [1]) : (u.allowedEstablishmentSlots || [1]);
+        // Puxa corretamente dos arrays por slot ou faz fallback para os arrays simples legados
+        const adsBySlot = pageType === 'freelancers' 
+          ? (u.freelancerAdsBySlot || [u.freelancerAds || [], [], []]) 
+          : (u.establishmentAdsBySlot || [u.establishmentAds || [], [], []]);
 
-        images.forEach((img, idx) => {
-          const slotNumber = idx + 1;
-          if (img && img.trim() !== '' && allowedSlots.includes(slotNumber)) {
-            activeAds.push({
-              establishmentName: u.name,
-              imageUrl: img,
-              linkUrl: links[idx] || '',
-              city: u.address?.city || '',
-              state: u.address?.state || '',
+        const linksBySlot = pageType === 'freelancers' 
+          ? (u.freelancerLinksBySlot || [u.freelancerLinks || [], [], []]) 
+          : (u.establishmentLinksBySlot || [u.establishmentLinks || [], [], []]);
+
+        const allowedSlots = pageType === 'freelancers' ? (u.allowedFreelancerSlots || [1, 2, 3]) : (u.allowedEstablishmentSlots || [1, 2, 3]);
+
+        // Varre cada slot (1, 2, 3 correspondendo aos índices 0, 1, 2)
+        adsBySlot.forEach((slotAds, slotIndex) => {
+          const slotNumber = slotIndex + 1;
+          if (allowedSlots.includes(slotNumber) && Array.isArray(slotAds)) {
+            slotAds.forEach((img, imgIndex) => {
+              if (img && img.trim() !== '') {
+                const link = linksBySlot[slotIndex]?.[imgIndex] || '';
+                activeAds.push({
+                  establishmentName: u.name,
+                  imageUrl: img,
+                  linkUrl: link,
+                  city: u.address?.city || '',
+                  state: u.address?.state || '',
+                });
+              }
             });
           }
         });
@@ -38,7 +50,7 @@ export function VipSquareWidget({ pageType = 'freelancers' }: { pageType?: 'free
 
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Intervalo ajustado para 4 segundos (fluido, nem rápido nem lento demais)
+  // Intervalo ajustado para 4 segundos
   useEffect(() => {
     if (activeAds.length <= 1) return;
     const timer = setInterval(() => {
