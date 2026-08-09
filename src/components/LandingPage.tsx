@@ -39,7 +39,7 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
-      notify('Para instalar no celular, abra o menu do navegador (3 pontinhos ou Compartilhar) e selecione "Adicionar à Tela Inicial".', 'info');
+      notify('Para instalar no celular, abra o menu do navegador e selecione "Adicionar à Tela Inicial".', 'info');
       return;
     }
     deferredPrompt.prompt();
@@ -58,56 +58,42 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
       <div className="absolute -right-32 bottom-1/4 h-96 w-96 rounded-full bg-secondary-500/15 blur-3xl" />
 
       <div className="relative z-10 flex min-h-screen flex-col">
-        {/* Header Responsivo */}
+        {/* Header Limpo */}
         <nav className="flex items-center justify-between px-4 py-3 sm:px-8">
-          <div className="flex items-center gap-2">
-            <img src="/image.png" alt="FreelaAgora" className="h-10 w-auto max-w-[160px] object-contain sm:h-16 sm:max-w-[260px]" />
-          </div>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+          <img src="/image.png" alt="FreelaAgora" className="h-10 w-auto max-w-[160px] object-contain sm:h-16 sm:max-w-[260px]" />
+          <div className="flex items-center gap-3">
             {showInstallBtn && (
-              <Button size="sm" variant="outline" onClick={handleInstallClick} className="border-accent-400/50 bg-accent-500/10 text-accent-300 hover:bg-accent-500/20 text-xs">
-                <Download className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Instalar App</span>
+              <Button size="sm" variant="outline" onClick={handleInstallClick} className="border-accent-400/50 bg-accent-500/10 text-accent-300 text-xs hidden sm:flex">
+                <Download className="h-3.5 w-3.5" /> Instalar App
               </Button>
             )}
-            <button onClick={onNavigateTerms} className="text-xs sm:text-sm font-medium text-neutral-400 transition hover:text-white">Termos</button>
-            <Button size="sm" onClick={() => setAuthModal('login')} className="bg-primary-500 text-white hover:bg-primary-600 shadow-glow text-xs sm:text-sm"><LogIn className="h-3.5 w-3.5" /> Entrar</Button>
+            <button onClick={onNavigateTerms} className="text-xs sm:text-sm font-medium text-neutral-400 hover:text-white">Termos</button>
+            <Button size="sm" onClick={() => setAuthModal('login')} className="bg-primary-500 text-white text-xs sm:text-sm"><LogIn className="h-3.5 w-3.5" /> Entrar</Button>
           </div>
         </nav>
 
-        {/* Main sem carrossel, layout limpo */}
-        <main className="flex flex-1 flex-col items-center justify-start px-4 pt-12 pb-12 text-center sm:px-8">
-          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-neutral-300 backdrop-blur">
-            <Shield className="h-3.5 w-3.5 text-secondary-400" />
-            Pagamento seguro com garantia (escrow)
-          </div>
-          <h1 className="font-display text-3xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl md:text-6xl">
+        {/* Hero limpa (sem carrossel) */}
+        <main className="flex flex-1 flex-col items-center justify-center px-4 pt-12 pb-12 text-center">
+          <h1 className="font-display text-4xl font-extrabold leading-tight tracking-tight sm:text-6xl">
             Precisa de alguém?<br />
             <span className="bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent">Chame aqui!</span>
           </h1>
-          <p className="mt-4 max-w-lg text-xs text-neutral-400 sm:text-sm">
-            O marketplace de contratação emergencial de freelancers para bares, restaurantes, buffets, eventos, serviços gerais, saúde, oficinas e logística.
+          <p className="mt-4 max-w-lg text-sm text-neutral-400">
+            O marketplace de contratação emergencial de freelancers para bares, restaurantes, buffets, eventos e logística.
           </p>
 
-          {/* Botões de Ação na Hero */}
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Button size="lg" onClick={() => setAuthModal('register')} className="bg-primary-500 text-white hover:bg-primary-600 shadow-glow text-sm sm:text-base px-6">
+            <Button size="lg" onClick={() => setAuthModal('register')} className="bg-primary-500 text-white shadow-glow px-8">
               <UserPlus className="h-4 w-4" /> Cadastrar-se agora
             </Button>
-            <Button size="lg" variant="outline" onClick={() => setAuthModal('login')} className="border-white/20 text-white hover:bg-white/10 text-sm sm:text-base px-6">
-              <LogIn className="h-4 w-4" /> Já tenho conta (Entrar)
-            </Button>
           </div>
 
-          <div className="mt-12 grid w-full max-w-4xl grid-cols-1 gap-3 sm:grid-cols-3">
-            <FeatureCard icon={Wallet} title="Garantia (Escrow)" desc="Pagamento retido até a conclusão do serviço. Segurança para os dois lados." />
-            <FeatureCard icon={Calendar} title="Agenda de turnos" desc="Freelancers definem disponibilidade por manhã, tarde e noite." />
-            <FeatureCard icon={MapPin} title="Busca por proximidade" desc="Só aparecem profissionais da sua cidade e região metropolitana." />
+          <div className="mt-16 grid w-full max-w-4xl grid-cols-1 gap-3 sm:grid-cols-3">
+            <FeatureCard icon={Wallet} title="Garantia (Escrow)" desc="Pagamento retido até a conclusão do serviço." />
+            <FeatureCard icon={Calendar} title="Agenda de turnos" desc="Freelancers definem disponibilidade por turno." />
+            <FeatureCard icon={MapPin} title="Busca por proximidade" desc="Profissionais da sua região." />
           </div>
         </main>
-
-        <footer className="px-5 py-4 text-center text-xs text-neutral-500 sm:px-8">
-          FreelaAgora · Plataforma fintech de freelancers · {new Date().getFullYear()}
-        </footer>
       </div>
 
       {authModal && <AuthModal mode={authModal} onClose={() => setAuthModal(null)} onSwitch={(m) => setAuthModal(m)} onNavigateTerms={onNavigateTerms} />}
@@ -115,13 +101,14 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
   );
 }
 
-// Restante dos componentes (FeatureCard, AuthModal, LoginForm, RegisterForm, TypeCard, etc.) permanecem iguais
-function FeatureCard({ icon: Icon, title, desc }: { icon: typeof Shield; title: string; desc: string }) {
+// --- Componentes Auxiliares ---
+
+function FeatureCard({ icon: Icon, title, desc }: { icon: any; title: string; desc: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-3.5 text-left backdrop-blur transition hover:border-white/20">
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-left backdrop-blur">
       <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-xl bg-primary-500/15"><Icon className="h-4 w-4 text-primary-400" /></div>
-      <h3 className="font-display font-bold text-xs sm:text-sm text-white">{title}</h3>
-      <p className="mt-1 text-[11px] sm:text-xs text-neutral-400">{desc}</p>
+      <h3 className="font-bold text-sm text-white">{title}</h3>
+      <p className="mt-1 text-xs text-neutral-400">{desc}</p>
     </div>
   );
 }
@@ -130,4 +117,84 @@ function AuthModal({ mode, onClose, onSwitch, onNavigateTerms }: { mode: 'login'
   return mode === 'login' ? <LoginForm onClose={onClose} onSwitch={onSwitch} /> : <RegisterForm onClose={onClose} onSwitch={onSwitch} onNavigateTerms={onNavigateTerms} />;
 }
 
-// ... (LoginForm, RegisterForm, TypeCard, etc. mantidos inalterados) ...
+function LoginForm({ onClose, onSwitch }: { onClose: () => void; onSwitch: (m: 'login' | 'register') => void }) {
+  const { login } = useApp();
+  const { notify } = useToast();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const submit = () => {
+    if (!emailValid(email)) { setError('E-mail inválido.'); return; }
+    const res = login(email, password);
+    if (!res.ok) { setError(res.error ?? 'Erro ao entrar.'); return; }
+    onClose();
+  };
+
+  return (
+    <Modal open onClose={onClose} size="sm" footer={<div className="text-center text-sm">Não tem conta? <button onClick={() => onSwitch('register')} className="font-semibold text-primary-500">Cadastrar-se</button></div>}>
+      <h2 className="text-lg font-bold mb-4">Entrar</h2>
+      <div className="space-y-3">
+        <Input label="E-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Input label="Senha" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        {error && <p className="text-sm text-red-500">{error}</p>}
+        <Button fullWidth onClick={submit}>Entrar</Button>
+      </div>
+    </Modal>
+  );
+}
+
+function RegisterForm({ onClose, onSwitch, onNavigateTerms }: { onClose: () => void; onSwitch: (m: 'login' | 'register') => void; onNavigateTerms?: () => void }) {
+  const { register } = useApp();
+  const { notify } = useToast();
+  const [accountType, setAccountType] = useState<AccountType>('freelancer');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [cpfCnpj, setCpfCnpj] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [error, setError] = useState('');
+
+  const submit = () => {
+    if (!name || !email || !password) { setError('Preencha os campos obrigatórios.'); return; }
+    if (!acceptedTerms) { setError('Aceite os termos.'); return; }
+    
+    const base = { accountType, name, email, password, address: { city: 'Pitangueiras', state: 'SP' }, termsAcceptance: { timestamp: new Date().toISOString(), ip: '0.0.0.0', legalVersion: '1.9' } };
+    const extra = accountType === 'freelancer' ? { cpf: cpfCnpj } : { cnpj: cpfCnpj, establishmentType: 'Bar & Restaurante' };
+    
+    const res = register({ ...base, ...extra } as User);
+    if (res.ok) { notify('Conta criada!'); onClose(); }
+    else setError(res.error ?? 'Erro no cadastro.');
+  };
+
+  return (
+    <Modal open onClose={onClose} size="lg" footer={<Button fullWidth onClick={submit} disabled={!acceptedTerms}>Criar Conta</Button>}>
+      <h2 className="text-lg font-bold mb-4">Cadastrar-se</h2>
+      <div className="flex gap-2 mb-4">
+        <button className={`flex-1 p-2 rounded border ${accountType === 'freelancer' ? 'bg-primary-100' : ''}`} onClick={() => setAccountType('freelancer')}>Freelancer</button>
+        <button className={`flex-1 p-2 rounded border ${accountType === 'establishment' ? 'bg-primary-100' : ''}`} onClick={() => setAccountType('establishment')}>Estabelecimento</button>
+      </div>
+      <div className="space-y-3">
+        <Input label="Nome" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input label="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Input label="Senha" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <Input label={accountType === 'freelancer' ? 'CPF' : 'CNPJ'} value={cpfCnpj} onChange={(e) => setCpfCnpj(e.target.value)} />
+        {error && <p className="text-sm text-red-500">{error}</p>}
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={acceptedTerms} onChange={(e) => setAcceptedTerms(e.target.checked)} /> Aceito os termos.</label>
+      </div>
+    </Modal>
+  );
+}
+
+function TypeCard({ active, onClick, icon: Icon, label, desc }: { active: boolean; onClick: () => void; icon: any; label: string; desc: string }) {
+  return (
+    <button onClick={onClick} className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 text-center transition ${active ? 'border-primary-400 bg-primary-50' : 'border-neutral-200'}`}>
+      <Icon className={`h-7 w-7 ${active ? 'text-primary-500' : 'text-neutral-400'}`} />
+      <p className="text-sm font-bold">{label}</p>
+    </button>
+  );
+}
+
+function defaultPhoto(type: AccountType): string {
+  return 'https://images.pexels.com/photos/804009/pexels-photo-804009.jpeg?auto=compress&cs=tinysrgb&h=650&w=940';
+}
