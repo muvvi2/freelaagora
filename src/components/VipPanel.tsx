@@ -279,14 +279,14 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
 
         {/* Seleção de posições por página de anúncios com desconto progressivo */}
         {accountType === 'establishment' && (() => {
-          const activeEstPlan = estVipPlansList.find(p => p.tier === (currentUser?.estVipTier ?? 'free'));
-          const canAdvertise = activeEstPlan?.allowAds ?? false;
-          if (!canAdvertise) return null;
+          const hasAnyAdPlan = estVipPlansList.some(p => p.allowAds);
+          if (!hasAnyAdPlan) return null;
 
+          const referencePlan = estVipPlansList.find(p => p.allowAds) || estVipPlansList[0];
           const slotPrices = [
-            activeEstPlan.priceSlot1 ?? 30,
-            activeEstPlan.priceSlot2 ?? 25,
-            activeEstPlan.priceSlot3 ?? 20
+            referencePlan.priceSlot1 ?? 30,
+            referencePlan.priceSlot2 ?? 25,
+            referencePlan.priceSlot3 ?? 20
           ];
 
           const totalAdsCount = selectedFreelancerSlots.length + selectedEstablishmentSlots.length;
