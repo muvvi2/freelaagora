@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Crown, Check, Sparkles, ShieldCheck, Diamond, Star, Store, Percent, Ticket, QrCode, CreditCard, FileText, Wallet, AlertCircle, Copy, Upload, ArrowLeft } from 'lucide-react';
+import { Crown, Check, Sparkles, ShieldCheck, Diamond, Star, Store, Percent, Ticket, QrCode, CreditCard, FileText, Wallet, AlertCircle, Copy, Upload, ArrowLeft, Home, Users, Building2 } from 'lucide-react';
 import { useApp } from '@/AppContext';
 import { supabase } from '@/lib/supabase';
 import { useToast } from './ui/Toast';
@@ -72,6 +72,12 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
   const [billingType, setBillingType] = useState<BillingType>('WALLET');
   const [pixData, setPixData] = useState<{ qrCode: string; payload: string } | null>(null);
 
+  // Estados de seleção de locais de anúncio pelo estabelecimento
+  const [activeAdTab, setActiveAdTab] = useState<'home' | 'freelancers' | 'establishments'>('home');
+  const [includeHomeAd, setIncludeHomeAd] = useState(true);
+  const [includeFreelancerAd, setIncludeFreelancerAd] = useState(false);
+  const [includeEstablishmentAd, setIncludeEstablishmentAd] = useState(false);
+
   const paymentReady = isPaymentConfigured();
   const providerInfo = getActiveProviderInfo();
 
@@ -90,11 +96,7 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
     setAppliedCoupon(c.coupon); setCouponError(''); notify(`Cupom ${c.coupon.code} aplicado: ${c.coupon.discountPercentage}% de desconto!`);
   };
 
-  const priceFor = (price: number) => appliedCoupon ? Math.round(price * (1 - appliedCoupon.discountPercentage / 100) * 100) / 100 : price;
-
   const currentTier: Tier = currentUser?.vipTier ?? 'free';
-  
-  // CORREÇÃO AQUI: Se já tem um VIP ativo (diferente de free/trial), o trial é desconsiderado
   const hasActiveVip = currentUser?.estVipTier && currentUser.estVipTier !== 'free' && currentUser.estVipTier !== 'trial';
   const isOnTrial = !hasActiveVip && (currentUser?.trialEndsAt ? new Date(currentUser.trialEndsAt) > new Date() : false);
   const currentEstTier: EstTier = isOnTrial ? 'trial' : (currentUser?.estVipTier ?? 'free');
@@ -105,9 +107,20 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
   const currentPlan = getPlan(currentTier, vipPlansList);
   const currentEstPlan = getEstPlan(currentEstTier, estVipPlansList);
 
+  // Cálculo dinâmico do preço do plano + adicionais dos locais de anúncio escolhidos pelo admin
+  const calculateTotalPlanPrice = (planObj: any) => {
+    let basePrice = planObj.prices[period];
+    if (accountType === 'establishment' && planObj.allowAds) {
+      if (includeHomeAd) basePrice += (planObj.homeAdPrice ?? 30);
+      if (includeFreelancerAd) basePrice += (planObj.freelancerAdPrice ?? 20);
+      if (includeEstablishmentAd) basePrice += (planObj.establishmentAdPrice ?? 20);
+    }
+    return appliedCoupon ? Math.round(basePrice * (1 - appliedCoupon.discountPercentage / 100) * 100) / 100 : basePrice;
+  };
+
   const handleProceedPayment = async (tier: Tier | EstTier, type: 'freelancer' | 'establishment') => {
     const planObj = type === 'freelancer' ? getPlan(tier as Tier, vipPlansList) : getEstPlan(tier as EstTier, estVipPlansList);
-    const finalPrice = priceFor(planObj.prices[period]);
+    const finalPrice = calculateTotalPlanPrice(planObj);
     const userBalance = currentUser?.walletBalance ?? 0;
 
     if (billingType === 'WALLET') {
@@ -244,12 +257,59 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
           </div>
         </div>
 
+        {/* Seção de Seleção de Locais de Anúncio com Soma Automática */}
+        {accountType === 'establishment' && (() => {
+          const activeEstPlan = estVipPlansList.find(p => p.tier === (currentUser?.estVipTier ?? 'free'));
+          const canAdvertise = activeEstPlan?.allowAds ?? false;
+          if (!canAdvertise) return null;
+
+          const homePrice = activeEstPlan.homeAdPrice ?? 30;
+          const freelancerPrice = activeEstPlan.freelancerAdPrice ?? 20;
+          const establishmentPrice = activeEstPlan.establishmentAdPrice ?? 20;
+
+          return (
+            <div className="rounded-2xl border border-amber-500/30 bg-neutral-900 p-6 shadow-lg">
+              <h3 className="font-display text-base font-bold text-white mb-2 flex items-center gap-2">
+                <Crown className="h-5 w-5 text-amber-400" /> Locais de Exibição de Anúncios (Opcionais)
+              </h3>
+              <p className="text-xs text-neutral-400 mb-4">
+                Selecione os locais onde deseja exibir sua marca. O custo adicional definido pelo administrador é somado automaticamente ao valor do plano.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <label className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition ${includeHomeAd ? 'border-amber-500 bg-amber-500/10' : 'border-neutral-800 bg-neutral-950'}`}>
+                  <div className="flex items-center gap-2.5">
+                    <input type="checkbox" checked={includeHomeAd} onChange={(e) => setIncludeHomeAd(e.target.checked)} className="h-4 w-4 rounded text-amber-500" />
+                    <span className="text-xs font-semibold text-white">Carrossel Home</span>
+                  </div>
+                  <span className="text-xs font-bold text-amber-400">+{formatCurrency(homePrice)}</span>
+                </label>
+
+                <label className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition ${includeFreelancerAd ? 'border-amber-500 bg-amber-500/10' : 'border-neutral-800 bg-neutral-950'}`}>
+                  <div className="flex items-center gap-2.5">
+                    <input type="checkbox" checked={includeFreelancerAd} onChange={(e) => setIncludeFreelancerAd(e.target.checked)} className="h-4 w-4 rounded text-amber-500" />
+                    <span className="text-xs font-semibold text-white">Pág. Freelancers</span>
+                  </div>
+                  <span className="text-xs font-bold text-amber-400">+{formatCurrency(freelancerPrice)}</span>
+                </label>
+
+                <label className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition ${includeEstablishmentAd ? 'border-amber-500 bg-amber-500/10' : 'border-neutral-800 bg-neutral-950'}`}>
+                  <div className="flex items-center gap-2.5">
+                    <input type="checkbox" checked={includeEstablishmentAd} onChange={(e) => setIncludeEstablishmentAd(e.target.checked)} className="h-4 w-4 rounded text-amber-500" />
+                    <span className="text-xs font-semibold text-white">Pág. Estabelecimentos</span>
+                  </div>
+                  <span className="text-xs font-bold text-amber-400">+{formatCurrency(establishmentPrice)}</span>
+                </label>
+              </div>
+            </div>
+          );
+        })()}
+
         {accountType === 'freelancer' ? (
           <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             {vipPlansList.map((plan) => {
               const Icon = tierIcon[plan.tier]; 
               const active = currentTier === plan.tier; 
-              const price = plan.prices[period];
+              const finalPlanPrice = calculateTotalPlanPrice(plan);
               return (
                 <div key={plan.tier} className={`relative flex flex-col justify-between rounded-2xl border-2 bg-neutral-900 p-6 transition shadow-xl ${tierTone[plan.tier]} ${active ? 'ring-2 ring-primary-500 bg-neutral-900/90' : 'hover:border-neutral-700'}`}>
                   {active && <div className="absolute -top-3.5 left-5"><Badge tone="primary">Plano Ativo</Badge></div>}
@@ -265,9 +325,9 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
                     </div>
                     <div className="my-5">
                       <span className="font-display text-4xl font-extrabold text-white">
-                        {price === 0 ? 'Grátis' : <>{appliedCoupon && <span className="mr-2 text-base text-neutral-500 line-through">{formatCurrency(price)}</span>}{formatCurrency(priceFor(price))}</>}
+                        {finalPlanPrice === 0 ? 'Grátis' : <>{appliedCoupon && <span className="mr-2 text-base text-neutral-500 line-through">{formatCurrency(plan.prices[period])}</span>}{formatCurrency(finalPlanPrice)}</>}
                       </span>
-                      {price > 0 && <span className="text-xs font-medium text-neutral-400">/{periodLabel(period).toLowerCase()}</span>}
+                      {finalPlanPrice > 0 && <span className="text-xs font-medium text-neutral-400">/{periodLabel(period).toLowerCase()}</span>}
                     </div>
                     <ul className="space-y-3 border-t border-neutral-800 pt-5">
                       {plan.features.map((f) => (
@@ -301,7 +361,7 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
             <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
               {estVipPlansList.map((plan) => {
                 const active = currentEstTier === plan.tier; 
-                const price = plan.prices[period];
+                const finalPlanPrice = calculateTotalPlanPrice(plan);
                 return (
                   <div key={plan.tier} className={`relative flex flex-col justify-between rounded-2xl border-2 bg-neutral-900 p-6 transition shadow-xl ${estTierTone[plan.tier]} ${active ? 'ring-2 ring-primary-500 bg-neutral-900/90' : 'hover:border-neutral-700'}`}>
                     {active && <div className="absolute -top-3.5 left-5"><Badge tone="primary">Plano Ativo</Badge></div>}
@@ -318,9 +378,9 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
 
                       <div className="my-5">
                         <span className="font-display text-4xl font-extrabold text-white">
-                          {price === 0 ? 'Grátis' : <>{appliedCoupon && <span className="mr-2 text-base text-neutral-500 line-through">{formatCurrency(price)}</span>}{formatCurrency(priceFor(price))}</>}
+                          {finalPlanPrice === 0 ? 'Grátis' : <>{appliedCoupon && <span className="mr-2 text-base text-neutral-500 line-through">{formatCurrency(plan.prices[period])}</span>}{formatCurrency(finalPlanPrice)}</>}
                         </span>
-                        {price > 0 && <span className="text-xs font-medium text-neutral-400">/{periodLabel(period).toLowerCase()}</span>}
+                        {finalPlanPrice > 0 && <span className="text-xs font-medium text-neutral-400">/{periodLabel(period).toLowerCase()}</span>}
                       </div>
 
                       <ul className="space-y-3 border-t border-neutral-800 pt-5">
@@ -347,131 +407,166 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
           </div>
         )}
 
-        {accountType === 'establishment' && (
-          (() => {
-            const activeEstPlan = estVipPlansList.find(p => p.tier === (currentUser?.estVipTier ?? 'free'));
-            const canAdvertise = activeEstPlan?.allowAds ?? false;
-            const maxAllowedAds = activeEstPlan?.maxAds ?? 0;
+        {/* Gerenciamento de Anúncios por Local */}
+        {accountType === 'establishment' && (() => {
+          const activeEstPlan = estVipPlansList.find(p => p.tier === (currentUser?.estVipTier ?? 'free'));
+          const canAdvertise = activeEstPlan?.allowAds ?? false;
+          const maxAllowedAds = activeEstPlan?.maxAds ?? 0;
 
-            if (!canAdvertise) return null;
+          if (!canAdvertise) return null;
 
-            return (
-              <div className="mt-10 rounded-2xl border border-amber-500/30 bg-neutral-900 p-6 sm:p-8 shadow-xl">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-3 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                      <Crown className="h-7 w-7" />
-                    </div>
-                    <div>
-                      <h2 className="font-display text-xl font-bold text-white">Gerenciamento de Anúncios e Vitrine Promocional</h2>
-                      <p className="text-xs sm:text-sm text-neutral-400">Plano Ativo: <strong>{activeEstPlan?.label ?? currentUser?.estVipTier?.toUpperCase()}</strong></p>
-                    </div>
+          const homeImages = currentUser?.homeAds || currentUser?.adImages || [];
+          const freelancerImages = currentUser?.freelancerAds || [];
+          const establishmentImages = currentUser?.establishmentAds || [];
+
+          const activeImagesList = activeAdTab === 'home' ? homeImages : activeAdTab === 'freelancers' ? freelancerImages : establishmentImages;
+
+          const handleUpdateLocationImages = (newImages: string[]) => {
+            if (activeAdTab === 'home') {
+              updateUser(userId, { homeAds: newImages, adImages: newImages });
+            } else if (activeAdTab === 'freelancers') {
+              updateUser(userId, { freelancerAds: newImages });
+            } else {
+              updateUser(userId, { establishmentAds: newImages });
+            }
+          };
+
+          return (
+            <div className="mt-10 rounded-2xl border border-amber-500/30 bg-neutral-900 p-6 sm:p-8 shadow-xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                    <Crown className="h-7 w-7" />
                   </div>
-                  <Badge tone="vip" className="px-3 py-1 text-xs font-bold">
-                    Limite: {maxAllowedAds} anúncio(s)
-                  </Badge>
+                  <div>
+                    <h2 className="font-display text-xl font-bold text-white">Gerenciamento de Anúncios por Local de Exibição</h2>
+                    <p className="text-xs sm:text-sm text-neutral-400">Plano Ativo: <strong>{activeEstPlan?.label ?? currentUser?.estVipTier?.toUpperCase()}</strong></p>
+                  </div>
                 </div>
+                <Badge tone="vip" className="px-3 py-1 text-xs font-bold">
+                  Limite: {maxAllowedAds} imagem(ns) por local
+                </Badge>
+              </div>
 
-                <p className="text-sm text-neutral-300 mb-6">
-                  Seu plano atual permite publicar até {maxAllowedAds} imagem(ns) de propaganda em nossa rede de exibições (carrossel da página inicial e widgets).
-                </p>
+              <div className="flex flex-wrap gap-2 mb-6 border-b border-neutral-800 pb-4">
+                <button
+                  type="button"
+                  onClick={() => setActiveAdTab('home')}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition ${activeAdTab === 'home' ? 'bg-amber-500 text-neutral-950 shadow-lg' : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'}`}
+                >
+                  <Home className="h-4 w-4" /> Carrossel Home
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveAdTab('freelancers')}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition ${activeAdTab === 'freelancers' ? 'bg-amber-500 text-neutral-950 shadow-lg' : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'}`}
+                >
+                  <Users className="h-4 w-4" /> Página de Freelancers
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveAdTab('establishments')}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition ${activeAdTab === 'establishments' ? 'bg-amber-500 text-neutral-950 shadow-lg' : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'}`}
+                >
+                  <Building2 className="h-4 w-4" /> Página de Estabelecimentos
+                </button>
+              </div>
 
-                <div className="mb-6 rounded-xl bg-amber-500/10 p-4 border border-amber-500/20 text-xs sm:text-sm text-amber-200 space-y-1.5">
-                  <p className="font-bold">📐 Recomendações Técnicas de Tamanho:</p>
-                  <p>• <strong>Banner Paisagem (Carrossel Home):</strong> Exatamente 1200 x 600 pixels (Proporção 2:1).</p>
-                  <p>• <strong>Banner Quadrado (Widgets Laterais):</strong> Exatamente 800 x 800 pixels (Proporção 1:1).</p>
-                </div>
+              <div className="mb-6 rounded-xl bg-amber-500/10 p-4 border border-amber-500/20 text-xs sm:text-sm text-amber-200 space-y-1.5">
+                <p className="font-bold">📐 Padrão Obrigatório de Imagem (Vertical):</p>
+                <p>• Envie imagens exatamente no tamanho <strong>600 x 900 pixels</strong> (Proporção 2:3 / Estilo Story) para preenchimento perfeito no local selecionado.</p>
+              </div>
 
-                <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
-                  {Array.from({ length: maxAllowedAds }).map((_, index) => {
-                    const currentImages = currentUser?.adImages || [];
-                    const imageUrl = currentImages[index] || '';
+              <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+                {Array.from({ length: maxAllowedAds }).map((_, index) => {
+                  const imageUrl = activeImagesList[index] || '';
 
-                    return (
-                      <div key={index} className="flex flex-col gap-4 rounded-xl border border-neutral-800 bg-neutral-950 p-5 shadow-md">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold uppercase tracking-wider text-neutral-300">Anúncio Promocional #{index + 1}</span>
-                          {imageUrl && (
-                            <button 
-                              type="button" 
-                              onClick={() => {
-                                const newImages = [...currentImages];
-                                newImages[index] = '';
-                                updateUser(userId, { adImages: newImages });
-                                notify('Imagem removida com sucesso', 'info');
-                              }}
-                              className="text-xs text-error-400 hover:underline font-medium"
-                            >
-                              Remover imagem
-                            </button>
+                  return (
+                    <div key={index} className="flex flex-col gap-4 rounded-xl border border-neutral-800 bg-neutral-950 p-5 shadow-md">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold uppercase tracking-wider text-neutral-300">
+                          Slot #{index + 1} ({activeAdTab === 'home' ? 'Home' : activeAdTab === 'freelancers' ? 'Freelancers' : 'Estabelecimentos'})
+                        </span>
+                        {imageUrl && (
+                          <button 
+                            type="button" 
+                            onClick={() => {
+                              const newImages = [...activeImagesList];
+                              newImages[index] = '';
+                              handleUpdateLocationImages(newImages);
+                              notify('Imagem removida com sucesso', 'info');
+                            }}
+                            className="text-xs text-error-400 hover:underline font-medium"
+                          >
+                            Remover imagem
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row items-center gap-4">
+                        <div className="h-32 w-24 shrink-0 rounded-xl overflow-hidden bg-neutral-900 border border-neutral-800 flex items-center justify-center">
+                          {imageUrl ? (
+                            <img src={imageUrl} alt={`Anúncio ${index + 1}`} className="h-full w-full object-cover" />
+                          ) : (
+                            <span className="text-xs text-neutral-500">Sem imagem</span>
                           )}
                         </div>
 
-                        <div className="flex flex-col sm:flex-row items-center gap-4">
-                          <div className="h-24 w-36 shrink-0 rounded-xl overflow-hidden bg-neutral-900 border border-neutral-800 flex items-center justify-center">
-                            {imageUrl ? (
-                              <img src={imageUrl} alt={`Anúncio ${index + 1}`} className="h-full w-full object-cover" />
-                            ) : (
-                              <span className="text-xs text-neutral-500">Sem imagem</span>
-                            )}
-                          </div>
+                        <div className="flex-1 w-full space-y-3">
+                          <input 
+                            type="text" 
+                            placeholder="Cole o link (URL) da imagem..."
+                            value={imageUrl.startsWith('data:') ? '[Arquivo carregado do dispositivo]' : imageUrl}
+                            disabled={imageUrl.startsWith('data:')}
+                            onChange={(e) => {
+                              const newImages = [...activeImagesList];
+                              newImages[index] = e.target.value;
+                              handleUpdateLocationImages(newImages);
+                            }}
+                            className="w-full rounded-xl border border-neutral-700 bg-neutral-900 px-3.5 py-2.5 text-xs text-neutral-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 disabled:opacity-60"
+                          />
 
-                          <div className="flex-1 w-full space-y-3">
+                          <label className="cursor-pointer inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-neutral-950 font-bold text-xs transition shadow-md">
+                            <Upload className="h-4 w-4" />
+                            <span>Carregar Arquivo (600x900)</span>
                             <input 
-                              type="text" 
-                              placeholder="Cole o link (URL) da imagem..."
-                              value={imageUrl.startsWith('data:') ? '[Arquivo carregado do dispositivo]' : imageUrl}
-                              disabled={imageUrl.startsWith('data:')}
+                              type="file" 
+                              accept="image/*" 
+                              className="hidden" 
                               onChange={(e) => {
-                                const newImages = [...currentImages];
-                                newImages[index] = e.target.value;
-                                updateUser(userId, { adImages: newImages });
-                              }}
-                              className="w-full rounded-xl border border-neutral-700 bg-neutral-900 px-3.5 py-2.5 text-xs text-neutral-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 disabled:opacity-60"
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                  const newImages = [...activeImagesList];
+                                  newImages[index] = reader.result as string;
+                                  handleUpdateLocationImages(newImages);
+                                  notify(`Anúncio #${index + 1} carregado com sucesso!`);
+                                };
+                                reader.readAsDataURL(file);
+                              }} 
                             />
-
-                            <label className="cursor-pointer inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-neutral-950 font-bold text-xs transition shadow-md">
-                              <Upload className="h-4 w-4" />
-                              <span>Carregar Arquivo do Computador</span>
-                              <input 
-                                type="file" 
-                                accept="image/*" 
-                                className="hidden" 
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (!file) return;
-                                  const reader = new FileReader();
-                                  reader.onloadend = () => {
-                                    const newImages = [...currentImages];
-                                    newImages[index] = reader.result as string;
-                                    updateUser(userId, { adImages: newImages });
-                                    notify(`Anúncio #${index + 1} carregado com sucesso!`);
-                                  };
-                                  reader.readAsDataURL(file);
-                                }} 
-                              />
-                            </label>
-                          </div>
+                          </label>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })()
-        )}
+            </div>
+          );
+        })()}
 
         <Modal open={!!confirmTier} onClose={() => setConfirmTier(null)} title="Confirmar assinatura" size="sm"
           footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={() => setConfirmTier(null)}>Cancelar</Button><Button variant="warning" fullWidth onClick={() => confirmTier && handleProceedPayment(confirmTier, 'freelancer')}><Check className="h-4 w-4" /> Confirmar</Button></div>}>
-          {confirmTier && <div className="space-y-3"><div className="flex items-center gap-3 rounded-xl bg-warning-50 p-3 dark:bg-warning-500/10"><Crown className="h-8 w-8 text-warning-500" /><div><p className="font-bold text-neutral-900 dark:text-white">{getPlan(confirmTier, vipPlansList).label} — {periodLabel(period)}</p><p className="text-xs text-neutral-400">{appliedCoupon ? <><span className="line-through">{formatCurrency(getPlan(confirmTier, vipPlansList).prices[period])}</span> → {formatCurrency(priceFor(getPlan(confirmTier, vipPlansList).prices[period]))}</> : formatCurrency(getPlan(confirmTier, vipPlansList).prices[period])}</p></div></div>
+          {confirmTier && <div className="space-y-3"><div className="flex items-center gap-3 rounded-xl bg-warning-50 p-3 dark:bg-warning-500/10"><Crown className="h-8 w-8 text-warning-500" /><div><p className="font-bold text-neutral-900 dark:text-white">{getPlan(confirmTier, vipPlansList).label} — {periodLabel(period)}</p><p className="text-xs text-neutral-400">Total: {formatCurrency(calculateTotalPlanPrice(getPlan(confirmTier, vipPlansList)))}</p></div></div>
           <BillingTypeSelector billingType={billingType} setBillingType={setBillingType} paymentReady={paymentReady} providerLabel={providerInfo.label} />
           <p className="text-sm text-neutral-600 dark:text-neutral-300">{billingType === 'WALLET' ? 'Ao confirmar, o valor será debitado da sua carteira e seu plano será ativado imediatamente.' : `Ao confirmar, você será direcionado ao pagamento via ${providerInfo.label}.`}</p></div>}
         </Modal>
 
         <Modal open={!!confirmEstTier} onClose={() => setConfirmEstTier(null)} title="Confirmar assinatura empresarial" size="sm"
           footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={() => setConfirmEstTier(null)}>Cancelar</Button><Button variant="warning" fullWidth onClick={() => confirmEstTier && handleProceedPayment(confirmEstTier, 'establishment')}><Check className="h-4 w-4" /> Confirmar</Button></div>}>
-          {confirmEstTier && <div className="space-y-3"><div className="flex items-center gap-3 rounded-xl bg-warning-50 p-3 dark:bg-warning-500/10"><Store className="h-8 w-8 text-warning-500" /><div><p className="font-bold text-neutral-900 dark:text-white">{getEstPlan(confirmEstTier, estVipPlansList).label} — {periodLabel(period)}</p><p className="text-xs text-neutral-400">{appliedCoupon ? <><span className="line-through">{formatCurrency(getEstPlan(confirmEstTier, estVipPlansList).prices[period])}</span> → {formatCurrency(priceFor(getEstPlan(confirmEstTier, estVipPlansList).prices[period]))}</> : formatCurrency(getEstPlan(confirmEstTier, estVipPlansList).prices[period])} · Taxa: {getEstPlan(confirmEstTier, estVipPlansList).intermediationFee}%</p></div></div>
+          {confirmEstTier && <div className="space-y-3"><div className="flex items-center gap-3 rounded-xl bg-warning-50 p-3 dark:bg-warning-500/10"><Store className="h-8 w-8 text-warning-500" /><div><p className="font-bold text-neutral-900 dark:text-white">{getEstPlan(confirmEstTier, estVipPlansList).label} — {periodLabel(period)}</p><p className="text-xs text-neutral-400">Total: {formatCurrency(calculateTotalPlanPrice(getEstPlan(confirmEstTier, estVipPlansList)))} · Taxa: {getEstPlan(confirmEstTier, estVipPlansList).intermediationFee}%</p></div></div>
           <BillingTypeSelector billingType={billingType} setBillingType={setBillingType} paymentReady={paymentReady} providerLabel={providerInfo.label} />
           <p className="text-sm text-neutral-600 dark:text-neutral-300">{billingType === 'WALLET' ? 'Ao confirmar, o valor será debitado da sua carteira e sua nova taxa de intermediação será aplicada nas próximas contratações.' : `Ao confirmar, você será direcionado ao pagamento via ${providerInfo.label}.`}</p></div>}
         </Modal>
