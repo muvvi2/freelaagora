@@ -22,7 +22,6 @@ import type { User, Job, Contract } from '@/types';
 export function ContractorView() {
   const { currentUser, data, requestHire, categoryById } = useApp();
   const { notify } = useToast();
-  const me = currentUser!;
 
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<string>('all');
@@ -42,8 +41,19 @@ export function ContractorView() {
   const [jobForm, setJobForm] = useState<{ open: boolean; editing: Job | null }>({ open: false, editing: null });
   const [editEstablishment, setEditEstablishment] = useState(false);
   
-  // Estado alterado para alternar para a página inteira de VIP em vez de modal
+  // Estado para alternar para a página inteira de VIP
   const [viewVipPage, setViewVipPage] = useState(false);
+
+  // Blindagem contra carregamento nulo (evita tela branca)
+  if (!currentUser) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <p className="text-sm text-neutral-400">Carregando painel do estabelecimento...</p>
+      </div>
+    );
+  }
+
+  const me = currentUser;
 
   const myJobs = data.jobs.filter((j) => j.establishmentId === me.id);
   const myContracts = data.contracts.filter((c) => c.establishmentId === me.id);
@@ -138,7 +148,6 @@ export function ContractorView() {
           </div>
           <div className="flex gap-2">
             <Button size="sm" variant="outline" className="border-white/30 bg-white/10 text-white backdrop-blur hover:bg-white/20" onClick={() => setEditEstablishment(true)}><Pencil className="h-3.5 w-3.5" /> Editar</Button>
-            {/* Botão atualizado para abrir a página inteira */}
             <Button size="sm" className="bg-gradient-to-r from-warning-500 to-warning-600 text-white shadow-lg hover:from-warning-600 hover:to-warning-700" onClick={() => setViewVipPage(true)}><Crown className="h-3.5 w-3.5" /> Plano VIP</Button>
           </div>
         </div>
@@ -192,7 +201,7 @@ export function ContractorView() {
               <Button variant="outline" onClick={() => setShowFilters((s) => !s)} className={showFilters ? 'border-primary-400 text-primary-600' : ''}><SlidersHorizontal className="h-4 w-4" /></Button>
             </div>
 
-            {/* Macro category chips em Grid (4 colunas por linha) */}
+            {/* Macro category chips em Grid */}
             <div>
               <p className="mb-2 text-xs font-semibold text-neutral-500">Categorias:</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -294,7 +303,6 @@ export function ContractorView() {
             )}
           </div>
 
-          {/* Results count */}
           {useGps && <p className="mb-2 flex items-center gap-1 text-xs text-secondary-600 dark:text-secondary-400"><Navigation className="h-3 w-3 fill-current" /> Usando sua localização GPS atual</p>}
           <p className="mb-3 text-xs text-neutral-400"><strong className="text-neutral-600 dark:text-neutral-300">{filtered.length}</strong> profissionais encontrados dentro dos critérios de distância configurados</p>
 
