@@ -19,7 +19,7 @@ import {
 
 export { useApp };
 
-const ADMIN_ID = 'admin1';
+const ADMIN_ID = '00000000-0000-0000-0000-000000000001';
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [data, setDataState] = useState<AppData>(initialData);
@@ -101,7 +101,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const adminUpdateUser = useCallback((id: string, patch: Partial<User>) => {
     const stampedPatch = { ...patch, lastAdminEdit: new Date().toISOString() };
-    const auditLog = { id: uid('al'), adminId: currentAdminId, action: `Admin alterou dados do usuário ${id}`, targetUserId: id, createdAt: new Date().toISOString() };
+    const auditLog = { id: crypto.randomUUID(), adminId: currentAdminId, action: `Admin alterou dados do usuário ${id}`, targetUserId: id, createdAt: new Date().toISOString() };
     
     setData((d) => ({
       ...d,
@@ -137,7 +137,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     const expiry = tier === 'free' ? undefined : new Date(Date.now() + (period === 'annual' ? 365 : period === 'semestral' ? 180 : 30) * 86400000).toISOString();
-    const newTxs: WalletTx[] = price > 0 ? [{ id: uid('wt'), userId: id, type: 'vip_charge', amount: -price, description: `Assinatura ${getPlan(tier, data.vipPlans).label} (${period})`, date: new Date().toISOString() }] : [];
+    const newTxs: WalletTx[] = price > 0 ? [{ id: crypto.randomUUID(), userId: id, type: 'vip_charge', amount: -price, description: `Assinatura ${getPlan(tier, data.vipPlans).label} (${period})`, date: new Date().toISOString() }] : [];
     
     setData((d) => ({
       ...d,
@@ -164,7 +164,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const expiry = (tier === 'free' || tier === 'trial') ? undefined : new Date(Date.now() + (period === 'annual' ? 365 : period === 'semestral' ? 180 : 30) * 86400000).toISOString();
     const newTrialEndsAt = (tier !== 'free' && tier !== 'trial') ? null : user?.trialEndsAt;
-    const newTxs: WalletTx[] = price > 0 ? [{ id: uid('wt'), userId: id, type: 'vip_charge_est', amount: -price, description: `Assinatura ${getEstPlan(tier, data.estVipPlans).label} (${period})`, date: new Date().toISOString() }] : [];
+    const newTxs: WalletTx[] = price > 0 ? [{ id: crypto.randomUUID(), userId: id, type: 'vip_charge_est', amount: -price, description: `Assinatura ${getEstPlan(tier, data.estVipPlans).label} (${period})`, date: new Date().toISOString() }] : [];
     
     setData((d) => ({
       ...d,
@@ -268,7 +268,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [setData]);
 
   const notifyUser = useCallback((userId: string, type: AppNotification['type'], title: string, body: string, contractId?: string) => {
-    const n: AppNotification = { id: uid('n'), userId, type, title, body, read: false, date: new Date().toISOString(), contractId };
+    const n: AppNotification = { id: crypto.randomUUID(), userId, type, title, body, read: false, date: new Date().toISOString(), contractId };
     setData((d) => ({ ...d, notifications: [n, ...d.notifications] }));
     void dbInsertNotification(n).catch(() => {});
   }, [setData]);
@@ -290,7 +290,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const depositToWallet = useCallback((userId: string, amount: number, description?: string) => {
     if (!data) return;
-    const tx: WalletTx = { id: uid('wt'), userId, type: 'deposit', amount, description: description ?? 'Depósito', date: new Date().toISOString() };
+    const tx: WalletTx = { id: crypto.randomUUID(), userId, type: 'deposit', amount, description: description ?? 'Depósito', date: new Date().toISOString() };
     setData((d) => ({
       ...d,
       users: d.users.map((u) => (u.id === userId ? { ...u, walletBalance: (u.walletBalance ?? 0) + amount } : u)),
@@ -303,7 +303,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const withdrawFromWallet = useCallback((userId: string, amount: number, description?: string) => {
     if (!data) return;
-    const tx: WalletTx = { id: uid('wt'), userId, type: 'withdraw', amount: -amount, description: description ?? 'Saque', date: new Date().toISOString() };
+    const tx: WalletTx = { id: crypto.randomUUID(), userId, type: 'withdraw', amount: -amount, description: description ?? 'Saque', date: new Date().toISOString() };
     setData((d) => ({
       ...d,
       users: d.users.map((u) => (u.id === userId ? { ...u, walletBalance: Math.max(0, (u.walletBalance ?? 0) - amount) } : u)),
@@ -320,7 +320,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const feePercent = est ? getIntermediationFeePercent(est, data.estVipPlans) : data?.config.defaultFeePercent ?? 15;
     const { fee, total } = calculateFees(freelancerFee, feePercent);
     const contract: Contract = {
-      id: uid('ct'), jobId, establishmentId, establishmentName: est?.name ?? '',
+      id: crypto.randomUUID(), jobId, establishmentId, establishmentName: est?.name ?? '',
       freelancerId, freelancerName: fl?.name ?? '', freelancerPhoto: fl?.photo ?? '',
       freelancerPhone: fl?.phone ?? '', freelancerWhatsapp: fl?.whatsapp ?? '',
       category: fl?.categories?.[0] ?? 'geral', date: new Date().toISOString(), hours,
@@ -328,7 +328,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       status: 'requested', createdAt: new Date().toISOString(), history: [{ status: 'requested', at: new Date().toISOString() }],
     };
     const notifs: AppNotification[] = [
-      { id: uid('n'), userId: freelancerId, type: 'hire_request', title: 'Nova solicitação', body: `${est?.name} quer te contratar.`, read: false, date: new Date().toISOString(), contractId: contract.id },
+      { id: crypto.randomUUID(), userId: freelancerId, type: 'hire_request', title: 'Nova solicitação', body: `${est?.name} quer te contratar.`, read: false, date: new Date().toISOString(), contractId: contract.id },
     ];
     setData((d) => ({ ...d, contracts: [contract, ...d.contracts], notifications: [...notifs, ...d.notifications] }));
     void dbInsertContract(contract).catch(() => {});
@@ -345,8 +345,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!data) return;
     const c = data.contracts.find((x) => x.id === contractId);
     if (!c) return;
-    const invoiceId = c.coraInvoiceId ?? `inv-${uid('inv')}`;
-    const estTx: WalletTx = { id: uid('wt'), userId: c.establishmentId, type: 'escrow_hold', amount: -c.total, description: `Escrow — ${c.freelancerName}`, contractId, date: new Date().toISOString() };
+    const invoiceId = c.coraInvoiceId ?? `inv-${crypto.randomUUID()}`;
+    const estTx: WalletTx = { id: crypto.randomUUID(), userId: c.establishmentId, type: 'escrow_hold', amount: -c.total, description: `Escrow — ${c.freelancerName}`, contractId, date: new Date().toISOString() };
     setData((d) => ({
       ...d,
       contracts: d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'paid', coraInvoiceId: invoiceId, history: [...ct.history, { status: 'paid', at: new Date().toISOString() }] } : ct),
@@ -367,8 +367,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!data) return;
     const c = data.contracts.find((x) => x.id === contractId);
     if (!c) return;
-    const flRelease: WalletTx = { id: uid('wt'), userId: c.freelancerId, type: 'escrow_release', amount: c.freelancerFee, description: `Repasse — ${c.establishmentName}`, contractId, date: new Date().toISOString() };
-    const adminFee: WalletTx = { id: uid('wt'), userId: ADMIN_ID, type: 'platform_fee', amount: c.platformFee, description: `Taxa (${c.platformFeePercentage}%)`, contractId, date: new Date().toISOString() };
+    const flRelease: WalletTx = { id: crypto.randomUUID(), userId: c.freelancerId, type: 'escrow_release', amount: c.freelancerFee, description: `Repasse — ${c.establishmentName}`, contractId, date: new Date().toISOString() };
+    const adminFee: WalletTx = { id: crypto.randomUUID(), userId: ADMIN_ID, type: 'platform_fee', amount: c.platformFee, description: `Taxa (${c.platformFeePercentage}%)`, contractId, date: new Date().toISOString() };
     setData((d) => ({
       ...d,
       contracts: d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'completed', history: [...ct.history, { status: 'completed', at: new Date().toISOString() }] } : ct),
@@ -390,7 +390,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const submitReview = useCallback((contractId: string, fromId: string, fromName: string, toId: string, rating: number, comment: string) => {
     if (!data) return;
-    const review: Review = { id: uid('rv'), fromId, fromName, toId, rating, comment, date: new Date().toISOString() };
+    const review: Review = { id: crypto.randomUUID(), fromId, fromName, toId, rating, comment, date: new Date().toISOString() };
     setData((d) => ({ ...d, reviews: [review, ...d.reviews] }));
     void dbInsertReview(review, contractId, false).catch(() => {});
   }, [data, setData]);
@@ -428,7 +428,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [data]);
 
   const addCoupon = useCallback((coupon: Omit<Coupon, 'id' | 'createdAt'>) => {
-    const newCoupon = { ...coupon, id: uid('cp'), usedBy: [], createdAt: new Date().toISOString() };
+    const newCoupon = { ...coupon, id: crypto.randomUUID(), usedBy: [], createdAt: new Date().toISOString() };
     setData((d) => ({ ...d, coupons: [newCoupon, ...d.coupons] }));
     void dbInsertCoupon(newCoupon).catch(() => {});
   }, [setData]);
@@ -449,7 +449,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const auditLogs = useMemo(() => data?.adminAuditLogs ?? [], [data?.adminAuditLogs]);
   const logAdminAction = useCallback((action: string, targetUserId?: string) => {
-    const auditLog = { id: uid('al'), adminId: currentAdminId, action, targetUserId, createdAt: new Date().toISOString() };
+    const auditLog = { id: crypto.randomUUID(), adminId: currentAdminId, action, targetUserId, createdAt: new Date().toISOString() };
     setData((d) => ({ ...d, adminAuditLogs: [auditLog, ...d.adminAuditLogs] }));
     void dbInsertAuditLog(auditLog).catch(() => {});
   }, [setData, currentAdminId]);
@@ -461,7 +461,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [setData]);
 
   const adminCreateAdmin = useCallback(async (user: any) => {
-    const adminUser = { ...user, id: uid('adm'), isAdmin: true };
+    const adminUser = { ...user, id: crypto.randomUUID(), isAdmin: true };
     setData((d) => ({ ...d, users: [...d.users, adminUser] }));
     await dbInsertAdmin(adminUser);
     return { ok: true };
@@ -475,7 +475,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const adjustWallet = useCallback((userId: string, amount: number, description: string) => {
     if (!data) return;
     const tx: WalletTx = { 
-      id: uid('wt'), 
+      id: crypto.randomUUID(), 
       userId, 
       type: amount >= 0 ? 'deposit' : 'withdraw', 
       amount, 
@@ -483,7 +483,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       date: new Date().toISOString() 
     };
     const auditLog = { 
-      id: uid('al'), 
+      id: crypto.randomUUID(), 
       adminId: currentAdminId, 
       action: `Admin ajustou carteira de ${userId} em ${amount >= 0 ? '+' : ''}${amount} (${description})`, 
       targetUserId: userId, 
