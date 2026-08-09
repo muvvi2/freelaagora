@@ -89,7 +89,7 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
             O marketplace de contratação emergencial de freelancers para bares, restaurantes, buffets, eventos, serviços gerais, saúde, oficinas e logística.
           </p>
 
-          {/* Carrossel de Anúncios com Loop Infinito Real e Raio de 60km */}
+          {/* Carrossel de Anúncios com Loop Infinito Real e formato vertical limpo */}
           <div className="w-full max-w-6xl my-4">
             <VipEstablishmentsCarousel />
           </div>
@@ -128,7 +128,7 @@ function deg2rad(deg: number) {
   return deg * (Math.PI / 180);
 }
 
-// Carrossel com Loop Infinito Real e filtro de 60km geolocalizado
+// Carrossel com Loop Infinito Real, formato vertical e artes 100% limpas (sem textos de identificação)
 function VipEstablishmentsCarousel() {
   const { data, currentUser } = useApp();
   const activeAds: { establishmentName: string; imageUrl: string; city: string; state: string }[] = [];
@@ -142,7 +142,6 @@ function VipEstablishmentsCarousel() {
       const estLng = u.address?.lng;
 
       let showAd = true;
-      // Se o usuário estiver logado e houver coordenadas válidas, filtra por até 60km
       if (userLat != null && userLng != null && estLat != null && estLng != null) {
         const distanceKm = getDistanceFromLatLonInKm(userLat, userLng, estLat, estLng);
         if (distanceKm > 60) {
@@ -167,36 +166,31 @@ function VipEstablishmentsCarousel() {
 
   if (activeAds.length === 0) return null;
 
-  // Multiplicamos os itens para garantir a esteira longa em loop contínuo perfeitamente fluida
+  // Duplicamos os itens para a esteira contínua infinita
   const displayAds = [...activeAds, ...activeAds, ...activeAds, ...activeAds, ...activeAds, ...activeAds];
 
   return (
-    <div className="w-full max-w-6xl mx-auto overflow-hidden rounded-2xl border border-amber-500/30 bg-neutral-900/90 p-4 backdrop-blur shadow-xl">
-      <div className="flex items-center justify-between mb-3 px-1">
-        <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-400 bg-amber-500/20 px-3 py-1 rounded-full">
-          <Crown className="h-3.5 w-3.5" /> Vitrine de Estabelecimentos VIP
-        </span>
-        <span className="text-xs text-neutral-400">
-          {currentUser ? `Destaques a até 60km de ${currentUser.address.city}` : 'Destaques Nacionais'}
-        </span>
-      </div>
-      
-      {/* Container com rolagem contínua garantida por animação interna */}
+    <div className="w-full max-w-6xl mx-auto overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900/90 p-3 backdrop-blur shadow-xl">
+      {/* Container com rolagem contínua fluida */}
       <div className="relative w-full overflow-hidden flex whitespace-nowrap">
-        <div className="flex gap-4 py-1 animate-continuous-scroll">
+        <div className="flex gap-3 py-1 animate-continuous-scroll">
           {displayAds.map((ad, idx) => (
-            <div key={idx} className="relative overflow-hidden h-64 w-80 sm:w-96 rounded-xl bg-neutral-950 border border-white/10 flex items-center justify-center shadow-lg shrink-0 group">
-              <img src={ad.imageUrl} alt={ad.establishmentName} className="h-full w-full object-cover transition-all duration-500 group-hover:scale-105" />
-              <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 text-left flex justify-between items-end">
-                <span className="text-sm font-bold text-white drop-shadow truncate pr-2">{ad.establishmentName}</span>
-                <span className="text-xs text-amber-300 whitespace-nowrap">{ad.city} - {ad.state}</span>
-              </div>
+            <div 
+              key={idx} 
+              className="relative overflow-hidden h-72 w-44 sm:h-80 sm:w-48 rounded-xl bg-neutral-950 border border-white/10 flex items-center justify-center shadow-lg shrink-0 group transition-all duration-300 hover:border-primary-500/50"
+            >
+              {/* Imagem limpa sem nenhum texto por cima */}
+              <img 
+                src={ad.imageUrl} 
+                alt="Anúncio" 
+                className="h-full w-full object-cover transition-all duration-500 group-hover:scale-105" 
+              />
             </div>
           ))}
         </div>
       </div>
 
-      {/* Estilo CSS embutido que força o carrossel a se mover ininterruptamente sem depender de arquivos externos */}
+      {/* Estilo CSS embutido para a animação contínua */}
       <style>{`
         @keyframes continuousScroll {
           0% { transform: translateX(0); }
@@ -205,7 +199,7 @@ function VipEstablishmentsCarousel() {
         .animate-continuous-scroll {
           display: flex;
           width: max-content;
-          animation: continuousScroll 20s linear infinite;
+          animation: continuousScroll 25s linear infinite;
         }
         .animate-continuous-scroll:hover {
           animation-play-state: paused;
