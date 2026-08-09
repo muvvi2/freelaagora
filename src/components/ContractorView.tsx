@@ -316,9 +316,9 @@ export function ContractorView() {
           )}
         </div>
 
-        {/* Sidebar: Widget VIP + My Jobs + Active Contracts */}
+        {/* Sidebar: Widget VIP (passando explicitamente o pageType='establishments') + My Jobs + Active Contracts */}
         <aside className="space-y-4">
-          <VipSquareWidget />
+          <VipSquareWidget pageType="establishments" />
 
           <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
             <div className="mb-3 flex items-center justify-between">
