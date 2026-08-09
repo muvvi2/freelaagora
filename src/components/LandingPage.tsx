@@ -58,7 +58,7 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
       <div className="absolute -right-32 bottom-1/4 h-96 w-96 rounded-full bg-secondary-500/15 blur-3xl" />
 
       <div className="relative z-10 flex min-h-screen flex-col">
-        {/* Header Responsivo (PC e Mobile) */}
+        {/* Header Responsivo (PC e Mobile) com suporte a PWA */}
         <nav className="flex items-center justify-between px-4 py-3 sm:px-8">
           <div className="flex items-center gap-2">
             <img src="/image.png" alt="FreelaAgora" className="h-10 w-auto max-w-[160px] object-contain sm:h-16 sm:max-w-[260px]" />
@@ -75,7 +75,7 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
           </div>
         </nav>
 
-        {/* Main otimizado com o carrossel incluído */}
+        {/* Main otimizado com o carrossel vertical limpo */}
         <main className="flex flex-1 flex-col items-center justify-start px-4 pt-2 pb-12 text-center sm:px-8">
           <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-neutral-300 backdrop-blur">
             <Shield className="h-3.5 w-3.5 text-secondary-400" />
@@ -128,7 +128,7 @@ function deg2rad(deg: number) {
   return deg * (Math.PI / 180);
 }
 
-// Carrossel com Loop Infinito Real, formato vertical e artes 100% limpas (sem textos de identificação)
+// Carrossel com Loop Infinito Real, formato vertical e artes 100% limpas
 function VipEstablishmentsCarousel() {
   const { data, currentUser } = useApp();
   const activeAds: { establishmentName: string; imageUrl: string; city: string; state: string }[] = [];
@@ -166,12 +166,10 @@ function VipEstablishmentsCarousel() {
 
   if (activeAds.length === 0) return null;
 
-  // Duplicamos os itens para a esteira contínua infinita
   const displayAds = [...activeAds, ...activeAds, ...activeAds, ...activeAds, ...activeAds, ...activeAds];
 
   return (
     <div className="w-full max-w-6xl mx-auto overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900/90 p-3 backdrop-blur shadow-xl">
-      {/* Container com rolagem contínua fluida */}
       <div className="relative w-full overflow-hidden flex whitespace-nowrap">
         <div className="flex gap-3 py-1 animate-continuous-scroll">
           {displayAds.map((ad, idx) => (
@@ -179,7 +177,6 @@ function VipEstablishmentsCarousel() {
               key={idx} 
               className="relative overflow-hidden h-72 w-44 sm:h-80 sm:w-48 rounded-xl bg-neutral-950 border border-white/10 flex items-center justify-center shadow-lg shrink-0 group transition-all duration-300 hover:border-primary-500/50"
             >
-              {/* Imagem limpa sem nenhum texto por cima */}
               <img 
                 src={ad.imageUrl} 
                 alt="Anúncio" 
@@ -190,7 +187,6 @@ function VipEstablishmentsCarousel() {
         </div>
       </div>
 
-      {/* Estilo CSS embutido para a animação contínua */}
       <style>{`
         @keyframes continuousScroll {
           0% { transform: translateX(0); }
@@ -253,7 +249,7 @@ function LoginForm({ onClose, onSwitch }: { onClose: () => void; onSwitch: (m: '
           <button type="button" onClick={() => setShowPw((s) => !s)} className="absolute right-3 top-[34px] text-neutral-400 hover:text-neutral-600">{showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
         </div>
         {error && <p className="text-sm text-error-500">{error}</p>}
-        <Button fullWidth size="lg" onClick={submit}><LogIn className="h-4 w-4" /> Entrar</Button>
+        <Button fullWidth size="lg" submit onClick={submit}><LogIn className="h-4 w-4" /> Entrar</Button>
       </div>
     </Modal>
   );
@@ -293,7 +289,7 @@ function RegisterForm({ onClose, onSwitch, onNavigateTerms }: { onClose: () => v
     const masked = maskCEP(value);
     setAddr((prev) => ({ ...prev, cep: masked }));
 
-    const cleanCep = masked.replace(/\D/g, '');
+    const cleanCep = masked.payload ? masked.payload : masked.replace(/\D/g, '');
     if (cleanCep.length === 8) {
       try {
         const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
