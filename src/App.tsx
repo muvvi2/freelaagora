@@ -9,7 +9,7 @@ import { AdminView } from './components/AdminView';
 import { TermsPage } from './components/TermsPage';
 import { VipPanel } from './components/VipPanel';
 
-type Route = 'app' | 'terms' | 'vip_freela' | 'vip_estab';
+type Route = 'app' | 'terms' | 'vip' | 'estab_home' | 'freela_home';
 
 function MainContent() {
   const { currentUser, isAdmin, adminMode } = useApp();
@@ -17,23 +17,19 @@ function MainContent() {
   const getRouteFromPath = (): Route => {
     const path = window.location.pathname;
     if (path === '/terms') return 'terms';
-    if (path === '/freela') return 'vip_freela';
-    if (path === '/estab') return 'vip_estab';
-    if (path === '/vip') {
-      return currentUser?.accountType === 'establishment' ? 'vip_estab' : 'vip_freela';
-    }
+    if (path === '/vip') return 'vip';
+    if (path === '/estab') return 'estab_home';
+    if (path === '/freela') return 'freela_home';
     return 'app';
   };
 
   const [route, setRoute] = useState<Route>(getRouteFromPath);
 
-  // Sincroniza a rota com o histórico do navegador e cliques em links
   useEffect(() => {
     const handleLocationChange = () => {
       setRoute(getRouteFromPath());
     };
 
-    // Intercepta pushState para atualizar o estado ao navegar via código/links
     const originalPushState = window.history.pushState;
     window.history.pushState = function (state, title, url) {
       originalPushState.apply(this, [state, title, url]);
@@ -45,66 +41,54 @@ function MainContent() {
       window.removeEventListener('popstate', handleLocationChange);
       window.history.pushState = originalPushState;
     };
-  }, [currentUser]);
+  }, []);
+
+  const navigate = (newRoute: Route, path: string) => {
+    window.history.pushState({}, '', path);
+    setRoute(newRoute);
+  };
 
   if (route === 'terms') {
-    return (
-      <TermsPage
-        onBack={() => {
-          window.history.pushState({}, '', '/');
-        }}
-      />
-    );
+    return <TermsPage onBack={() => navigate('app', '/')} />;
   }
 
-  if (currentUser) {
-    if (route === 'vip_freela') {
-      return (
-        <VipPanel
-          userId={currentUser.id}
-          accountType="freelancer"
-          onBack={() => {
-            window.history.pushState({}, '', '/');
-          }}
-        />
-      );
-    }
-    if (route === 'vip_estab') {
-      return (
-        <VipPanel
-          userId={currentUser.id}
-          accountType="establishment"
-          onBack={() => {
-            window.history.pushState({}, '', '/');
-          }}
-        />
-      );
-    }
+  if (currentUser && route === 'vip') {
+    return (
+      <VipPanel
+        userId={currentUser.id}
+        accountType={currentUser.accountType}
+        onBack={() => navigate('app', currentUser.accountType === 'establishment' ? '/estab' : '/freela')}
+      />
+    );
   }
 
   if (!currentUser) {
     return (
       <LandingPage
-        onNavigateTerms={() => {
-          window.history.pushState({}, '', '/terms');
-        }}
+        onNavigateTerms={() => navigate('terms', '/terms')}
       />
     );
   }
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
-      <Header />
+      <Header 
+        onNavigateHome={() => {
+          const homePath = currentUser.accountType === 'establishment' ? '/estab' : '/freela';
+          navigate('app', homePath);
+        }}
+        onNavigateVip={() => navigate('vip', '/vip')}
+      />
       <main className="pb-16">
         {isAdmin ? (
           adminMode ? (
             <AdminView />
-          ) : currentUser.accountType === 'establishment' ? (
+          ) : route === 'estab_home' || currentUser.accountType === 'establishment' ? (
             <ContractorView />
           ) : (
             <FreelancerView />
           )
-        ) : currentUser.accountType === 'establishment' ? (
+        ) : route === 'estab_home' || currentUser.accountType === 'establishment' ? (
           <ContractorView />
         ) : (
           <FreelancerView />
