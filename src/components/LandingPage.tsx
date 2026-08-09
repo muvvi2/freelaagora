@@ -128,16 +128,16 @@ function deg2rad(deg: number) {
   return deg * (Math.PI / 180);
 }
 
-// Carrossel com Loop Infinito Real, formato vertical e artes 100% limpas
+// Carrossel com Loop Infinito Real, formato vertical e suporte a link abrindo em nova aba
 function VipEstablishmentsCarousel() {
   const { data, currentUser } = useApp();
-  const activeAds: { establishmentName: string; imageUrl: string; city: string; state: string }[] = [];
+  const activeAds: { imageUrl: string; linkUrl: string }[] = [];
   
   const userLat = currentUser?.address?.lat;
   const userLng = currentUser?.address?.lng;
 
   data.users.forEach((u) => {
-    if (u.accountType === 'establishment' && u.adImages && u.adImages.length > 0) {
+    if (u.accountType === 'establishment') {
       const estLat = u.address?.lat;
       const estLng = u.address?.lng;
 
@@ -150,13 +150,14 @@ function VipEstablishmentsCarousel() {
       }
 
       if (showAd) {
-        u.adImages.forEach((img) => {
+        const images = u.homeAds || u.adImages || [];
+        const links = u.homeLinks || [];
+
+        images.forEach((img, idx) => {
           if (img && typeof img === 'string' && img.trim() !== '') {
             activeAds.push({
-              establishmentName: u.name,
               imageUrl: img,
-              city: u.address?.city || '',
-              state: u.address?.state || '',
+              linkUrl: links[idx] || '',
             });
           }
         });
@@ -172,18 +173,35 @@ function VipEstablishmentsCarousel() {
     <div className="w-full max-w-6xl mx-auto overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900/90 p-3 backdrop-blur shadow-xl">
       <div className="relative w-full overflow-hidden flex whitespace-nowrap">
         <div className="flex gap-3 py-1 animate-continuous-scroll">
-          {displayAds.map((ad, idx) => (
-            <div 
-              key={idx} 
-              className="relative overflow-hidden h-72 w-44 sm:h-80 sm:w-48 rounded-xl bg-neutral-950 border border-white/10 flex items-center justify-center shadow-lg shrink-0 group transition-all duration-300 hover:border-primary-500/50"
-            >
-              <img 
-                src={ad.imageUrl} 
-                alt="Anúncio" 
-                className="h-full w-full object-cover transition-all duration-500 group-hover:scale-105" 
-              />
-            </div>
-          ))}
+          {displayAds.map((ad, idx) => {
+            const cardContent = (
+              <div 
+                className="relative overflow-hidden h-72 w-44 sm:h-80 sm:w-48 rounded-xl bg-neutral-950 border border-white/10 flex items-center justify-center shadow-lg shrink-0 group transition-all duration-300 hover:border-primary-500/50 cursor-pointer"
+              >
+                <img 
+                  src={ad.imageUrl} 
+                  alt="Anúncio" 
+                  className="h-full w-full object-cover transition-all duration-500 group-hover:scale-105" 
+                />
+              </div>
+            );
+
+            return ad.linkUrl ? (
+              <a 
+                key={idx} 
+                href={ad.linkUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-block"
+              >
+                {cardContent}
+              </a>
+            ) : (
+              <div key={idx} className="inline-block">
+                {cardContent}
+              </div>
+            );
+          })}
         </div>
       </div>
 
