@@ -8,6 +8,8 @@ import { useApp } from '@/AppContext';
 import { useToast } from './ui/Toast';
 import { maskCNPJ, maskPhone, maskCEP, filterAdsByRadius } from '@/utils';
 
+const SLOT_NAMES = ["Topo da Página", "Centro do Feed", "Rodapé da Página"];
+
 export function EstablishmentEditModal({ establishment, open, onClose }: { establishment: User; open: boolean; onClose: () => void }) {
   const { updateUser, data } = useApp();
   const { notify } = useToast();
@@ -135,7 +137,7 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
         if (!newLinks[slotIndex]) newLinks[slotIndex] = '';
         setActiveLinks(newLinks);
 
-        notify(`Slot #${slotNumber} atualizado com sucesso! (600x900px)`, 'success');
+        notify(`${SLOT_NAMES[slotIndex]} atualizado com sucesso! (600x900px)`, 'success');
       };
 
       img.onerror = () => {
@@ -151,7 +153,7 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
     const newImgs = [...activeImagesList];
     newImgs[slotIndex] = '';
     setActiveImages(newImgs);
-    notify(`Anúncio do Slot #${slotNumber} removido`, 'info');
+    notify(`Anúncio do ${SLOT_NAMES[slotIndex]} removido`, 'info');
   };
 
   const handleLinkChange = (slotNumber: number, val: string) => {
@@ -187,7 +189,7 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
     <Modal open={open} onClose={onClose} title="Editar estabelecimento" size="lg"
       footer={
         <div className="flex gap-2">
-          <Button variant="ghost" fullWidth onClose={() => onClose()}>Cancelar</Button>
+          <Button variant="ghost" fullWidth onClick={onClose}>Cancelar</Button>
           <Button fullWidth onClick={handleSave}>
             <Check className="h-4 w-4" /> Salvar
           </Button>
@@ -238,7 +240,7 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <ImageIcon className="h-5 w-5 text-amber-500" />
-              <h3 className="font-display font-bold text-neutral-900 dark:text-white">Gerenciamento de Anúncios Rotativos (600x900px)</h3>
+              <h3 className="font-display font-bold text-neutral-900 dark:text-white">Gerenciamento de Posicionamento de Anúncios (600x900px)</h3>
             </div>
             <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
               Plano: {currentPlan?.label ?? currentTier.toUpperCase()}
@@ -270,13 +272,13 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
                   <Lock className="mx-auto h-8 w-8 text-error-400" />
                   <h4 className="font-bold text-white text-sm">Página não contratada</h4>
                   <p className="text-xs text-neutral-300 max-w-xs mx-auto">
-                    Você não selecionou slots para esta página durante a assinatura. Atualize seu plano para desbloquear.
+                    Você não selecionou nenhuma posição para esta página durante a assinatura. Atualize seu plano para desbloquear.
                   </p>
                 </div>
               ) : (
                 <>
                   <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                    📐 Gerencie abaixo os <strong>3 slots rotativos</strong> (intervalo automático de 4 segundos). Formato obrigatório: <strong>600x900 pixels</strong>.
+                    📐 Gerencie abaixo as posições (intervalo automático de 4 segundos). Formato obrigatório: <strong>600x900 pixels</strong>.
                   </p>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -284,11 +286,12 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
                       const isSlotAllowed = allowedSlotsForCurrentTab.includes(slotNum);
                       const imgUrl = activeImagesList[slotNum - 1] || '';
                       const linkUrl = activeLinksList[slotNum - 1] || '';
+                      const slotLabelName = SLOT_NAMES[slotNum - 1];
 
                       return (
                         <div key={slotNum} className={`flex flex-col gap-3 p-3 rounded-xl border ${isSlotAllowed ? 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800' : 'border-neutral-800 bg-neutral-950 opacity-60'}`}>
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-neutral-300">Slot #{slotNum} {isSlotAllowed ? '' : '(Não contratado)'}</span>
+                            <span className="text-xs font-bold text-neutral-300">{slotLabelName} {isSlotAllowed ? '' : '(Não contratado)'}</span>
                             {imgUrl && isSlotAllowed && (
                               <button type="button" onClick={() => handleRemoveAdSlot(slotNum)} className="text-xs text-red-500 hover:underline flex items-center gap-1 font-medium">
                                 <Trash2 className="h-3 w-3" /> Remover
@@ -300,7 +303,7 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
                             <div className="space-y-3">
                               <div className="h-28 w-full rounded-lg bg-neutral-900 border border-neutral-700 flex items-center justify-center overflow-hidden">
                                 {imgUrl ? (
-                                  <img src={imgUrl} alt={`Slot ${slotNum}`} className="h-full w-full object-cover" />
+                                  <img src={imgUrl} alt={slotLabelName} className="h-full w-full object-cover" />
                                 ) : (
                                   <span className="text-[10px] text-neutral-500">Sem imagem</span>
                                 )}
@@ -326,7 +329,7 @@ export function EstablishmentEditModal({ establishment, open, onClose }: { estab
                           ) : (
                             <div className="py-8 text-center">
                               <Lock className="mx-auto h-6 w-6 text-neutral-600 mb-1" />
-                              <span className="text-[10px] text-neutral-500">Slot não incluído no seu plano atual.</span>
+                              <span className="text-[10px] text-neutral-500">Posição não incluída no seu plano atual.</span>
                             </div>
                           )}
                         </div>
