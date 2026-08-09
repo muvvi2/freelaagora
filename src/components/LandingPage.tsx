@@ -71,7 +71,6 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
             )}
             <button onClick={onNavigateTerms} className="text-xs sm:text-sm font-medium text-neutral-400 transition hover:text-white">Termos</button>
             <Button size="sm" onClick={() => setAuthModal('login')} className="bg-primary-500 text-white hover:bg-primary-600 shadow-glow text-xs sm:text-sm"><LogIn className="h-3.5 w-3.5" /> Entrar</Button>
-            <Button size="sm" variant="outline" onClick={() => setAuthModal('register')} className="border-white/20 text-white hover:bg-white/10 text-xs sm:text-sm"><UserPlus className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Cadastrar-se</span></Button>
           </div>
         </nav>
 
@@ -89,12 +88,22 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
             O marketplace de contratação emergencial de freelancers para bares, restaurantes, buffets, eventos, serviços gerais, saúde, oficinas e logística.
           </p>
 
+          {/* Botões de Ação na Hero (Cadastrar-se e Entrar) */}
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+            <Button size="lg" onClick={() => setAuthModal('register')} className="bg-primary-500 text-white hover:bg-primary-600 shadow-glow text-sm sm:text-base px-6">
+              <UserPlus className="h-4 w-4" /> Cadastrar-se agora
+            </Button>
+            <Button size="lg" variant="outline" onClick={() => setAuthModal('login')} className="border-white/20 text-white hover:bg-white/10 text-sm sm:text-base px-6">
+              <LogIn className="h-4 w-4" /> Já tenho conta (Entrar)
+            </Button>
+          </div>
+
           {/* Carrossel de Anúncios com Loop Infinito Real e formato vertical limpo */}
-          <div className="w-full max-w-6xl my-4">
+          <div className="w-full max-w-6xl my-6">
             <VipEstablishmentsCarousel />
           </div>
 
-          <div className="mt-6 grid w-full max-w-4xl grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="mt-4 grid w-full max-w-4xl grid-cols-1 gap-3 sm:grid-cols-3">
             <FeatureCard icon={Wallet} title="Garantia (Escrow)" desc="Pagamento retido até a conclusão do serviço. Segurança para os dois lados." />
             <FeatureCard icon={Calendar} title="Agenda de turnos" desc="Freelancers definem disponibilidade por manhã, tarde e noite." />
             <FeatureCard icon={MapPin} title="Busca por proximidade" desc="Só aparecem profissionais da sua cidade e região metropolitana." />
@@ -307,7 +316,7 @@ function RegisterForm({ onClose, onSwitch, onNavigateTerms }: { onClose: () => v
     const masked = maskCEP(value);
     setAddr((prev) => ({ ...prev, cep: masked }));
 
-    const cleanCep = masked.payload ? masked.payload : masked.replace(/\D/g, '');
+    const cleanCep = (masked as any).payload ? (masked as any).payload : masked.replace(/\D/g, '');
     if (cleanCep.length === 8) {
       try {
         const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
