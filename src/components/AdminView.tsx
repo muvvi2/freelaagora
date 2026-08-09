@@ -568,7 +568,6 @@ export function AdminProfileModal({ open, onClose, admin, onSave }: { open: bool
   );
 }
 
-// Correção do modal VIP Admin para forçar a atualização direta sem validar saldo em carteira
 function AdminVipModal({ user, open, onClose }: { user: User; open: boolean; onClose: () => void }) {
   const { adminUpdateUser } = useApp();
   const { notify } = useToast();
@@ -823,7 +822,7 @@ function VipPlansTab({ vipPlans, estVipPlans, onUpdateVipPlan, onAddVipPlan, onR
     const tierNum = estVipPlans.length;
     const newTier = `vip${tierNum}` as EstTier;
     if (estVipPlans.some((p) => p.tier === newTier)) { notify('Já existe um plano com esse nível', 'warning'); return; }
-    onAddEstVipPlan({ tier: newTier, label: `VIP ${tierNum}`, prices: { monthly: 99.9, semestral: 499.9, annual: 899.9 }, intermediationFee: 5, maxActiveJobs: 5, allowAds: false, maxAds: 0, features: ['Novo plano'] });
+    onAddEstVipPlan({ tier: newTier, label: `VIP ${tierNum}`, prices: { monthly: 99.9, semestral: 499.9, annual: 899.9 }, intermediationFee: 5, maxActiveJobs: 5, allowAds: false, maxAds: 0, homeAdPrice: 30, freelancerAdPrice: 20, establishmentAdPrice: 20, features: ['Novo plano'] });
     notify('Plano adicionado');
   };
 
@@ -918,13 +917,33 @@ function VipPlanEditor({ plan, onUpdate, onRemove, isEst }: {
                 />
               </label>
 
-              <div className="pt-2 border-t border-amber-500/20">
+              <div className="pt-2 border-t border-amber-500/20 space-y-3">
                 <Input
                   label="Quantidade máxima de anúncios permitidos neste plano"
                   type="number"
                   value={String(estPlan?.maxAds ?? 0)}
                   onChange={(e) => onUpdate({ maxAds: Number(e.target.value) || 0 } as Partial<EstVipPlan>)}
                 />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <Input
+                    label="Adicional Carrossel Home (R$)"
+                    type="number"
+                    value={String((estPlan as any)?.homeAdPrice ?? 30)}
+                    onChange={(e) => onUpdate({ homeAdPrice: Number(e.target.value) || 0 } as Partial<EstVipPlan>)}
+                  />
+                  <Input
+                    label="Adicional Pág. Freelancers (R$)"
+                    type="number"
+                    value={String((estPlan as any)?.freelancerAdPrice ?? 20)}
+                    onChange={(e) => onUpdate({ freelancerAdPrice: Number(e.target.value) || 0 } as Partial<EstVipPlan>)}
+                  />
+                  <Input
+                    label="Adicional Pág. Estabelecimentos (R$)"
+                    type="number"
+                    value={String((estPlan as any)?.establishmentAdPrice ?? 20)}
+                    onChange={(e) => onUpdate({ establishmentAdPrice: Number(e.target.value) || 0 } as Partial<EstVipPlan>)}
+                  />
+                </div>
               </div>
             </div>
           )}
