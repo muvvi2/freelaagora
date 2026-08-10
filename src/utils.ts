@@ -104,20 +104,21 @@ export function trialDaysLeft(user: User): number {
 
 export function calculateFees(freelancerFee: number, feePercent: number): { fee: number; total: number } {
   const percentFee = Math.round(freelancerFee * (feePercent / 100) * 100) / 100;
-  // A taxa fixa de 2.0 apenas se houver cobrança percentual
   const fixedFee = feePercent > 0 ? 2.0 : 0.0;
   const fee = Math.round((percentFee + fixedFee) * 100) / 100;
   const total = Math.round((freelancerFee + fee) * 100) / 100;
   return { fee, total };
 }
 
-export const CONTRACT_STATUS_FLOW: ContractStatus[] = ['requested', 'confirmed', 'paid', 'checked_in', 'completed'];
+// 🛠️ ATUALIZADO: Inclui o novo estado intermediário para check-in duplo
+export const CONTRACT_STATUS_FLOW: ContractStatus[] = ['requested', 'confirmed', 'paid', 'check_in_pending', 'checked_in', 'completed'];
 
 export function contractStatusLabel(s: ContractStatus): string {
   const map: Record<ContractStatus, string> = {
     requested: 'Solicitação enviada',
     confirmed: 'Disponibilidade confirmada',
     paid: 'Pago em garantia',
+    check_in_pending: 'Aguardando confirmação do estabelecimento',
     checked_in: 'Check-in realizado',
     completed: 'Concluído e repassado',
     cancelled: 'Cancelado',
@@ -130,6 +131,7 @@ export function contractStatusTone(s: ContractStatus): 'neutral' | 'primary' | '
     requested: 'primary',
     confirmed: 'secondary',
     paid: 'warning',
+    check_in_pending: 'warning',
     checked_in: 'secondary',
     completed: 'success',
     cancelled: 'error',
