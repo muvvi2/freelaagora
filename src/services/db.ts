@@ -63,6 +63,10 @@ export interface DbUser {
   freelancer_links: string[] | null;
   establishment_ads: string[] | null;
   establishment_links: string[] | null;
+  freelancer_ads_by_slot?: string[][] | null;
+  establishment_ads_by_slot?: string[][] | null;
+  freelancer_links_by_slot?: string[][] | null;
+  establishment_links_by_slot?: string[][] | null;
   allowed_freelancer_slots?: number[] | null;
   allowed_establishment_slots?: number[] | null;
   include_freelancer_ad?: boolean;
@@ -357,6 +361,10 @@ function mapDbUserToUser(
     freelancerLinks: row.freelancer_links ?? [],
     establishmentAds: row.establishment_ads ?? [],
     establishmentLinks: row.establishment_links ?? [],
+    freelancerAdsBySlot: row.freelancer_ads_by_slot ?? [],
+    establishmentAdsBySlot: row.establishment_ads_by_slot ?? [],
+    freelancerLinksBySlot: row.freelancer_links_by_slot ?? [],
+    establishmentLinksBySlot: row.establishment_links_by_slot ?? [],
     allowedFreelancerSlots: row.allowed_freelancer_slots ?? [],
     allowedEstablishmentSlots: row.allowed_establishment_slots ?? [],
     includeFreelancerAd: row.include_freelancer_ad ?? false,
@@ -416,6 +424,10 @@ function mapUserToDbUser(user: User): Partial<DbUser> {
     freelancer_links: user.freelancerLinks ?? [],
     establishment_ads: user.establishmentAds ?? [],
     establishment_links: user.establishmentLinks ?? [],
+    freelancer_ads_by_slot: user.freelancerAdsBySlot ?? [],
+    establishment_ads_by_slot: user.establishmentAdsBySlot ?? [],
+    freelancer_links_by_slot: user.freelancerLinksBySlot ?? [],
+    establishment_links_by_slot: user.establishmentLinksBySlot ?? [],
     allowed_freelancer_slots: user.allowedFreelancerSlots ?? [],
     allowed_establishment_slots: user.allowedEstablishmentSlots ?? [],
     include_freelancer_ad: user.includeFreelancerAd ?? false,
@@ -958,6 +970,12 @@ export async function dbUpdateUser(id: string, patch: Partial<User>): Promise<vo
   if (patch.allowedEstablishmentSlots !== undefined) dbPatch.allowed_establishment_slots = patch.allowedEstablishmentSlots;
   if (patch.includeFreelancerAd !== undefined) dbPatch.include_freelancer_ad = patch.includeFreelancerAd;
   if (patch.includeEstablishmentAd !== undefined) dbPatch.include_establishment_ad = patch.includeEstablishmentAd;
+
+  // ADICIONADO: Mapeamento correto para os slots e links por slot
+  if (patch.freelancerAdsBySlot !== undefined) dbPatch.freelancer_ads_by_slot = patch.freelancerAdsBySlot;
+  if (patch.establishmentAdsBySlot !== undefined) dbPatch.establishment_ads_by_slot = patch.establishmentAdsBySlot;
+  if (patch.freelancerLinksBySlot !== undefined) dbPatch.freelancer_links_by_slot = patch.freelancerLinksBySlot;
+  if (patch.establishmentLinksBySlot !== undefined) dbPatch.establishment_links_by_slot = patch.establishmentLinksBySlot;
 
   if (patch.adImages !== undefined) {
     dbPatch.ad_images = patch.adImages;
