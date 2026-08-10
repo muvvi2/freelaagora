@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   Send, Check, Lock, Shield, Wallet, MapPin, MessageCircle, Star, Loader2,
-  ArrowRight, DollarSign, Phone, Download,
+  ArrowRight, DollarSign, Phone, Download, Clock,
 } from 'lucide-react';
 import { useApp } from '@/AppContext';
 import { useToast } from './ui/Toast';
@@ -13,10 +13,10 @@ import { formatCurrency, formatDateBR, contractStatusLabel, contractStepIndex, C
 import { ReviewModal } from './ReviewModal';
 import type { Contract } from '@/types';
 
-const STEP_ICONS = [Send, Check, Wallet, MapPin, DollarSign];
+const STEP_ICONS = [Send, Check, Wallet, Clock, MapPin, DollarSign];
 
 export function EscrowFlowModal({ contract, open, onClose }: { contract: Contract; open: boolean; onClose: () => void }) {
-  const { currentUser, confirmAvailability, payEscrow, checkInFreelancer, finishService, cancelContract } = useApp();
+  const { currentUser, confirmAvailability, payEscrow, requestCheckIn, confirmCheckIn, finishService, cancelContract } = useApp();
   const { notify } = useToast();
   const [processing, setProcessing] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -25,7 +25,7 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
   const isFreelancer = currentUser.id === contract.freelancerId;
   const isEstablishment = currentUser.id === contract.establishmentId;
   const stepIdx = contractStepIndex(contract.status);
-  const contactUnlocked = contract.status === 'paid' || contract.status === 'checked_in' || contract.status === 'completed';
+  const contactUnlocked = contract.status === 'paid' || contract.status === 'check_in_pending' || contract.status === 'checked_in' || contract.status === 'completed';
   const canReview = contract.status === 'completed';
 
   const handlePay = () => {
@@ -86,7 +86,7 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
         {/* Cost breakdown */}
         <div className="mt-5 space-y-2 rounded-xl border border-neutral-200 p-4 dark:border-neutral-700">
           <Row label="Valor do freela" value={formatCurrency(contract.freelancerFee)} />
-          <Row label={`Taxa de intermediação (${contract.platformFeePercentage}%)`} value={contract.platformFee === 0 ? 'Isento (VIP 3)' : formatCurrency(contract.platformFee)} />
+          <Row label={`Taxa de intermediação (${contract.platformFeePercentage}%)`} value={contract.platformFee === 0 ? 'Isento' : formatCurrency(contract.platformFee)} />
           <div className="border-t border-dashed border-neutral-200 pt-2 dark:border-neutral-700">
             <Row label="Total pago em garantia" value={formatCurrency(contract.total)} bold />
           </div>
@@ -138,26 +138,45 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
                 <div className="rounded-xl border border-primary-200 bg-primary-50 p-4 dark:border-primary-500/30 dark:bg-primary-500/10">
                   <div className="flex items-center gap-2">
                     <Loader2 className="h-5 w-5 animate-spin text-primary-500" />
-                    <p className="text-sm font-semibold text-primary-700 dark:text-primary-300">Processando via Cora Gateway...</p>
+                    <p className="text-sm font-semibold text-primary-700 dark:text-primary-300">Processando pagamento...</p>
                   </div>
-                  <p className="mt-1 text-xs text-primary-600 dark:text-primary-400">PIX/Boleto em processamento · {formatCurrency(contract.total)}</p>
+                  <p className="mt-1 text-xs text-primary-600 dark:text-primary-400">Garantia em processamento · {formatCurrency(contract.total)}</p>
                 </div>
               )}
               <Button fullWidth size="lg" onClick={handlePay} disabled={processing}>
-                {processing ? <><Loader2 className="h-5 w-5 animate-spin" /> Processando PIX...</> : <><Lock className="h-5 w-5" /> Pagar {formatCurrency(contract.total)} via Cora (PIX/Boleto)</>}
+                {processing ? <><Loader2 className="h-5 w-5 animate-spin" /> Processando...</> : <><Lock className="h-5 w-5" /> Pagar {formatCurrency(contract.total)} em Garantia</>}
               </Button>
             </div>
           )}
 
+          {/* 🛠️ CHECK-IN DUPLO: Botão do Freelancer para registrar chegada */}
           {isFreelancer && contract.status === 'paid' && (
-            <Button fullWidth size="lg" variant="secondary" onClick={() => { checkInFreelancer(contract.id); notify('Check-in geolocalizado registrado!'); }}>
-              <MapPin className="h-5 w-5" /> Check-in Geolocalizado (Cheguei ao Local)
+            <Button fullWidth size="lg" variant="secondary" onClick={() => { requestCheckIn(contract.id); notify('Check-in registrado! Aguardando confirmação do estabelecimento.'); }}>
+              <MapPin className="h-5 w-5" /> Registrar Chegada (Fazer Check-in)
             </Button>
+          )}
+
+          {isFreelancer && contract.status === 'check_in_pending' && (
+            <div className="rounded-xl border border-warning-200 bg-warning-50 p-3 text-center dark:border-warning-500/30 dark:bg-warning-500/10">
+              <p className="text-xs font-semibold text-warning-700 dark:text-warning-300">⏳ Check-in enviado. Aguardando o estabelecimento confirmar sua presença no local.</p>
+            </div>
+          )}
+
+          {/* 🛠️ CHECK-IN DUPLO: Botão do Estabelecimento para validar a presença */}
+          {isEstablishment && contract.status === 'check_in_pending' && (
+            <div className="space-y-2">
+              <div className="rounded-xl border border-warning-200 bg-warning-50 p-3 text-center dark:border-warning-500/30 dark:bg-warning-500/10">
+                <p className="text-xs font-semibold text-warning-700 dark:text-warning-300">🔔 O profissional registrou chegada! Confirme a presença para iniciar o turno.</p>
+              </div>
+              <Button fullWidth size="lg" variant="primary" onClick={() => { confirmCheckIn(contract.id); notify('Presença do profissional confirmada com sucesso!'); }}>
+                <Check className="h-5 w-5" /> Confirmar Presença do Profissional
+              </Button>
+            </div>
           )}
 
           {isFreelancer && contract.status === 'checked_in' && (
             <Button fullWidth size="lg" variant="secondary" onClick={handleFinish} disabled={processing}>
-              {processing ? <><Loader2 className="h-5 w-5 animate-spin" /> Processando split payment...</> : <><Check className="h-5 w-5" /> Finalizar Serviço (Check-out)</>}
+              {processing ? <><Loader2 className="h-5 w-5 animate-spin" /> Processando repasse...</> : <><Check className="h-5 w-5" /> Finalizar Serviço (Check-out)</>}
             </Button>
           )}
 
@@ -173,13 +192,6 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
             </button>
           )}
         </div>
-
-        {contract.coraInvoiceId && (
-          <div className="mt-3 flex items-center gap-2 rounded-lg bg-neutral-50 px-3 py-2 dark:bg-neutral-800">
-            <DollarSign className="h-4 w-4 text-primary-500" />
-            <span className="text-xs text-neutral-500">Fatura Cora: <span className="font-mono font-semibold text-neutral-700 dark:text-neutral-300">{contract.coraInvoiceId}</span></span>
-          </div>
-        )}
 
         {/* History */}
         <div className="mt-5 border-t border-neutral-100 pt-4 dark:border-neutral-800">
@@ -197,7 +209,7 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
         {contract.status === 'completed' && (
           <div className="mt-4">
             <Button fullWidth size="lg" variant="outline" onClick={() => downloadTaxReceipt(contract)}>
-              <Download className="h-5 w-5" /> Baixar Comprovante de Prestação (Imposto de Renda / Contabilidade)
+              <Download className="h-5 w-5" /> Baixar Comprovante de Prestação (Contabilidade)
             </Button>
           </div>
         )}
