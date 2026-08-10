@@ -46,15 +46,18 @@ export function VipSquareWidget({ pageType = 'freelancers', slot = 1 }: { pageTy
 
   const currentAd = activeAds[currentIndex % activeAds.length];
   
+  // Regras CSS exatas para o card-anuncio
   const sizeClass = slot === 1 
     ? 'aspect-[600/900]' 
     : slot === 2 
-    ? 'h-[235px] w-full' 
+    ? 'w-full max-w-[380px] h-[250px]' 
     : 'aspect-[3/1]';
 
+  const imageFit = slot === 2 ? 'object-contain bg-neutral-50 dark:bg-neutral-900' : 'object-cover';
+
   return (
-    <a href={currentAd.linkUrl || '#'} target="_blank" rel="noopener noreferrer" className={`block w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition-transform hover:scale-[1.01] dark:border-neutral-800 dark:bg-neutral-900 ${sizeClass}`}>
-      <img src={currentAd.imageUrl} alt="Anúncio" className="w-full h-full object-cover" />
+    <a href={currentAd.linkUrl || '#'} target="_blank" rel="noopener noreferrer" className={`block overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition-transform hover:scale-[1.01] dark:border-neutral-800 dark:bg-neutral-900 ${sizeClass}`}>
+      <img src={currentAd.imageUrl} alt="Anúncio" className={`w-full h-full ${imageFit}`} />
     </a>
   );
 }
