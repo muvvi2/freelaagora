@@ -76,11 +76,14 @@ export function estPlanPrice(tier: EstTier, period: Period, plans?: EstVipPlan[]
   return getEstPlan(tier, plans).prices[period];
 }
 
+// BUSCA A TAXA CONFIGURADA NO PAINEL ADMIN (Dinâmico)
 export function getIntermediationFeePercent(user: User, plans?: EstVipPlan[]): number {
   if (user.accountType !== 'establishment') return 15.0;
   if (isEstablishmentOnTrial(user)) return 0;
+  
+  // Busca o plano dinamicamente baseado na config vinda do Admin Panel
   const plan = getEstPlan(user.estVipTier ?? 'free', plans);
-  return plan.intermediationFee;
+  return plan.intermediationFee ?? 0;
 }
 
 export function isEstablishmentOnTrial(user: User): boolean {
@@ -101,7 +104,8 @@ export function trialDaysLeft(user: User): number {
 
 export function calculateFees(freelancerFee: number, feePercent: number): { fee: number; total: number } {
   const percentFee = Math.round(freelancerFee * (feePercent / 100) * 100) / 100;
-  const fixedFee = feePercent >= 15 ? 2.0 : 0.0;
+  // A taxa fixa de 2.0 apenas se houver cobrança percentual
+  const fixedFee = feePercent > 0 ? 2.0 : 0.0;
   const fee = Math.round((percentFee + fixedFee) * 100) / 100;
   const total = Math.round((freelancerFee + fee) * 100) / 100;
   return { fee, total };
@@ -360,7 +364,7 @@ export function generateTaxReceipt(contract: {
   <tbody>
     <tr><td>Valor Bruto da Diária do Freelancer</td><td style="text-align:right">${formatCurrency(contract.freelancerFee)}</td></tr>
     <tr><td>Taxa de Intermediação da Plataforma (${contract.platformFeePercentage}%)</td><td style="text-align:right">${formatCurrency(contract.platformFee)}</td></tr>
-    <tr class="total-row"><td>Total Pago via Cora Gateway</td><td style="text-align:right">${formatCurrency(contract.total)}</td></tr>
+    <tr class="total-row"><td>Total Pago em Garantia</td><td style="text-align:right">${formatCurrency(contract.total)}</td></tr>
   </tbody>
 </table>
 <div class="disclaimer">
