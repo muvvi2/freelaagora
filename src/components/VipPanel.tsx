@@ -72,6 +72,7 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
   const [couponError, setCouponError] = useState('');
   const [billingType, setBillingType] = useState<BillingType>('WALLET');
   const [pixData, setPixData] = useState<{ qrCode: string; payload: string } | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Abas para Freelancers e Estabelecimentos (0: Topo, 1: Centro, 2: Rodapé)
   const [activeFreelaTab, setActiveFreelaTab] = useState<number>(0);
@@ -684,24 +685,33 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
               <Button 
                 size="sm" 
                 variant="warning"
-                onClick={() => {
-                  updateUser(userId, {
-                    allowedFreelancerSlots: selectedFreelancerSlots,
-                    allowedEstablishmentSlots: selectedEstablishmentSlots,
-                    freelancerAdsBySlot,
-                    establishmentAdsBySlot,
-                    freelancerLinksBySlot,
-                    establishmentLinksBySlot,
-                    freelancerAds: freelancerAdsBySlot.flat(),
-                    establishmentAds: establishmentAdsBySlot.flat(),
-                    freelancerLinks: freelancerLinksBySlot.flat(),
-                    establishmentLinks: establishmentLinksBySlot.flat(),
-                  });
-                  notify('Banners e links salvos com sucesso no sistema!', 'success');
+                type="button"
+                disabled={isSaving}
+                onClick={async () => {
+                  setIsSaving(true);
+                  try {
+                    await updateUser(userId, {
+                      allowedFreelancerSlots: selectedFreelancerSlots,
+                      allowedEstablishmentSlots: selectedEstablishmentSlots,
+                      freelancerAdsBySlot,
+                      establishmentAdsBySlot,
+                      freelancerLinksBySlot,
+                      establishmentLinksBySlot,
+                      freelancerAds: freelancerAdsBySlot.flat(),
+                      establishmentAds: establishmentAdsBySlot.flat(),
+                      freelancerLinks: freelancerLinksBySlot.flat(),
+                      establishmentLinks: establishmentLinksBySlot.flat(),
+                    });
+                    notify('Banners e links salvos com sucesso no sistema!', 'success');
+                  } catch (e) {
+                    notify('Erro ao salvar os banners.', 'error');
+                  } finally {
+                    setIsSaving(false);
+                  }
                 }}
                 className="gap-2"
               >
-                <Check className="h-4 w-4" /> Salvar Banners
+                {isSaving ? 'Salvando...' : <><Check className="h-4 w-4" /> Salvar Banners</>}
               </Button>
             </div>
             <p className="text-xs text-neutral-400">
