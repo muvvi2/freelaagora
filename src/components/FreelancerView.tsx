@@ -223,7 +223,18 @@ export function FreelancerView() {
               <h2 className="font-display text-lg font-bold text-neutral-900 dark:text-white">Agenda interativa de disponibilidade</h2>
               <p className="text-sm text-neutral-400">Selecione o turno ativo e clique nos dias do calendário para marcar sua disponibilidade. As cores indicam: laranja = manhã, azul claro = tarde, roxo = noite.</p>
             </div>
-            <AvailabilityCalendar dateAvailability={me.dateAvailability} editable onToggle={(dateKey: string, shift: ShiftSlot) => toggleDateShift(me.id, dateKey, shift)} />
+            <AvailabilityCalendar 
+              dateAvailability={me.dateAvailability} 
+              editable 
+              onToggle={(dateKey: string, shift: ShiftSlot) => {
+                toggleDateShift(me.id, dateKey, shift);
+                const currentDay = me.dateAvailability?.[dateKey] || { manha: false, tarde: false, noite: false };
+                const updatedDay = { ...currentDay, [shift]: !currentDay[shift] };
+                const newAvailability = { ...(me.dateAvailability || {}), [dateKey]: updatedDay };
+                updateUser(me.id, { dateAvailability: newAvailability });
+                notify('Agenda salva com sucesso!');
+              }} 
+            />
           </section>
         )}
 
