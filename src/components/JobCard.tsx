@@ -13,10 +13,11 @@ import { JobFormModal } from './JobFormModal';
 const urgencyTone = { hoje: 'error', amanha: 'warning', esta_semana: 'secondary' } as const;
 
 export function JobCard({ job, variant = 'manage' }: { job: Job; variant?: 'manage' | 'apply' }) {
-  const { data, pauseJob, deleteJob, applyToJob, currentUser, categoryById } = useApp();
+  const { data, pauseJob, deleteJob, applyToJob, requestHire, currentUser, categoryById } = useApp();
   const { notify } = useToast();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [showApplicants, setShowApplicants] = useState(false);
 
   const applied = currentUser ? job.applicants.includes(currentUser.id) : false;
   const paused = job.status === 'paused';
@@ -29,6 +30,7 @@ export function JobCard({ job, variant = 'manage' }: { job: Job; variant?: 'mana
   };
 
   const establishment = data.users.find((u) => u.id === job.establishmentId);
+  const applicantsList = data?.users?.filter((u) => job.applicants?.includes(u.id)) || [];
 
   // Verifica se o usuário logado já tem um contrato pago/confirmado com este estabelecimento para esta vaga
   const hasActiveContract = currentUser ? data.contracts.some(
@@ -75,11 +77,18 @@ export function JobCard({ job, variant = 'manage' }: { job: Job; variant?: 'mana
         <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-neutral-500 dark:text-neutral-400">
           <span className="inline-flex items-center gap-1"><Calendar className="h-3.5 w-3.5" /> {formatDate(job.date)}</span>
           <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {job.startTime} · {job.hours}h</span>
-          {variant === 'manage' && <span className="inline-flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {job.applicants.length} candidato(s)</span>}
+          {variant === 'manage' && (
+            <button 
+              onClick={() => setShowApplicants(true)}
+              className="inline-flex items-center gap-1 text-primary-600 dark:text-primary-400 font-semibold hover:underline cursor-pointer"
+            >
+              <Users className="h-3.5 w-3.5" /> {job.applicants.length} candidato(s)
+            </button>
+          )}
         </div>
 
         <div className="flex items-center justify-between border-t border-neutral-100 pt-3 dark:border-neutral-800">
-          <p className="font-display text-lg font-extrabold text-neutral-900 dark:text-white">{formatCurrency(job.value)}</p>
+          <p className="font-display text-lg font-extrabold text-neutral-900 dark:text-white">{formatCurrency(job.value ?? job.dailyRate ?? 0)}</p>
           {variant === 'manage' ? (
             <div className="flex gap-1.5">
               <Button size="sm" variant="outline" onClick={() => setEditing(true)}><Pencil className="h-3.5 w-3.5" /></Button>
@@ -96,9 +105,41 @@ export function JobCard({ job, variant = 'manage' }: { job: Job; variant?: 'mana
         </div>
       </div>
 
+      {/* Modal de Exclusão */}
       <Modal open={confirmDelete} onClose={() => setConfirmDelete(false)} title="Excluir vaga" size="sm"
         footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={() => setConfirmDelete(false)}>Cancelar</Button><Button variant="danger" fullWidth onClick={() => { deleteJob(job.id); setConfirmDelete(false); notify('Vaga excluída', 'warning'); }}><Trash2 className="h-4 w-4" /> Excluir</Button></div>}>
         <p className="text-sm text-neutral-600 dark:text-neutral-300">Excluir a vaga <strong>"{job.title}"</strong>?</p>
+      </Modal>
+
+      {/* Modal para Listar Candidatos */}
+      <Modal open={showApplicants} onClose={() => setShowApplicants(false)} title={`Candidatos (${applicantsList.length})`} size="md">
+        <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+          {applicantsList.length === 0 ? (
+            <p className="text-center text-sm text-neutral-400 py-8">Nenhum candidato nesta vaga ainda.</p>
+          ) : (
+            applicantsList.map((applicant) => (
+              <div key={applicant.id} className="flex items-center justify-between p-3 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50">
+                <div className="flex items-center gap-3">
+                  <Avatar src={applicant.photo} alt={applicant.name} size={40} />
+                  <div>
+                    <p className="font-semibold text-sm text-neutral-900 dark:text-white">{applicant.name}</p>
+                    <p className="text-xs text-neutral-400">Diária: {formatCurrency(applicant.dailyRate || job.dailyRate || job.value || 0)}</p>
+                  </div>
+                </div>
+                <Button 
+                  size="sm" 
+                  onClick={() => {
+                    requestHire(job.establishmentId, applicant.id, job.id, job.hours, applicant.dailyRate || job.dailyRate || job.value || 0);
+                    notify('Solicitação de contratação enviada com sucesso!');
+                    setShowApplicants(false);
+                  }}
+                >
+                  Contratar
+                </Button>
+              </div>
+            ))
+          )}
+        </div>
       </Modal>
 
       {editing && establishment && <JobFormModal key={job.id} open={editing} onClose={() => setEditing(false)} editing={job} establishment={establishment} />}
