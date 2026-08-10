@@ -41,288 +41,109 @@ export function ContractorView() {
   const [editEstablishment, setEditEstablishment] = useState(false);
   const [viewVipPage, setViewVipPage] = useState(false);
 
-  if (!currentUser || !data) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <p className="text-sm text-neutral-400">Carregando painel do estabelecimento...</p>
-      </div>
-    );
-  }
+  if (!currentUser || !data) return <div className="p-8 text-center text-neutral-400">Carregando...</div>;
 
   const me = currentUser;
   const myJobs = data.jobs?.filter((j) => j.establishmentId === me.id) || [];
   const myContracts = data.contracts?.filter((c) => c.establishmentId === me.id) || [];
 
-  const handleGps = () => {
-    if (useGps) { setUseGps(false); return; }
-    if (!navigator.geolocation) { notify('Geolocalização não suportada neste navegador.', 'warning'); return; }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => { setGpsLat(pos.coords.latitude); setGpsLng(pos.coords.longitude); setUseGps(true); notify('Localização GPS detectada com sucesso!'); },
-      () => { notify('Não foi possível obter sua localização GPS.', 'warning'); },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  };
-
-  const establishmentCity = me.address?.city || 'Pitangueiras';
-  const establishmentState = me.address?.state || 'SP';
-
-  const origin = useGps && gpsLat != null && gpsLng != null
-    ? { cep: '', street: '', number: '', neighborhood: '', city: 'GPS Atual', state: establishmentState, lat: gpsLat, lng: gpsLng }
-    : (me.address || { cep: '', street: '', number: '', neighborhood: '', city: establishmentCity, state: establishmentState, lat: -21.01, lng: -48.22 });
+  const origin = useGps && gpsLat != null && gpsLng != null ? { city: 'GPS', state: 'SP', lat: gpsLat, lng: gpsLng } : (me.address || { city: 'Pitangueiras', state: 'SP', lat: -21.01, lng: -48.22 });
 
   const filtered = useMemo(() => {
-    if (!data.users) return [];
-    let list = data.users.filter((f) => {
+    return data.users.filter((f) => {
       if (f.accountType !== 'freelancer' || f.isAdmin || f.banned) return false;
       if (!isUnlimited && !isWithinRadius(f, origin, radiusKm)) return false;
-
-      if (macroFilter !== 'all') {
-        const macroCats = CATEGORIES.filter((c) => c.macro === macroFilter).map((c) => c.id);
-        if (!(f.categories ?? []).some((c) => macroCats.includes(c))) return false;
-      }
+      if (macroFilter !== 'all' && !(f.categories ?? []).some((c) => CATEGORIES.find(cat => cat.id === c)?.macro === macroFilter)) return false;
       if (category !== 'all' && !(f.categories ?? []).includes(category)) return false;
-      if ((f.rating ?? 0) < minRating) return false;
-      if (dateFilter === 'today' && !isAvailableToday(f)) return false;
-      if (dateFilter === 'tomorrow' && !isAvailableTomorrow(f)) return false;
-      if (dateFilter === 'custom' && customDate && !isFreelancerAvailableOn(f, customDate)) return false;
-      if (query) {
-        const q = query.toLowerCase();
-        const catLabels = (f.categories ?? []).map((c) => categoryById(c)?.label.toLowerCase() ?? '').join(' ');
-        if (!f.name.toLowerCase().includes(q) && !catLabels.includes(q) && !(f.bio ?? '').toLowerCase().includes(q)) return false;
-      }
       return true;
-    });
+    }).sort((a, b) => distanceBetween(a.address, origin) - distanceBetween(b.address, origin));
+  }, [data.users, origin, radiusKm, isUnlimited, macroFilter, category]);
 
-    const tierRank: Record<string, number> = { vip3: 0, vip2: 1, vip1: 2, free: 3 };
-    list = [...list].sort((a, b) => {
-      const tierDiff = (tierRank[a.vipTier ?? 'free'] ?? 3) - (tierRank[b.vipTier ?? 'free'] ?? 3);
-      if (tierDiff !== 0) return tierDiff;
-      if (sortBy === 'rating') return (b.rating ?? 0) - (a.rating ?? 0);
-      if (sortBy === 'price') return (a.dailyRate ?? 9999) - (b.dailyRate ?? 9999);
-      return distanceBetween(a.address, origin) - distanceBetween(b.address, origin);
-    });
-    return list;
-  }, [data.users, origin, radiusKm, isUnlimited, macroFilter, category, minRating, dateFilter, customDate, query, sortBy, categoryById]);
-
-  const handleHire = (f: User) => {
-    const hours = 8;
-    const fee = f.dailyRate ?? 0;
-    if (fee <= 0) { notify('Este freelancer não definiu um valor de diária ainda.', 'warning'); return; }
-    const contract = requestHire(me.id, f.id, null, hours, fee);
-    setEscrowContract(contract);
-    notify('Solicitação de contratação enviada! Aguarde a confirmação do freelancer.');
-  };
-
-  if (viewVipPage) {
-    return (
-      <VipPanel 
-        userId={me.id} 
-        accountType="establishment" 
-        onBack={() => setViewVipPage(false)} 
-      />
-    );
-  }
+  if (viewVipPage) return <VipPanel userId={me.id} accountType="establishment" onBack={() => setViewVipPage(false)} />;
 
   return (
-    <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 space-y-6">
+    <div className="mx-auto max-w-[1400px] px-4 py-6 space-y-6">
       
-      {/* SEÇÃO DO TOPO: ANÚNCIO (SLOT 1) NO TOPO ESQUERDO + PERFIL E STATS COMPACTOS À DIREITA */}
-      <div className="grid gap-6 lg:grid-cols-[280px_1fr] items-start">
+      {/* 1. TOPO: Perfil e Anúncio Principal */}
+      <div className="grid gap-6 lg:grid-cols-[300px_1fr] items-start">
+        <div className="w-full aspect-[600/900] overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800">
+           <VipSquareWidget pageType="establishments" slot={1} />
+        </div>
         
-        {/* COLUNA ESQUERDA: Anúncio Vertical Slot 1 (Posicionado no Topo Esquerdo) */}
-        <aside className="w-full">
-          <div className="w-full aspect-[600/900] overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
-             <VipSquareWidget pageType="establishments" slot={1} />
-          </div>
-        </aside>
-
-        {/* COLUNA DIREITA: Perfil Compacto + Métricas Reduzidas */}
         <div className="space-y-4">
-          
-          {/* PERFIL COMPACTO */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900 shadow-xs">
+          <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-neutral-200 shadow-sm dark:bg-neutral-900 dark:border-neutral-800">
             <div className="flex items-center gap-3">
-              <Avatar src={me.photo} alt={me.name} size={52} />
+              <Avatar src={me.photo} alt={me.name} size={48} />
               <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="font-display text-lg font-extrabold text-neutral-900 dark:text-white">{me.name}</h1>
-                  <Badge tone="primary">{me.establishmentType}</Badge>
-                </div>
-                <p className="text-xs text-neutral-400 mt-0.5">{establishmentCity} - {establishmentState} · <Rating value={me.rating ?? 0} count={me.reviewsCount ?? 0} /></p>
+                <h1 className="font-bold text-lg">{me.name}</h1>
+                <Badge tone="primary">{me.establishmentType}</Badge>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" onClick={() => setEditEstablishment(true)}><Pencil className="h-3.5 w-3.5" /> Editar Perfil</Button>
-              <Button size="sm" className="bg-gradient-to-r from-warning-500 to-warning-600 text-white shadow-md hover:from-warning-600 hover:to-warning-700" onClick={() => setViewVipPage(true)}><Crown className="h-3.5 w-3.5" /> Plano VIP & Banners</Button>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => setEditEstablishment(true)}><Pencil className="h-4 w-4 mr-1" /> Editar</Button>
+              <Button size="sm" onClick={() => setViewVipPage(true)}><Crown className="h-4 w-4 mr-1" /> VIP</Button>
             </div>
           </div>
-
-          {isEstablishmentOnTrial(me) && (
-            <div className="flex items-center gap-3 rounded-2xl border border-success-200 bg-success-50 p-3.5 dark:border-success-500/30 dark:bg-success-500/10">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-success-500 text-white">
-                <Crown className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="font-display text-xs font-bold text-success-800 dark:text-success-300">
-                  Período de teste gratuito — {trialDaysLeft(me)} dias restantes
-                </p>
-                <p className="text-[11px] text-success-700 dark:text-success-400">Você não paga taxa de intermediação durante os 15 primeiros dias.</p>
-              </div>
-            </div>
-          )}
-
-          {/* CAIXINHAS DE MÉTRICAS REDUZIDAS E EMPURRADAS À DIREITA */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <CompactStatCard icon={Megaphone} label="Vagas publicadas" value={String(myJobs.length)} tone="primary" />
-            <CompactStatCard icon={Users} label="Candidaturas" value={String(myJobs.reduce((acc, j) => acc + j.applicants.length, 0))} tone="secondary" />
-            <CompactStatCard icon={FileText} label="Contratações" value={String(myContracts.length)} tone="accent" />
-            <CompactStatCard icon={MapPin} label="Profissionais próximos" value={String(filtered.length)} tone="neutral" />
+          
+          <div className="grid grid-cols-4 gap-4">
+             <CompactStatCard icon={Megaphone} label="Vagas" value={String(myJobs.length)} tone="primary" />
+             <CompactStatCard icon={Users} label="Candidatos" value={String(myJobs.reduce((acc, j) => acc + j.applicants.length, 0))} tone="secondary" />
+             <CompactStatCard icon={FileText} label="Contratos" value={String(myContracts.length)} tone="accent" />
+             <CompactStatCard icon={MapPin} label="Próximos" value={String(filtered.length)} tone="neutral" />
           </div>
-
         </div>
       </div>
 
-      {/* SEÇÃO INFERIOR: Feed de Profissionais + Barra Lateral de Vagas */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px] items-start">
+      {/* 2. FEED PRINCIPAL */}
+      <div className="grid gap-6 lg:grid-cols-[1fr_360px] items-start">
         
-        {/* COLUNA CENTRAL: Feed de Profissionais */}
+        {/* COLUNA ESQUERDA: Filtros e Profissionais */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="font-display text-lg font-bold text-neutral-900 dark:text-white">Profissionais na sua região</h2>
-              <p className="text-xs text-neutral-400">
-                {isUnlimited ? 'Filtrando por: Km Livre (Nacional)' : `Filtrando a até ${radiusKm} km de ${establishmentCity} - ${establishmentState}.`}
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
-                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por nome, categoria ou descrição..."
-                  className="w-full rounded-xl border border-neutral-200 bg-white py-2.5 pl-10 pr-3 text-sm focus:border-primary-400 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100" />
-              </div>
-              <Button variant="outline" onClick={handleGps} className={useGps ? 'border-secondary-400 text-secondary-600 bg-secondary-50' : ''}><Navigation className={`h-4 w-4 ${useGps ? 'fill-current' : ''}`} /></Button>
-              <Button variant="outline" onClick={() => setShowFilters((s) => !s)} className={showFilters ? 'border-primary-400 text-primary-600' : ''}><SlidersHorizontal className="h-4 w-4" /></Button>
-            </div>
-
-            <div>
-              <p className="mb-2 text-xs font-semibold text-neutral-500">Categorias:</p>
-              {/* CATEGORIAS EM 3 COLUNAS */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                <button
-                  onClick={() => { setMacroFilter('all'); setCategory('all'); }}
-                  className={`rounded-xl px-3 py-2 text-xs font-semibold transition text-center truncate ${macroFilter === 'all' ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'}`}
-                >
-                  Todas
-                </button>
-                {MACRO_CATEGORIES.map((m) => (
-                  <button
-                    key={m.id}
-                    onClick={() => { setMacroFilter(m.id); setCategory('all'); }}
-                    className={`rounded-xl px-3 py-2 text-xs font-semibold transition text-center truncate ${macroFilter === m.id ? 'text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'}`}
-                    style={macroFilter === m.id ? { backgroundColor: m.color } : undefined}
-                  >
-                    {m.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3 dark:border-neutral-800 dark:bg-neutral-900">
-              <div className="flex items-center gap-3 flex-1 min-w-[200px]">
-                <MapPin className="h-4 w-4 shrink-0 text-neutral-400" />
-                <span className="text-xs font-semibold text-neutral-500">Distância</span>
-                <input type="range" min={1} max={100} disabled={isUnlimited} value={radiusKm} onChange={(e) => setRadiusKm(Number(e.target.value))} className={`flex-1 accent-primary-500 ${isUnlimited ? 'opacity-40' : ''}`} />
-                <span className="w-16 text-right text-xs font-bold text-neutral-700 dark:text-neutral-300">{isUnlimited ? 'Ilimitado' : `${radiusKm}km`}</span>
-              </div>
-              <Button size="sm" variant={isUnlimited ? 'warning' : 'outline'} onClick={() => setIsUnlimited(!isUnlimited)}>
-                <Globe className="h-4 w-4" /> {isUnlimited ? 'Km Livre Ativo' : 'Ativar Km Livre'}
-              </Button>
-            </div>
+          <h2 className="text-lg font-bold">Profissionais na sua região</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+            <button onClick={() => { setMacroFilter('all'); setCategory('all'); }} className={`p-2 text-xs font-semibold rounded-lg ${macroFilter === 'all' ? 'bg-neutral-900 text-white' : 'bg-neutral-100'}`}>Todas</button>
+            {MACRO_CATEGORIES.map(m => (
+              <button key={m.id} onClick={() => setMacroFilter(m.id)} className={`p-2 text-xs font-semibold rounded-lg ${macroFilter === m.id ? 'text-white' : 'bg-neutral-100'}`} style={macroFilter === m.id ? { backgroundColor: m.color } : {}}>{m.label}</button>
+            ))}
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            {filtered.map((f) => <FreelancerCard key={f.id} freelancer={f} onHire={handleHire} onView={setViewing} distanceKm={distanceBetween(f.address, origin)} />)}
+            {filtered.map(f => <FreelancerCard key={f.id} freelancer={f} onHire={() => {}} onView={setViewing} distanceKm={distanceBetween(f.address, origin)} />)}
           </div>
-          {filtered.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-neutral-300 py-12 text-center dark:border-neutral-700">
-              <p className="text-neutral-400">Nenhum profissional encontrado com esses filtros.</p>
-            </div>
-          )}
         </div>
 
-        {/* COLUNA DIREITA: Minhas Vagas, Slot 2, Restante, Slot 3, Contratações (Alinhada ao topo com sticky) */}
-        <aside className="sticky top-24 space-y-6">
+        {/* COLUNA DIREITA: Minhas Vagas (Sticky) */}
+        <aside className="sticky top-24 space-y-4">
           <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="font-display font-bold text-neutral-900 dark:text-white">Minhas vagas</h3>
-              <Button size="sm" onClick={() => setJobForm({ open: true, editing: null })}><Plus className="h-4 w-4" /> Publicar</Button>
-            </div>
-            <div className="space-y-3">
-              {myJobs.length === 0 && <p className="py-6 text-center text-sm text-neutral-400">Nenhuma vaga publicada.</p>}
-              {myJobs.length > 0 && <JobCard job={myJobs[0]} variant="manage" />}
-            </div>
+             <div className="flex justify-between items-center mb-4">
+                <h3 className="font-bold">Minhas vagas</h3>
+                <Button size="sm" onClick={() => setJobForm({ open: true, editing: null })}><Plus className="h-4 w-4" /></Button>
+             </div>
+             {myJobs.length > 0 && <JobCard job={myJobs[0]} variant="manage" />}
+             
+             {/* SLOT 2 LOGO ABAIXO DA PRIMEIRA VAGA */}
+             <div className="mt-4 w-full aspect-[6/5] overflow-hidden rounded-xl">
+               <VipSquareWidget pageType="establishments" slot={2} />
+             </div>
+
+             {myJobs.slice(1).map(j => <JobCard key={j.id} job={j} variant="manage" />)}
           </div>
-
-          {/* SLOT 2: CENTRO (600x500) */}
-          <div className="w-full aspect-[6/5] overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
-            <VipSquareWidget pageType="establishments" slot={2} />
-          </div>
-
-          {myJobs.slice(1).length > 0 && (
-            <div className="space-y-3">
-              {myJobs.slice(1).map((j) => <JobCard key={j.id} job={j} variant="manage" />)}
-            </div>
-          )}
-
-          {/* SLOT 3: RODAPÉ (600x200) */}
-          <div className="w-full aspect-[3/1] overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
-            <VipSquareWidget pageType="establishments" slot={3} />
-          </div>
-
-          {myContracts.length > 0 && (
-            <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
-              <h3 className="mb-3 font-display font-bold text-neutral-900 dark:text-white">Contratações</h3>
-              <div className="space-y-2">
-                {myContracts.slice(0, 5).map((c) => (
-                  <div key={c.id} className="flex w-full items-center gap-2 rounded-lg border border-neutral-100 p-2 transition hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-800">
-                    <button onClick={() => setEscrowContract(c)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
-                      <Avatar src={c.freelancerPhoto} alt={c.freelancerName} size={32} />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-neutral-800 dark:text-neutral-200">{c.freelancerName}</p>
-                        <p className="text-xs text-neutral-400">{formatCurrency(c.total)}</p>
-                      </div>
-                    </button>
-                    <Badge tone={c.status === 'completed' ? 'success' : c.status === 'paid' ? 'warning' : 'primary'}>{c.status}</Badge>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </aside>
       </div>
 
-      {viewing && <FreelancerDetailModal freelancer={viewing} open={!!viewing} onClose={() => setViewing(null)} onHire={handleHire} />}
-      {escrowContract && <EscrowFlowModal contract={escrowContract} open={!!escrowContract} onClose={() => setEscrowContract(null)} />}
+      {/* Modais */}
+      {viewing && <FreelancerDetailModal freelancer={viewing} open={!!viewing} onClose={() => setViewing(null)} onHire={() => {}} />}
       <JobFormModal open={jobForm.open} onClose={() => setJobForm({ open: false, editing: null })} editing={jobForm.editing} establishment={me} />
-      <EstablishmentEditModal establishment={me} open={editEstablishment} onClose={() => setEditEstablishment(false)} />
     </div>
   );
 }
 
-function CompactStatCard({ icon: Icon, label, value, tone }: { icon: typeof Store; label: string; value: string; tone: 'primary' | 'secondary' | 'accent' | 'neutral' }) {
-  const toneClass = {
-    primary: 'bg-primary-100 text-primary-600 dark:bg-primary-500/15 dark:text-primary-400',
-    secondary: 'bg-secondary-100 text-secondary-600 dark:bg-secondary-500/15 dark:text-secondary-400',
-    accent: 'bg-accent-100 text-accent-600 dark:bg-accent-500/15 dark:text-accent-400',
-    neutral: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300',
-  }[tone];
+function CompactStatCard({ icon: Icon, label, value, tone }: { icon: any, label: string, value: string, tone: string }) {
   return (
-    <div className="flex items-center gap-2.5 rounded-xl border border-neutral-200 bg-white p-2.5 dark:border-neutral-800 dark:bg-neutral-900">
-      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${toneClass}`}><Icon className="h-4 w-4" /></div>
-      <div className="min-w-0"><p className="font-display text-base font-extrabold leading-none text-neutral-900 dark:text-white">{value}</p><p className="mt-0.5 truncate text-[11px] text-neutral-400">{label}</p></div>
+    <div className="flex flex-col items-center justify-center p-3 rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
+      <Icon className="h-5 w-5 mb-1 text-primary-500" />
+      <span className="text-xl font-bold">{value}</span>
+      <span className="text-[10px] text-neutral-400 uppercase">{label}</span>
     </div>
   );
 }
