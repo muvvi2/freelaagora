@@ -673,18 +673,42 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
           </div>
         )}
 
-        {/* BIBLIOTECA DE IMAGENS COMPACTA COM FREELANCERS E ESTABELECIMENTOS LADO A LADO */}
+        {/* BIBLIOTECA DE IMAGENS COMPACTA COM BOTÃO DE SALVAMENTO DIRETO */}
         {accountType === 'establishment' && (
           <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 shadow-lg space-y-6">
-            <div className="flex items-center gap-2">
-              <ImageIcon className="h-5 w-5 text-amber-400" />
-              <h3 className="font-display text-base font-bold text-white">Biblioteca de Imagens e Links dos Anúncios</h3>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="h-5 w-5 text-amber-400" />
+                <h3 className="font-display text-base font-bold text-white">Biblioteca de Imagens e Links dos Anúncios</h3>
+              </div>
+              <Button 
+                size="sm" 
+                variant="warning"
+                onClick={() => {
+                  updateUser(userId, {
+                    allowedFreelancerSlots: selectedFreelancerSlots,
+                    allowedEstablishmentSlots: selectedEstablishmentSlots,
+                    freelancerAdsBySlot,
+                    establishmentAdsBySlot,
+                    freelancerLinksBySlot,
+                    establishmentLinksBySlot,
+                    freelancerAds: freelancerAdsBySlot.flat(),
+                    establishmentAds: establishmentAdsBySlot.flat(),
+                    freelancerLinks: freelancerLinksBySlot.flat(),
+                    establishmentLinks: establishmentLinksBySlot.flat(),
+                  });
+                  notify('Banners e links salvos com sucesso no sistema!', 'success');
+                }}
+                className="gap-2"
+              >
+                <Check className="h-4 w-4" /> Salvar Banners
+              </Button>
             </div>
             <p className="text-xs text-neutral-400">
-              Gerencie seus banners utilizando as abas. O sistema valida rigorosamente as dimensões exatas e respeita o limite do seu plano ({maxAdsPerSlot} anúncios por slot).
+              Gerencie seus banners utilizando as abas. O sistema valida rigorosamente as dimensões exatas e respeita o limite do seu plano ({maxAdsPerSlot} anúncios por slot). Clique em <strong>Salvar Banners</strong> para atualizar.
             </p>
 
-            {/* Grid lado a lado para Freelancers e Estabelecimentos (1 coluna em telas pequenas, 2 colunas em telas maiores) */}
+            {/* Grid lado a lado para Freelancers e Estabelecimentos */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Coluna Freelancers */}
               <div className="space-y-2 bg-neutral-950/40 p-4 rounded-xl border border-neutral-800/80">
