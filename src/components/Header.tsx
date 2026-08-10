@@ -9,7 +9,7 @@ import { VipSquareWidget } from './VipSquareWidget';
 import type { AppNotification } from '@/types';
 
 export function Header({ onNavigateHome, onNavigateVip }: { onNavigateHome?: () => void; onNavigateVip?: () => void }) {
-  const { currentUser, logout, userNotifications, markAllNotificationsRead, markNotificationRead, isAdmin, adminTab, setAdminTab, adminMode, exitAdminMode } = useApp();
+  const { currentUser, logout, userNotifications, markAllNotificationsRead, markNotificationRead, isAdmin, adminTab, setAdminTab, adminMode, exitAdminMode, updateUser } = useApp();
   const { theme, toggle } = useTheme();
   const [notifOpen, setNotifOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -44,13 +44,11 @@ export function Header({ onNavigateHome, onNavigateVip }: { onNavigateHome?: () 
     return () => document.removeEventListener('mousedown', onClick);
   }, []);
 
-  const { updateUser } = useApp();
-
   if (!currentUser) return null;
 
   return (
     <header className="sticky top-0 z-40 border-b border-neutral-200/70 bg-white/85 backdrop-blur-xl dark:border-neutral-800/70 dark:bg-neutral-950/85">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
+      <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
         <div className="flex items-center gap-3">
           <img src="/image.png" alt="FreelaAgora" className="h-16 w-auto max-w-[240px] object-contain sm:h-20 sm:max-w-[300px]" />
           <button
@@ -67,6 +65,11 @@ export function Header({ onNavigateHome, onNavigateVip }: { onNavigateHome?: () 
             <Home className="h-4 w-4 text-primary-500" />
             <span className="hidden sm:inline">Início</span>
           </button>
+        </div>
+
+        {/* SLOT 1 VISÍVEL NO HEADER */}
+        <div className="hidden md:block w-48 h-12 overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-sm">
+          <VipSquareWidget pageType={currentUser.accountType === 'establishment' ? 'establishments' : 'freelancers'} slot={1} />
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
@@ -117,11 +120,6 @@ export function Header({ onNavigateHome, onNavigateVip }: { onNavigateHome?: () 
                 </div>
                 
                 <div className="p-2 space-y-2">
-                  {/* SLOT 1 NO HEADER (ACIMA DA CARTEIRA) */}
-                  <div className="overflow-hidden rounded-xl border border-neutral-100 dark:border-neutral-800">
-                    <VipSquareWidget pageType={currentUser.accountType === 'establishment' ? 'establishments' : 'freelancers'} slot={1} />
-                  </div>
-
                   <div className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-neutral-600 dark:text-neutral-300">
                     <span className="inline-flex items-center gap-2"><Wallet className="h-4 w-4 text-primary-500" /> Carteira</span>
                     <span className="font-bold">{formatCurrency(balance)}</span>
