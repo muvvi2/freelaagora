@@ -30,14 +30,7 @@ function getDayBackground(dayShifts: Record<ShiftSlot, boolean> | undefined): st
     if (active[0] === 'tarde') return 'bg-sky-400 text-white border-sky-500';
     return 'bg-purple-500 text-white border-purple-600';
   }
-  if (active.length === 2) {
-    const stops: string[] = [];
-    if (active.includes('manha')) stops.push('#f59e0b');
-    if (active.includes('tarde')) stops.push('#38bdf8');
-    if (active.includes('noite')) stops.push('#a855f7');
-    return `text-white border-neutral-300`;
-  }
-  return `text-white border-neutral-300`;
+  return 'text-white border-neutral-300';
 }
 
 function getDayGradient(dayShifts: Record<ShiftSlot, boolean> | undefined): string | undefined {
@@ -46,10 +39,12 @@ function getDayGradient(dayShifts: Record<ShiftSlot, boolean> | undefined): stri
   if (dayShifts.manha) active.push('#f59e0b');
   if (dayShifts.tarde) active.push('#38bdf8');
   if (dayShifts.noite) active.push('#a855f7');
-  if (active.length === 0) return undefined;
-  if (active.length === 1) return undefined;
-  const pct = Math.floor(100 / active.length);
-  return `linear-gradient(${active.map((c, i) => `${c} ${i * pct}% ${i * pct + pct}%`).join(', ')})`;
+  if (active.length <= 1) return undefined;
+  
+  if (active.length === 2) {
+    return `linear-gradient(135deg, ${active[0]} 50%, ${active[1]} 50%)`;
+  }
+  return `linear-gradient(135deg, #f59e0b 33%, #38bdf8 33% 66%, #a855f7 66%)`;
 }
 
 export function AvailabilityCalendar({
@@ -165,7 +160,7 @@ export function AvailabilityCalendar({
           const baseClass = 'relative flex h-9 items-center justify-center rounded-lg border text-xs font-medium transition sm:h-11 sm:text-sm';
           let stateClass = '';
           if (gradient) {
-            stateClass = 'border-neutral-300 text-white';
+            stateClass = 'border-neutral-300 text-white font-bold shadow-sm';
           } else if (solidBg) {
             stateClass = solidBg;
           } else if (isPast) {
@@ -214,11 +209,11 @@ export function AvailabilityCalendar({
           );
         })}
         <div className="flex items-center gap-1.5">
-          <span className="h-3 w-3 rounded" style={{ background: 'linear-gradient(#f59e0b 0% 50%, #38bdf8 50% 100%)' }} />
+          <span className="h-3 w-3 rounded" style={{ background: 'linear-gradient(135deg, #f59e0b 50%, #38bdf8 50%)' }} />
           <span className="text-xs text-neutral-600 dark:text-neutral-400">2 turnos</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="h-3 w-3 rounded" style={{ background: 'linear-gradient(#f59e0b 0% 33%, #38bdf8 33% 66%, #a855f7 66% 100%)' }} />
+          <span className="h-3 w-3 rounded" style={{ background: 'linear-gradient(135deg, #f59e0b 33%, #38bdf8 33% 66%, #a855f7 66%)' }} />
           <span className="text-xs text-neutral-600 dark:text-neutral-400">3 turnos</span>
         </div>
       </div>
