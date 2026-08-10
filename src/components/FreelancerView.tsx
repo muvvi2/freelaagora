@@ -101,10 +101,10 @@ export function FreelancerView() {
 
       <div className="mt-6">
         {tab === 'opportunities' && (
-          <div className="grid gap-6 lg:grid-cols-[280px_1fr] items-start">
+          <div className="grid gap-6 lg:grid-cols-[280px_1fr_1fr] items-start">
             
-            {/* COLUNA 1: Convites Diretos + SLOT 3 NO RODAPÉ ESQUERDO DA PÁGINA */}
-            <div className="space-y-6">
+            {/* COLUNA 1: Convites Diretos no topo e Slot 3 forçado no rodapé esquerdo da página */}
+            <div className="flex flex-col justify-between h-full space-y-6">
               <section className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
                 <h2 className="mb-4 flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white"><Inbox className="h-5 w-5 text-primary-500" /> Convites Diretos</h2>
                 {activeInvites.length > 0 ? (
@@ -126,13 +126,13 @@ export function FreelancerView() {
               </section>
 
               {/* SLOT 3: Exatamente no rodapé da página do lado esquerdo */}
-              <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
+              <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm mt-auto">
                 <VipSquareWidget pageType="freelancers" slot={3} />
               </div>
             </div>
 
-            {/* COLUNA 2: Mural de Vagas em 2 Colunas com o SLOT 2 na 2ª coluna da 2ª linha */}
-            <section className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm space-y-4">
+            {/* COLUNA 2 E COLUNA 3: Mural de Vagas unificado (ocupando as 2 colunas da direita) */}
+            <section className="lg:col-span-2 rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-neutral-100 dark:border-neutral-800">
                 <h2 className="flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white">
                   <Megaphone className="h-5 w-5 text-secondary-500" /> Mural de Vagas
@@ -153,7 +153,7 @@ export function FreelancerView() {
               </div>
 
               {openJobs.length > 0 ? (
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-start">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
                   {/* Linha 1 */}
                   {openJobs[0] && <JobCard job={openJobs[0]} variant="apply" />}
                   {openJobs[1] && <JobCard job={openJobs[1]} variant="apply" />}
@@ -289,7 +289,6 @@ function SpecialtiesTab({ me, onToggleCat, onSave }: { me: any; onToggleCat: (ca
     <section className="rounded-2xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm space-y-6">
       <h2 className="flex items-center gap-2 font-display text-lg font-bold text-neutral-900 dark:text-white"><Tags className="h-5 w-5 text-primary-500" /> Especialidades e Valores</h2>
       
-      {/* Container com scroll para evitar centenas de linhas esticando a página (Ideal para VIP 4 com muitas categorias) */}
       {me.categories?.length > 0 && (
         <div className="space-y-3 rounded-xl border border-neutral-200 p-4 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50">
           <p className="text-xs font-semibold uppercase text-neutral-500">Definir Valores Individuais por Especialidade ({me.categories.length} selecionadas)</p>
