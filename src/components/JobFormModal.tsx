@@ -40,43 +40,63 @@ export function JobFormModal({ open, onClose, editing, establishment }: { open: 
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!title.trim()) { notify('Informe um título para a vaga', 'warning'); return; }
 
-    if (editing) {
-      updateJob(editing.id, { title, category, description, date: new Date(date).toISOString(), startTime, hours: Number(hours) || 1, value: Number(value) || 0, urgency });
-      notify('Vaga atualizada');
-      onClose();
-    } else {
-      const job: Job = {
-        id: uid('job'),
-        establishmentId: currentEstablishment.id,
-        establishmentName: currentEstablishment.name,
-        establishmentPhoto: currentEstablishment.photo,
-        category,
-        title,
-        description,
-        date: new Date(date).toISOString(),
-        startTime,
-        hours: Number(hours) || 1,
-        value: Number(value) || 0,
-        urgency,
-        status: 'active',
-        city: currentEstablishment.address.city,
-        state: currentEstablishment.address.state,
-        applicants: [],
-        createdAt: new Date().toISOString(),
-      };
+    try {
+      if (editing) {
+        const result = await updateJob(editing.id, { 
+          title, 
+          category, 
+          description, 
+          date: new Date(date).toISOString(), 
+          startTime, 
+          hours: Number(hours) || 1, 
+          value: Number(value) || 0, 
+          urgency 
+        });
 
-      const result = addJob(job);
+        if (result && !result.ok) {
+          notify(result.error ?? 'Erro ao atualizar a vaga.', 'error');
+          return;
+        }
 
-      if (result && !result.ok) {
-        notify(result.error ?? 'Limite de vagas atingido para o seu plano.', 'error');
-        return; 
+        notify('Vaga atualizada com sucesso!');
+        onClose();
+      } else {
+        const job: Job = {
+          id: uid('job'),
+          establishmentId: currentEstablishment.id,
+          establishmentName: currentEstablishment.name,
+          establishmentPhoto: currentEstablishment.photo,
+          category,
+          title,
+          description,
+          date: new Date(date).toISOString(),
+          startTime,
+          hours: Number(hours) || 1,
+          value: Number(value) || 0,
+          urgency,
+          status: 'active',
+          city: currentEstablishment.address.city,
+          state: currentEstablishment.address.state,
+          applicants: [],
+          createdAt: new Date().toISOString(),
+        };
+
+        const result = await addJob(job);
+
+        if (result && !result.ok) {
+          notify(result.error ?? 'Limite de vagas atingido para o seu plano.', 'error');
+          return; 
+        }
+
+        notify('Vaga urgente publicada no feed!');
+        onClose();
       }
-
-      notify('Vaga urgente publicada no feed!');
-      onClose();
+    } catch (err: any) {
+      console.error('Erro crítico ao salvar vaga:', err);
+      notify(err.message || 'Erro inesperado ao salvar vaga', 'error');
     }
   };
 
@@ -88,7 +108,6 @@ export function JobFormModal({ open, onClose, editing, establishment }: { open: 
           <Input label="Título da vaga" placeholder="Ex: Cobertura de sexta à noite" value={title} onChange={(e) => setTitle(e.target.value)} />
         </div>
         
-        {/* SELETORES EM LINHA (Substituiu o bloco duplo gigante que escondia os campos) */}
         <Select label="Setor Principal (Macro)" value={selectedMacro} onChange={(e) => handleMacroChange(e.target.value)}>
           {MACRO_CATEGORIES.map((macro) => (
             <option key={macro.id} value={macro.id}>{macro.label}</option>
