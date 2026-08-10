@@ -77,7 +77,7 @@ export function FreelancerView() {
             <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
               <Rating value={me.rating ?? 0} count={me.reviewsCount ?? 0} />
               <span className="inline-flex items-center gap-1 text-sm text-neutral-400"><Briefcase className="h-4 w-4" /> {me.completedShifts ?? 0} turnos</span>
-              <span className="text-sm text-neutral-400">{me.unlimitedKm ? '🌐 KM Livre / Atuação Digital' : `${me.address?.city}, ${me.address?.state}`}</span>
+              <span className="text-sm text-neutral-400">{me.unlimitedKm ? '🌐 KM Livre / Disponível para viagens' : `${me.address?.city}, ${me.address?.state}`}</span>
             </div>
             <p className="mt-3 text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">{me.bio ?? 'Sem biografia. Edite seu perfil para adicionar uma descrição.'}</p>
           </div>
@@ -258,7 +258,7 @@ function PersonalTab({ me, onSave }: { me: any; onSave: (patch: any) => void }) 
   );
 }
 
-// ABA ENDEREÇO COM OPÇÃO DE KM LIVRE
+// ABA ENDEREÇO COM OPÇÃO DE KM LIVRE / VIAGENS
 function AddressTab({ me, onSave }: { me: any; onSave: (patch: any) => void }) {
   const [cep, setCep] = useState(me.address?.cep || '');
   const [street, setStreet] = useState(me.address?.street || '');
@@ -279,8 +279,8 @@ function AddressTab({ me, onSave }: { me: any; onSave: (patch: any) => void }) {
         <div className="flex items-center gap-3">
           <Globe className="h-6 w-6 text-primary-600 dark:text-primary-400" />
           <div>
-            <p className="font-semibold text-sm text-neutral-900 dark:text-white">KM Livre / Atuação Remota ou Digital</p>
-            <p className="text-xs text-neutral-500">Permite receber propostas e vagas de qualquer região, ideal para trabalhos digitais ou presenciais sem limite de distância.</p>
+            <p className="font-semibold text-sm text-neutral-900 dark:text-white">KM Livre / Disponível para viagens</p>
+            <p className="text-xs text-neutral-500">Permite receber propostas e vagas de qualquer região ou cidade, ideal para profissionais que viajam para prestar serviços.</p>
           </div>
         </div>
         <input type="checkbox" checked={unlimitedKm} onChange={(e) => setUnlimitedKm(e.target.checked)} className="h-5 w-5 rounded border-neutral-300 text-primary-600 focus:ring-primary-500" />
