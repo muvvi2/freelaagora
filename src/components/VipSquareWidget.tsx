@@ -2,44 +2,35 @@ import { useState, useEffect } from 'react';
 import { Crown, ExternalLink } from 'lucide-react';
 import { useApp } from '@/AppContext';
 
-// Widget agora exige a prop 'slot' (1, 2 ou 3) para exibir o banner correto no local correto
 export function VipSquareWidget({ 
   pageType = 'freelancers', 
-  slot 
+  slot = 1 
 }: { 
-  pageType?: 'freelancers' | 'establishments', 
-  slot: 1 | 2 | 3 
+  pageType?: 'freelancers' | 'establishments'; 
+  slot?: number; 
 }) {
   const { data } = useApp();
-  
-  const slotIndex = slot - 1;
   const activeAds: { establishmentName: string; imageUrl: string; linkUrl: string; city: string; state: string }[] = [];
   
   data.users.forEach((u) => {
+    // Verifica se é um estabelecimento com plano ativo ou em período de testes
     if (u.accountType === 'establishment' && u.estVipTier && u.estVipTier !== 'free') {
-      const isOnTrial = u.trialEndsAt ? new Date(u.trialEndsAt) > new Date() : false;
-      const currentTier = isOnTrial ? 'trial' : u.estVipTier;
-      const plan = data.estVipPlans.find((p) => p.tier === currentTier);
+      const adsBySlot = pageType === 'freelancers' 
+        ? (u.freelancerAdsBySlot || [u.freelancerAds || [], [], []]) 
+        : (u.establishmentAdsBySlot || [u.establishmentAds || [], [], []]);
 
-      if (plan?.allowAds || ['vip4', 'vip5', 'vip6', 'trial'].includes(currentTier)) {
-        const adsBySlot = pageType === 'freelancers' 
-          ? (u.freelancerAdsBySlot || [[], [], []]) 
-          : (u.establishmentAdsBySlot || [[], [], []]);
+      const linksBySlot = pageType === 'freelancers' 
+        ? (u.freelancerLinksBySlot || [u.freelancerLinks || [], [], []]) 
+        : (u.establishmentLinksBySlot || [u.establishmentLinks || [], [], []]);
 
-        const linksBySlot = pageType === 'freelancers' 
-          ? (u.freelancerLinksBySlot || [[], [], []]) 
-          : (u.establishmentLinksBySlot || [[], [], []]);
-
-        const allowedSlots = pageType === 'freelancers' ? (u.allowedFreelancerSlots || [1, 2, 3]) : (u.allowedEstablishmentSlots || [1, 2, 3]);
-
-        // Filtra apenas o slot que este componente deve exibir
-        if (allowedSlots.includes(slot)) {
-          const slotAds = adsBySlot[slotIndex] || [];
+      // Varre todas as imagens cadastradas nos slots deste usuário
+      adsBySlot.forEach((slotAds, sIndex) => {
+        if (Array.isArray(slotAds)) {
           slotAds.forEach((img, imgIndex) => {
-            if (img && img.trim() !== '') {
-              const link = linksBySlot[slotIndex]?.[imgIndex] || '';
+            if (img && typeof img === 'string' && img.trim() !== '') {
+              const link = linksBySlot[sIndex]?.[imgIndex] || '';
               activeAds.push({
-                establishmentName: u.name,
+                establishmentName: u.name || 'Estabelecimento',
                 imageUrl: img,
                 linkUrl: link,
                 city: u.address?.city || '',
@@ -48,7 +39,7 @@ export function VipSquareWidget({
             }
           });
         }
-      }
+      });
     }
   });
 
@@ -62,12 +53,13 @@ export function VipSquareWidget({
     return () => clearInterval(timer);
   }, [activeAds.length]);
 
+  // Se realmente não houver nenhuma imagem cadastrada no sistema inteiro, não renderiza nada
   if (activeAds.length === 0) return null;
-  const currentAd = activeAds[currentIndex];
+
+  const currentAd = activeAds[currentIndex % activeAds.length];
 
   return (
     <a href={currentAd.linkUrl || '#'} target="_blank" rel="noopener noreferrer" className="block w-full group">
-      {/* Container com largura total, altura fixa de banner (h-48), sem aspect-square */}
       <div className="rounded-2xl border border-amber-300/50 bg-neutral-900 p-3 shadow-lg w-full flex flex-col transition-transform hover:scale-[1.01]">
         <div className="flex justify-between items-center mb-2">
            <span className="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full">
@@ -75,7 +67,6 @@ export function VipSquareWidget({
            </span>
         </div>
         
-        {/* Imagem com object-cover para não distorcer */}
         <div className="relative w-full h-40 sm:h-48 rounded-xl overflow-hidden bg-black">
           <img src={currentAd.imageUrl} alt={currentAd.establishmentName} className="w-full h-full object-cover" />
         </div>
