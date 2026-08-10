@@ -103,7 +103,7 @@ export function FreelancerView() {
         {tab === 'opportunities' && (
           <div className="grid gap-6 lg:grid-cols-[280px_1fr_1fr] items-start">
             
-            {/* COLUNA 1: Convites Diretos no topo e Slot 3 forçado no rodapé esquerdo da página */}
+            {/* COLUNA 1: Convites Diretos no topo + SLOT 3 no rodapé esquerdo da página */}
             <div className="flex flex-col justify-between h-full space-y-6">
               <section className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
                 <h2 className="mb-4 flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white"><Inbox className="h-5 w-5 text-primary-500" /> Convites Diretos</h2>
@@ -125,13 +125,13 @@ export function FreelancerView() {
                 )}
               </section>
 
-              {/* SLOT 3: Exatamente no rodapé da página do lado esquerdo */}
+              {/* SLOT 3: Exatamente no rodapé esquerdo da página */}
               <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm mt-auto">
                 <VipSquareWidget pageType="freelancers" slot={3} />
               </div>
             </div>
 
-            {/* COLUNA 2 E COLUNA 3: Mural de Vagas unificado (ocupando as 2 colunas da direita) */}
+            {/* COLUNA 2 E 3: Mural de Vagas unificado (ocupando as 2 colunas da direita) com Slot 2 exato na 2ª coluna da 2ª linha */}
             <section className="lg:col-span-2 rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-neutral-100 dark:border-neutral-800">
                 <h2 className="flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white">
@@ -158,7 +158,7 @@ export function FreelancerView() {
                   {openJobs[0] && <JobCard job={openJobs[0]} variant="apply" />}
                   {openJobs[1] && <JobCard job={openJobs[1]} variant="apply" />}
 
-                  {/* Linha 2 - Coluna 1: Vaga / Coluna 2: SLOT 2 */}
+                  {/* Linha 2 - Coluna 1 da direita: Vaga / Coluna 2 da direita: SLOT 2 */}
                   {openJobs[2] && <JobCard job={openJobs[2]} variant="apply" />}
                   <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
                     <VipSquareWidget pageType="freelancers" slot={2} />
