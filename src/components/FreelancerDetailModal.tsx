@@ -78,7 +78,7 @@ export function FreelancerDetailModal({ freelancer: f, open, onClose, onHire }: 
           <div className="space-y-2">
             {f.categories.map((cid) => {
               const cat = categoryById(cid);
-              const customRate = f.categoryRates?[cid];
+              const customRate = f.categoryRates?.[cid];
               return (
                 <div key={cid} className="flex items-center justify-between p-2.5 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 text-sm">
                   <span className="font-semibold text-neutral-800 dark:text-neutral-200">{cat?.label ?? cid}</span>
