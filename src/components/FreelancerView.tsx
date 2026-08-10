@@ -131,7 +131,7 @@ export function FreelancerView() {
               </div>
             </div>
 
-            {/* COLUNA 2 E 3: Mural de Vagas unificado (ocupando as 2 colunas da direita) com Slot 2 exato na 2ª coluna da 2ª linha */}
+            {/* COLUNAS 2 E 3: Mural de Vagas unificado com Slot 2 exatamente do tamanho de um card */}
             <section className="lg:col-span-2 rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-neutral-100 dark:border-neutral-800">
                 <h2 className="flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white">
@@ -154,18 +154,19 @@ export function FreelancerView() {
 
               {openJobs.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
-                  {/* Linha 1 */}
-                  {openJobs[0] && <JobCard job={openJobs[0]} variant="apply" />}
-                  {openJobs[1] && <JobCard job={openJobs[1]} variant="apply" />}
-
-                  {/* Linha 2 - Coluna 1 da direita: Vaga / Coluna 2 da direita: SLOT 2 */}
-                  {openJobs[2] && <JobCard job={openJobs[2]} variant="apply" />}
-                  <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
-                    <VipSquareWidget pageType="freelancers" slot={2} />
+                  {/* Coluna 1 do Mural */}
+                  <div className="space-y-3">
+                    {openJobs.map((j, i) => (i % 2 === 0 ? <JobCard key={j.id} job={j} variant="apply" /> : null))}
                   </div>
 
-                  {/* Demais vagas */}
-                  {openJobs.slice(3).map((j) => <JobCard key={j.id} job={j} variant="apply" />)}
+                  {/* Coluna 2 do Mural (Com o Slot 2 ocupando o espaço exato de um card de vaga) */}
+                  <div className="space-y-3">
+                    {openJobs[1] && <JobCard job={openJobs[1]} variant="apply" />}
+                    <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
+                      <VipSquareWidget pageType="freelancers" slot={2} />
+                    </div>
+                    {openJobs.map((j, i) => (i > 1 && i % 2 !== 0 ? <JobCard key={j.id} job={j} variant="apply" /> : null))}
+                  </div>
                 </div>
               ) : (
                 <div className="rounded-xl bg-neutral-50 p-8 text-center dark:bg-neutral-800/50">
@@ -289,19 +290,29 @@ function SpecialtiesTab({ me, onToggleCat, onSave }: { me: any; onToggleCat: (ca
     <section className="rounded-2xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm space-y-6">
       <h2 className="flex items-center gap-2 font-display text-lg font-bold text-neutral-900 dark:text-white"><Tags className="h-5 w-5 text-primary-500" /> Especialidades e Valores</h2>
       
+      {/* 1. CONFIGURAÇÃO GLOBAL */}
+      <div className="bg-neutral-50 dark:bg-neutral-800/50 p-4 rounded-xl border border-neutral-200 dark:border-neutral-700">
+        <h3 className="text-sm font-bold text-neutral-900 dark:text-white mb-3">Configuração Global (Padrão)</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <Input label="Valor Padrão da Hora (R$/h)" type="number" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} />
+          <Input label="Valor Padrão da Diária (R$)" type="number" value={dailyRate} onChange={(e) => setDailyRate(e.target.value)} />
+        </div>
+      </div>
+
+      {/* 2. CONFIGURAÇÃO ESPECÍFICA (Scrollável) */}
       {me.categories?.length > 0 && (
-        <div className="space-y-3 rounded-xl border border-neutral-200 p-4 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50">
-          <p className="text-xs font-semibold uppercase text-neutral-500">Definir Valores Individuais por Especialidade ({me.categories.length} selecionadas)</p>
-          <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
+        <div className="space-y-3">
+          <h3 className="text-sm font-bold text-neutral-900 dark:text-white">Valores por Categoria Selecionada ({me.categories.length})</h3>
+          <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
             {me.categories.map((catId: string) => {
               const cat = CATEGORIES.find(c => c.id === catId);
               if (!cat) return null;
               const currentRate = categoryRates[catId] || { hourly: '', daily: '' };
               return (
-                <div key={catId} className="flex flex-col sm:flex-row items-center gap-3 bg-white dark:bg-neutral-900 p-3 rounded-xl border border-neutral-200 dark:border-neutral-700">
-                  <span className="text-sm font-semibold flex-1 text-neutral-900 dark:text-white">{cat.label}</span>
-                  <input type="number" placeholder="R$/h" className="w-28 rounded-lg border border-neutral-200 p-2 text-sm dark:bg-neutral-800 dark:border-neutral-700 text-neutral-900 dark:text-white" value={currentRate.hourly} onChange={(e) => setCategoryRates({ ...categoryRates, [catId]: { ...currentRate, hourly: e.target.value } })} />
-                  <input type="number" placeholder="Diária R$" className="w-28 rounded-lg border border-neutral-200 p-2 text-sm dark:bg-neutral-800 dark:border-neutral-700 text-neutral-900 dark:text-white" value={currentRate.daily} onChange={(e) => setCategoryRates({ ...categoryRates, [catId]: { ...currentRate, daily: e.target.value } })} />
+                <div key={catId} className="flex items-center gap-3 bg-white dark:bg-neutral-900 p-3 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                  <span className="text-sm font-medium flex-1 text-neutral-700 dark:text-neutral-300">{cat.label}</span>
+                  <input type="number" placeholder="R$/h" className="w-24 rounded-md border border-neutral-200 p-1.5 text-xs text-neutral-900 dark:text-white dark:bg-neutral-800" value={currentRate.hourly} onChange={(e) => setCategoryRates({ ...categoryRates, [catId]: { ...currentRate, hourly: e.target.value } })} />
+                  <input type="number" placeholder="R$ Diária" className="w-24 rounded-md border border-neutral-200 p-1.5 text-xs text-neutral-900 dark:text-white dark:bg-neutral-800" value={currentRate.daily} onChange={(e) => setCategoryRates({ ...categoryRates, [catId]: { ...currentRate, daily: e.target.value } })} />
                 </div>
               );
             })}
@@ -331,10 +342,6 @@ function SpecialtiesTab({ me, onToggleCat, onSave }: { me: any; onToggleCat: (ca
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 pt-2">
-        <Input label="Valor Padrão da Hora (R$/h)" type="number" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} />
-        <Input label="Valor Padrão da Diária (R$)" type="number" value={dailyRate} onChange={(e) => setDailyRate(e.target.value)} />
-      </div>
       <Button className="mt-4" onClick={() => onSave({ hourlyRate: Number(hourlyRate), dailyRate: Number(dailyRate), categoryRates })}><Save className="h-4 w-4" /> Salvar valores</Button>
     </section>
   );
