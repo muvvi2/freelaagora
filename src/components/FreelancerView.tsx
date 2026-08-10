@@ -101,10 +101,10 @@ export function FreelancerView() {
 
       <div className="mt-6">
         {tab === 'opportunities' && (
-          <div className="space-y-6">
-            <div className="grid gap-6 lg:grid-cols-[280px_1fr_320px] items-start">
-              
-              {/* COLUNA 1: Convites Diretos */}
+          <div className="grid gap-6 lg:grid-cols-[280px_1fr] items-start">
+            
+            {/* COLUNA 1: Convites Diretos + SLOT 3 NO RODAPÉ ESQUERDO DA PÁGINA */}
+            <div className="space-y-6">
               <section className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
                 <h2 className="mb-4 flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white"><Inbox className="h-5 w-5 text-primary-500" /> Convites Diretos</h2>
                 {activeInvites.length > 0 ? (
@@ -125,61 +125,56 @@ export function FreelancerView() {
                 )}
               </section>
 
-              {/* COLUNA 2: Mural de Vagas (Com o Slider de KM Escalável e Slot 2 na 2ª coluna da 2ª linha) */}
-              <section className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm space-y-4">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-neutral-100 dark:border-neutral-800">
-                  <h2 className="flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white">
-                    <Megaphone className="h-5 w-5 text-secondary-500" /> Mural de Vagas
-                  </h2>
-                  <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-1.5 text-xs font-medium text-neutral-700 dark:text-neutral-300 cursor-pointer">
-                      <input type="checkbox" checked={me.unlimitedKm} onChange={(e) => updateUser(me.id, { unlimitedKm: e.target.checked })} className="h-3.5 w-3.5 rounded border-neutral-300 text-primary-600 focus:ring-primary-500" /> KM Livre
-                    </label>
-                  </div>
-                </div>
-
-                {/* Slider Escalável 0 a 100km */}
-                <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5 dark:border-neutral-800 dark:bg-neutral-800/50">
-                  <MapPin className="h-4 w-4 shrink-0 text-neutral-400" />
-                  <span className="text-xs font-semibold text-neutral-500">Raio de Atuação:</span>
-                  <input type="range" min={1} max={100} step={1} disabled={me.unlimitedKm} value={radiusKm} onChange={(e) => setRadiusKm(Number(e.target.value))} className={`flex-1 accent-primary-500 ${me.unlimitedKm ? 'opacity-40' : ''}`} />
-                  <span className="w-16 text-right text-xs font-bold text-neutral-700 dark:text-neutral-300">{me.unlimitedKm ? 'Ilimitado' : `${radiusKm}km`}</span>
-                </div>
-
-                {openJobs.length > 0 ? (
-                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-start">
-                    {/* Linha 1 */}
-                    {openJobs[0] && <JobCard job={openJobs[0]} variant="apply" />}
-                    {openJobs[1] && <JobCard job={openJobs[1]} variant="apply" />}
-
-                    {/* Linha 2 - Coluna 1: Vaga / Coluna 2: SLOT 2 */}
-                    {openJobs[2] && <JobCard job={openJobs[2]} variant="apply" />}
-                    <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
-                      <VipSquareWidget pageType="freelancers" slot={2} />
-                    </div>
-
-                    {/* Demais vagas */}
-                    {openJobs.slice(3).map((j) => <JobCard key={j.id} job={j} variant="apply" />)}
-                  </div>
-                ) : (
-                  <div className="rounded-xl bg-neutral-50 p-8 text-center dark:bg-neutral-800/50">
-                    <Megaphone className="mx-auto mb-2 h-8 w-8 text-neutral-300" />
-                    <p className="text-sm text-neutral-400">Nenhuma vaga aberta na sua região no momento.</p>
-                  </div>
-                )}
-              </section>
-
-              {/* COLUNA 3: SLOT 1 NO TOPO */}
-              <aside className="space-y-6">
-                <VipSquareWidget pageType="freelancers" slot={1} />
-              </aside>
-
+              {/* SLOT 3: Exatamente no rodapé da página do lado esquerdo */}
+              <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
+                <VipSquareWidget pageType="freelancers" slot={3} />
+              </div>
             </div>
 
-            {/* LINHA INFERIOR: SLOT 3 ALINHADO EXATAMENTE NO RODAPÉ DA PÁGINA (LADO ESQUERDO) */}
-            <div className="w-full max-w-[320px]">
-              <VipSquareWidget pageType="freelancers" slot={3} />
-            </div>
+            {/* COLUNA 2: Mural de Vagas em 2 Colunas com o SLOT 2 na 2ª coluna da 2ª linha */}
+            <section className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-neutral-100 dark:border-neutral-800">
+                <h2 className="flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white">
+                  <Megaphone className="h-5 w-5 text-secondary-500" /> Mural de Vagas
+                </h2>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-neutral-700 dark:text-neutral-300 cursor-pointer">
+                    <input type="checkbox" checked={me.unlimitedKm} onChange={(e) => updateUser(me.id, { unlimitedKm: e.target.checked })} className="h-3.5 w-3.5 rounded border-neutral-300 text-primary-600 focus:ring-primary-500" /> KM Livre
+                  </label>
+                </div>
+              </div>
+
+              {/* Slider Escalável 0 a 100km */}
+              <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5 dark:border-neutral-800 dark:bg-neutral-800/50">
+                <MapPin className="h-4 w-4 shrink-0 text-neutral-400" />
+                <span className="text-xs font-semibold text-neutral-500">Raio de Atuação:</span>
+                <input type="range" min={1} max={100} step={1} disabled={me.unlimitedKm} value={radiusKm} onChange={(e) => setRadiusKm(Number(e.target.value))} className={`flex-1 accent-primary-500 ${me.unlimitedKm ? 'opacity-40' : ''}`} />
+                <span className="w-16 text-right text-xs font-bold text-neutral-700 dark:text-neutral-300">{me.unlimitedKm ? 'Ilimitado' : `${radiusKm}km`}</span>
+              </div>
+
+              {openJobs.length > 0 ? (
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-start">
+                  {/* Linha 1 */}
+                  {openJobs[0] && <JobCard job={openJobs[0]} variant="apply" />}
+                  {openJobs[1] && <JobCard job={openJobs[1]} variant="apply" />}
+
+                  {/* Linha 2 - Coluna 1: Vaga / Coluna 2: SLOT 2 */}
+                  {openJobs[2] && <JobCard job={openJobs[2]} variant="apply" />}
+                  <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
+                    <VipSquareWidget pageType="freelancers" slot={2} />
+                  </div>
+
+                  {/* Demais vagas */}
+                  {openJobs.slice(3).map((j) => <JobCard key={j.id} job={j} variant="apply" />)}
+                </div>
+              ) : (
+                <div className="rounded-xl bg-neutral-50 p-8 text-center dark:bg-neutral-800/50">
+                  <Megaphone className="mx-auto mb-2 h-8 w-8 text-neutral-300" />
+                  <p className="text-sm text-neutral-400">Nenhuma vaga aberta na sua região no momento.</p>
+                </div>
+              )}
+            </section>
+
           </div>
         )}
 
@@ -206,7 +201,6 @@ export function FreelancerView() {
   );
 }
 
-// Subcomponentes (PersonalTab, AddressTab, SpecialtiesTab, InfoBox)
 function PersonalTab({ me, onSave }: { me: any; onSave: (patch: any) => void }) {
   const [name, setName] = useState(me.name || '');
   const [nickname, setNickname] = useState(me.nickname || '');
@@ -292,50 +286,53 @@ function SpecialtiesTab({ me, onToggleCat, onSave }: { me: any; onToggleCat: (ca
   const filteredCategories = CATEGORIES.filter(cat => cat.macro === selectedMacro);
 
   return (
-    <section className="rounded-2xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
-      <h2 className="mb-6 flex items-center gap-2 font-display text-lg font-bold text-neutral-900 dark:text-white"><Tags className="h-5 w-5 text-primary-500" /> Especialidades e Valores</h2>
+    <section className="rounded-2xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm space-y-6">
+      <h2 className="flex items-center gap-2 font-display text-lg font-bold text-neutral-900 dark:text-white"><Tags className="h-5 w-5 text-primary-500" /> Especialidades e Valores</h2>
       
+      {/* Container com scroll para evitar centenas de linhas esticando a página (Ideal para VIP 4 com muitas categorias) */}
       {me.categories?.length > 0 && (
-        <div className="mb-6 space-y-3 rounded-xl border border-neutral-200 p-4 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50">
-          <p className="text-xs font-semibold uppercase text-neutral-500">Definir Valores Individuais por Especialidade</p>
-          {me.categories.map((catId: string) => {
-            const cat = CATEGORIES.find(c => c.id === catId);
-            if (!cat) return null;
-            const currentRate = categoryRates[catId] || { hourly: '', daily: '' };
-            return (
-              <div key={catId} className="flex flex-col sm:flex-row items-center gap-2 bg-white dark:bg-neutral-900 p-3 rounded-xl border border-neutral-200 dark:border-neutral-700">
-                <span className="text-sm font-semibold flex-1 text-neutral-900 dark:text-white">{cat.label}</span>
-                <input type="number" placeholder="R$/h" className="w-32 rounded-lg border border-neutral-200 p-2 text-sm dark:bg-neutral-800 dark:border-neutral-700" value={currentRate.hourly} onChange={(e) => setCategoryRates({ ...categoryRates, [catId]: { ...currentRate, hourly: e.target.value } })} />
-                <input type="number" placeholder="Diária R$" className="w-32 rounded-lg border border-neutral-200 p-2 text-sm dark:bg-neutral-800 dark:border-neutral-700" value={currentRate.daily} onChange={(e) => setCategoryRates({ ...categoryRates, [catId]: { ...currentRate, daily: e.target.value } })} />
-              </div>
-            );
-          })}
+        <div className="space-y-3 rounded-xl border border-neutral-200 p-4 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50">
+          <p className="text-xs font-semibold uppercase text-neutral-500">Definir Valores Individuais por Especialidade ({me.categories.length} selecionadas)</p>
+          <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
+            {me.categories.map((catId: string) => {
+              const cat = CATEGORIES.find(c => c.id === catId);
+              if (!cat) return null;
+              const currentRate = categoryRates[catId] || { hourly: '', daily: '' };
+              return (
+                <div key={catId} className="flex flex-col sm:flex-row items-center gap-3 bg-white dark:bg-neutral-900 p-3 rounded-xl border border-neutral-200 dark:border-neutral-700">
+                  <span className="text-sm font-semibold flex-1 text-neutral-900 dark:text-white">{cat.label}</span>
+                  <input type="number" placeholder="R$/h" className="w-28 rounded-lg border border-neutral-200 p-2 text-sm dark:bg-neutral-800 dark:border-neutral-700 text-neutral-900 dark:text-white" value={currentRate.hourly} onChange={(e) => setCategoryRates({ ...categoryRates, [catId]: { ...currentRate, hourly: e.target.value } })} />
+                  <input type="number" placeholder="Diária R$" className="w-28 rounded-lg border border-neutral-200 p-2 text-sm dark:bg-neutral-800 dark:border-neutral-700 text-neutral-900 dark:text-white" value={currentRate.daily} onChange={(e) => setCategoryRates({ ...categoryRates, [catId]: { ...currentRate, daily: e.target.value } })} />
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
-      <div className="flex h-[350px] border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden mb-6">
-        <div className="w-1/3 bg-neutral-50 dark:bg-neutral-800 overflow-y-auto border-r border-neutral-200 dark:border-neutral-700">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden p-4 bg-neutral-50 dark:bg-neutral-900">
+        <div className="space-y-1 md:col-span-1">
           {MACRO_CATEGORIES.map(macro => (
-            <button key={macro.id} onClick={() => setSelectedMacro(macro.id)} className={`w-full p-4 text-left text-sm font-medium border-b border-neutral-200 dark:border-neutral-700 transition flex items-center gap-3 ${selectedMacro === macro.id ? 'bg-white dark:bg-neutral-900 border-l-4 border-l-primary-500 text-primary-600' : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'}`}>
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: macro.color }} />
-              {macro.label}
+            <button key={macro.id} onClick={() => setSelectedMacro(macro.id)} className={`w-full p-3 text-left text-xs font-semibold rounded-lg transition flex items-center gap-2.5 ${selectedMacro === macro.id ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 shadow-sm' : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200/50 dark:hover:bg-neutral-800'}`}>
+              <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: macro.color }} />
+              <span className="truncate">{macro.label}</span>
             </button>
           ))}
         </div>
-        <div className="w-2/3 overflow-y-auto p-2">
+        <div className="md:col-span-2 space-y-2 max-h-[350px] overflow-y-auto pr-1">
           {filteredCategories.map(cat => {
             const isSelected = (me.categories || []).includes(cat.id);
             return (
-              <button key={cat.id} onClick={() => onToggleCat(cat.id)} className={`w-full flex items-center justify-between p-3 rounded-lg text-sm transition text-left ${isSelected ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 font-semibold' : 'hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300'}`}>
+              <button key={cat.id} onClick={() => onToggleCat(cat.id)} className={`w-full flex items-center justify-between p-3 rounded-xl text-xs font-medium transition text-left border ${isSelected ? 'bg-primary-50 border-primary-300 text-primary-800 dark:bg-primary-950/40 dark:border-primary-500/40 dark:text-primary-300' : 'bg-white border-neutral-200 hover:bg-neutral-50 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-300'}`}>
                 {cat.label}
-                {isSelected && <Check className="h-4 w-4 text-primary-600" />}
+                {isSelected && <Check className="h-4 w-4 text-primary-600 dark:text-primary-400 shrink-0" />}
               </button>
             );
           })}
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 pt-2">
         <Input label="Valor Padrão da Hora (R$/h)" type="number" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} />
         <Input label="Valor Padrão da Diária (R$)" type="number" value={dailyRate} onChange={(e) => setDailyRate(e.target.value)} />
       </div>
