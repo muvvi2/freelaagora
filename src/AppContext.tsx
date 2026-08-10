@@ -252,12 +252,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (u.id !== userId) return u;
         const da = { ...(u.dateAvailability ?? {}) } as DateAvailability;
         const day = { ...(da[dateKey] ?? { manha: false, tarde: false, noite: false }) };
+        
         day[shift] = !day[shift];
-        if (!day.manha && !day.tarde && !day.noite) { delete da[dateKey]; } else { da[dateKey] = day; }
+        
+        if (!day.manha && !day.tarde && !day.noite) { 
+          delete da[dateKey]; 
+        } else { 
+          da[dateKey] = day; 
+        }
+        
         return { ...u, dateAvailability: da };
       });
+      
       const user = users.find((u) => u.id === userId);
-      if (user?.dateAvailability) void dbUpdateUser(userId, { dateAvailability: user.dateAvailability }).catch(() => {});
+      if (user) {
+        void dbUpdateUser(userId, { dateAvailability: user.dateAvailability ?? {} }).catch((err) => {
+          console.error("Erro ao salvar agenda no banco:", err);
+        });
+      }
       return { ...d, users };
     });
   }, [setData]);
