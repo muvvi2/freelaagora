@@ -51,10 +51,8 @@ export function Header({ onNavigateHome, onNavigateVip }: { onNavigateHome?: () 
   return (
     <header className="sticky top-0 z-40 border-b border-neutral-200/70 bg-white/85 backdrop-blur-xl dark:border-neutral-800/70 dark:bg-neutral-950/85">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
-        {/* Logo e Botão Início */}
         <div className="flex items-center gap-3">
           <img src="/image.png" alt="FreelaAgora" className="h-16 w-auto max-w-[240px] object-contain sm:h-20 sm:max-w-[300px]" />
-          
           <button
             onClick={() => {
               if (onNavigateHome) {
@@ -71,15 +69,12 @@ export function Header({ onNavigateHome, onNavigateVip }: { onNavigateHome?: () 
           </button>
         </div>
 
-        {/* Right actions */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Wallet balance */}
           <div className="hidden items-center gap-1.5 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-1.5 sm:flex dark:border-neutral-800 dark:bg-neutral-900">
             <Wallet className="h-4 w-4 text-primary-500" />
             <span className="text-sm font-bold text-neutral-900 dark:text-white">{formatCurrency(balance)}</span>
           </div>
 
-          {/* Notifications */}
           <div className="relative" ref={notifRef}>
             <button
               onClick={() => setNotifOpen((o) => !o)}
@@ -105,7 +100,6 @@ export function Header({ onNavigateHome, onNavigateVip }: { onNavigateHome?: () 
             )}
           </div>
 
-          {/* User menu */}
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setMenuOpen((o) => !o)}
@@ -123,7 +117,7 @@ export function Header({ onNavigateHome, onNavigateVip }: { onNavigateHome?: () 
                 </div>
                 
                 <div className="p-2 space-y-2">
-                  {/* ANÚNCIO VIP SLOT 1 POSICIONADO EXATAMENTE ACIMA DE CARTEIRA */}
+                  {/* SLOT 1 EXATAMENTE ACIMA DE CARTEIRA */}
                   <div className="overflow-hidden rounded-xl border border-neutral-100 dark:border-neutral-800">
                     <VipSquareWidget pageType={currentUser.accountType === 'establishment' ? 'establishments' : 'freelancers'} slot={1} />
                   </div>
@@ -165,7 +159,6 @@ export function Header({ onNavigateHome, onNavigateVip }: { onNavigateHome?: () 
             )}
           </div>
 
-          {/* Theme toggle */}
           <button
             onClick={toggle}
             className="flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-200 bg-neutral-50 text-neutral-600 transition hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
