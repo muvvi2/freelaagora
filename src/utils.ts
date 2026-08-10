@@ -81,18 +81,15 @@ export function getIntermediationFeePercent(user: User, plans?: EstVipPlan[]): n
   if (user.accountType !== 'establishment') return 15.0;
   if (isEstablishmentOnTrial(user)) return 0;
   
-  // Busca o plano dinamicamente baseado na config vinda do Admin Panel
   const plan = getEstPlan(user.estVipTier ?? 'free', plans);
   return plan.intermediationFee ?? 0;
 }
 
 export function isEstablishmentOnTrial(user: User): boolean {
   if (user.accountType !== 'establishment') return false;
-  
   if (user.estVipTier && user.estVipTier !== 'free' && user.estVipTier !== 'trial') {
     return false;
   }
-  
   return !!user.trialEndsAt && new Date(user.trialEndsAt) > new Date();
 }
 
@@ -110,7 +107,7 @@ export function calculateFees(freelancerFee: number, feePercent: number): { fee:
   return { fee, total };
 }
 
-// 🛠️ ATUALIZADO: Inclui o novo estado intermediário para check-in duplo
+// 🛠️ Inclui o estado intermediário do check-in duplo
 export const CONTRACT_STATUS_FLOW: ContractStatus[] = ['requested', 'confirmed', 'paid', 'check_in_pending', 'checked_in', 'completed'];
 
 export function contractStatusLabel(s: ContractStatus): string {
