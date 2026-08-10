@@ -1,254 +1,7 @@
-import { useState, useMemo } from 'react';
-import { Search, SlidersHorizontal, Plus, Megaphone, Store, Users, FileText, Pencil, MapPin, Navigation, Crown, Globe } from 'lucide-react';
-import { useApp } from '@/AppContext';
-import { useToast } from './ui/Toast';
-import { Button } from './ui/Button';
-import { Badge } from './ui/Badge';
-import { Avatar } from './ui/Avatar';
-import { Rating } from './ui/Rating';
-import { FreelancerCard } from './FreelancerCard';
-import { FreelancerDetailModal } from './FreelancerDetailModal';
-import { JobCard } from './JobCard';
-import { JobFormModal } from './JobFormModal';
-import { EscrowFlowModal } from './EscrowFlowModal';
-import { VipPanel } from './VipPanel';
-import { VipSquareWidget } from './VipSquareWidget';
-import { EstablishmentEditModal } from './EstablishmentEditModal';
-import { CATEGORIES, MACRO_CATEGORIES } from '@/mockData';
-import { formatCurrency, distanceBetween, isWithinRadius, isAvailableToday, isAvailableTomorrow, isFreelancerAvailableOn, isEstablishmentOnTrial, trialDaysLeft } from '@/utils';
-import type { User, Job, Contract } from '@/types';
-
-export function ContractorView() {
-  const { currentUser, data, requestHire, categoryById } = useApp();
-  const { notify } = useToast();
-
-  const [query, setQuery] = useState('');
-  const [category, setCategory] = useState<string>('all');
-  const [macroFilter, setMacroFilter] = useState<string>('all');
-  const [minRating, setMinRating] = useState(0);
-  const [showFilters, setShowFilters] = useState(false);
-  const [sortBy, setSortBy] = useState<'distance' | 'rating' | 'price'>('distance');
-  const [useGps, setUseGps] = useState(false);
-  const [gpsLat, setGpsLat] = useState<number | null>(null);
-  const [gpsLng, setGpsLng] = useState<number | null>(null);
-  const [radiusKm, setRadiusKm] = useState(25);
-  const [isUnlimited, setIsUnlimited] = useState(false);
-  const [dateFilter, setDateFilter] = useState<'any' | 'today' | 'tomorrow' | 'custom'>('any');
-  const [customDate, setCustomDate] = useState('');
-  const [viewing, setViewing] = useState<User | null>(null);
-  const [escrowContract, setEscrowContract] = useState<Contract | null>(null);
-  const [jobForm, setJobForm] = useState<{ open: boolean; editing: Job | null }>({ open: false, editing: null });
-  const [editEstablishment, setEditEstablishment] = useState(false);
-  
-  const [viewVipPage, setViewVipPage] = useState(false);
-
-  if (!currentUser) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <p className="text-sm text-neutral-400">Carregando painel do estabelecimento...</p>
-      </div>
-    );
-  }
-
-  const me = currentUser;
-  const myJobs = data.jobs.filter((j) => j.establishmentId === me.id);
-  const myContracts = data.contracts.filter((c) => c.establishmentId === me.id);
-
-  const handleGps = () => {
-    if (useGps) { setUseGps(false); return; }
-    if (!navigator.geolocation) { notify('Geolocalização não suportada neste navegador.', 'warning'); return; }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => { setGpsLat(pos.coords.latitude); setGpsLng(pos.coords.longitude); setUseGps(true); notify('Localização GPS detectada com sucesso!'); },
-      () => { notify('Não foi possível obter sua localização GPS.', 'warning'); },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  };
-
-  const establishmentCity = me.address?.city || 'Pitangueiras';
-  const establishmentState = me.address?.state || 'SP';
-
-  const origin = useGps && gpsLat != null && gpsLng != null
-    ? { cep: '', street: '', number: '', neighborhood: '', city: 'GPS Atual', state: establishmentState, lat: gpsLat, lng: gpsLng }
-    : (me.address || { cep: '', street: '', number: '', neighborhood: '', city: establishmentCity, state: establishmentState, lat: -21.01, lng: -48.22 });
-
-  const filtered = useMemo(() => {
-    let list = data.users.filter((f) => {
-      if (f.accountType !== 'freelancer' || f.isAdmin || f.banned) return false;
-      if (!isUnlimited && !isWithinRadius(f, origin, radiusKm)) return false;
-
-      if (macroFilter !== 'all') {
-        const macroCats = CATEGORIES.filter((c) => c.macro === macroFilter).map((c) => c.id);
-        if (!(f.categories ?? []).some((c) => macroCats.includes(c))) return false;
-      }
-      if (category !== 'all' && !(f.categories ?? []).includes(category)) return false;
-      if ((f.rating ?? 0) < minRating) return false;
-      if (dateFilter === 'today' && !isAvailableToday(f)) return false;
-      if (dateFilter === 'tomorrow' && !isAvailableTomorrow(f)) return false;
-      if (dateFilter === 'custom' && customDate && !isFreelancerAvailableOn(f, customDate)) return false;
-      if (query) {
-        const q = query.toLowerCase();
-        const catLabels = (f.categories ?? []).map((c) => categoryById(c)?.label.toLowerCase() ?? '').join(' ');
-        if (!f.name.toLowerCase().includes(q) && !catLabels.includes(q) && !(f.bio ?? '').toLowerCase().includes(q)) return false;
-      }
-      return true;
-    });
-
-    const tierRank: Record<string, number> = { vip3: 0, vip2: 1, vip1: 2, free: 3 };
-    list = [...list].sort((a, b) => {
-      const tierDiff = (tierRank[a.vipTier ?? 'free'] ?? 3) - (tierRank[b.vipTier ?? 'free'] ?? 3);
-      if (tierDiff !== 0) return tierDiff;
-      if (sortBy === 'rating') return (b.rating ?? 0) - (a.rating ?? 0);
-      if (sortBy === 'price') return (a.dailyRate ?? 9999) - (b.dailyRate ?? 9999);
-      return distanceBetween(a.address, origin) - distanceBetween(b.address, origin);
-    });
-    return list;
-  }, [data.users, origin, radiusKm, isUnlimited, macroFilter, category, minRating, dateFilter, customDate, query, sortBy, categoryById]);
-
-  const handleHire = (f: User) => {
-    const hours = 8;
-    const fee = f.dailyRate ?? 0;
-    if (fee <= 0) { notify('Este freelancer não definiu um valor de diária ainda.', 'warning'); return; }
-    const contract = requestHire(me.id, f.id, null, hours, fee);
-    setEscrowContract(contract);
-    notify('Solicitação de contratação enviada! Aguarde a confirmação do freelancer.');
-  };
-
-  if (viewVipPage) {
-    return (
-      <VipPanel 
-        userId={me.id} 
-        accountType="establishment" 
-        onBack={() => setViewVipPage(false)} 
-      />
-    );
-  }
-
-  return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 space-y-6">
-      
-      {/* HEADER COMPACTO E LIMPO */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-xs">
-        <div className="flex items-center gap-4">
-          <Avatar src={me.photo} alt={me.name} size={60} />
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="font-display text-xl font-extrabold text-neutral-900 dark:text-white">{me.name}</h1>
-              <Badge tone="primary">{me.establishmentType}</Badge>
-            </div>
-            <p className="text-xs text-neutral-400 mt-0.5">{establishmentCity} - {establishmentState} · <Rating value={me.rating ?? 0} count={me.reviewsCount ?? 0} /></p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => setEditEstablishment(true)}><Pencil className="h-3.5 w-3.5" /> Editar Perfil</Button>
-          <Button size="sm" className="bg-gradient-to-r from-warning-500 to-warning-600 text-white shadow-md hover:from-warning-600 hover:to-warning-700" onClick={() => setViewVipPage(true)}><Crown className="h-3.5 w-3.5" /> Plano VIP & Banners</Button>
-        </div>
-      </div>
-
-      {isEstablishmentOnTrial(me) && (
-        <div className="flex items-center gap-3 rounded-2xl border border-success-200 bg-success-50 p-4 dark:border-success-500/30 dark:bg-success-500/10">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-success-500 text-white">
-            <Crown className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="font-display text-sm font-bold text-success-800 dark:text-success-300">
-              Período de teste gratuito — {trialDaysLeft(me)} dias restantes
-            </p>
-            <p className="text-xs text-success-700 dark:text-success-400">Você não paga taxa de intermediação durante os 15 primeiros dias.</p>
-          </div>
-        </div>
-      )}
-
-      {/* Quick stats */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard icon={Megaphone} label="Vagas publicadas" value={String(myJobs.length)} tone="primary" />
-        <StatCard icon={Users} label="Candidaturas" value={String(myJobs.reduce((acc, j) => acc + j.applicants.length, 0))} tone="secondary" />
-        <StatCard icon={FileText} label="Contratações" value={String(myContracts.length)} tone="accent" />
-        <StatCard icon={MapPin} label="Profissionais próximos" value={String(filtered.length)} tone="neutral" />
-      </div>
-
-      {/* GRID COM O BANNER VERTICAL (600x900) NA ESQUERDA E O FEED NO CENTRO/DIREITA */}
-      <div className="grid gap-6 lg:grid-cols-[280px_1fr_320px]">
-        
-        {/* COLUNA ESQUERDA: Banner Vertical (Slot 1 - 600x900) */}
-        <aside className="space-y-4 hidden lg:block">
-          <div className="sticky top-6">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1.5 block">Patrocínio Topo (600x900)</span>
-            <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-              <VipSquareWidget pageType="establishments" slot={1} aspectRatio="portrait" />
-            </div>
-          </div>
-        </aside>
-
-        {/* COLUNA CENTRAL: Feed de Profissionais */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="font-display text-lg font-bold text-neutral-900 dark:text-white">Profissionais na sua região</h2>
-              <p className="text-xs text-neutral-400">
-                {isUnlimited ? 'Filtrando por: Km Livre (Nacional)' : `Filtrando a até ${radiusKm} km de ${establishmentCity} - ${establishmentState}.`}
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
-                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por nome, categoria ou descrição..."
-                  className="w-full rounded-xl border border-neutral-200 bg-white py-2.5 pl-10 pr-3 text-sm focus:border-primary-400 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100" />
-              </div>
-              <Button variant="outline" onClick={handleGps} className={useGps ? 'border-secondary-400 text-secondary-600 bg-secondary-50' : ''}><Navigation className={`h-4 w-4 ${useGps ? 'fill-current' : ''}`} /></Button>
-              <Button variant="outline" onClick={() => setShowFilters((s) => !s)} className={showFilters ? 'border-primary-400 text-primary-600' : ''}><SlidersHorizontal className="h-4 w-4" /></Button>
-            </div>
-
-            <div>
-              <p className="mb-2 text-xs font-semibold text-neutral-500">Categorias:</p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <button
-                  onClick={() => { setMacroFilter('all'); setCategory('all'); }}
-                  className={`rounded-xl px-3 py-2 text-xs font-semibold transition text-center truncate ${macroFilter === 'all' ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'}`}
-                >
-                  Todas
-                </button>
-                {MACRO_CATEGORIES.map((m) => (
-                  <button
-                    key={m.id}
-                    onClick={() => { setMacroFilter(m.id); setCategory('all'); }}
-                    className={`rounded-xl px-3 py-2 text-xs font-semibold transition text-center truncate ${macroFilter === m.id ? 'text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'}`}
-                    style={macroFilter === m.id ? { backgroundColor: m.color } : undefined}
-                  >
-                    {m.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3 dark:border-neutral-800 dark:bg-neutral-900">
-              <div className="flex items-center gap-3 flex-1 min-w-[200px]">
-                <MapPin className="h-4 w-4 shrink-0 text-neutral-400" />
-                <span className="text-xs font-semibold text-neutral-500">Distância</span>
-                <input type="range" min={1} max={100} disabled={isUnlimited} value={radiusKm} onChange={(e) => setRadiusKm(Number(e.target.value))} className={`flex-1 accent-primary-500 ${isUnlimited ? 'opacity-40' : ''}`} />
-                <span className="w-16 text-right text-xs font-bold text-neutral-700 dark:text-neutral-300">{isUnlimited ? 'Ilimitado' : `${radiusKm}km`}</span>
-              </div>
-              <Button size="sm" variant={isUnlimited ? 'warning' : 'outline'} onClick={() => setIsUnlimited(!isUnlimited)}>
-                <Globe className="h-4 w-4" /> {isUnlimited ? 'Km Livre Ativo' : 'Ativar Km Livre'}
-              </Button>
-            </div>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            {filtered.map((f) => <FreelancerCard key={f.id} freelancer={f} onHire={handleHire} onView={setViewing} distanceKm={distanceBetween(f.address, origin)} />)}
-          </div>
-          {filtered.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-neutral-300 py-12 text-center dark:border-neutral-700">
-              <p className="text-neutral-400">Nenhum profissional encontrado com esses filtros.</p>
-            </div>
-          )}
-        </div>
-
-        {/* COLUNA DIREITA: Vagas e Banners Centro (600x500) e Rodapé (600x200) */}
+{/* COLUNA DIREITA: Vagas e Banners intercalados */}
         <aside className="space-y-6">
           
+          {/* Cabeçalho e Primeira Vaga */}
           <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="font-display font-bold text-neutral-900 dark:text-white">Minhas vagas</h3>
@@ -256,44 +9,45 @@ export function ContractorView() {
             </div>
             <div className="space-y-3">
               {myJobs.length === 0 && <p className="py-6 text-center text-sm text-neutral-400">Nenhuma vaga publicada.</p>}
-              {myJobs.map((j) => <JobCard key={j.id} job={j} variant="manage" />)}
+              {myJobs.slice(0, 1).map((j) => <JobCard key={j.id} job={j} variant="manage" />)}
             </div>
           </div>
 
-          {/* SLOT 2: CENTRO (600x500) */}
-          <div className="w-full">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1 block">Patrocínio Centro (600x500)</span>
-            <VipSquareWidget pageType="establishments" slot={2} aspectRatio="square" />
+          {/* SLOT 2: CENTRO (600x500 - Logo após a primeira vaga) */}
+          <div className="w-full aspect-[6/5] overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+            <VipSquareWidget pageType="establishments" slot={2} />
           </div>
 
-          {/* SLOT 3: RODAPÉ (600x200) */}
-          <div className="w-full">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1 block">Patrocínio Rodapé (600x200)</span>
-            <VipSquareWidget pageType="establishments" slot={3} aspectRatio="banner" />
+          {/* Restante das Vagas */}
+          {myJobs.length > 1 && (
+            <div className="space-y-3">
+              {myJobs.slice(1).map((j) => <JobCard key={j.id} job={j} variant="manage" />)}
+            </div>
+          )}
+
+          {/* SLOT 3: RODAPÉ (600x200 - Fixado no rodapé) */}
+          <div className="w-full aspect-[3/1] overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+            <VipSquareWidget pageType="establishments" slot={3} />
           </div>
 
+          {/* Contratações (opcional, se quiser manter) */}
+          {myContracts.length > 0 && (
+            <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+              <h3 className="mb-3 font-display font-bold text-neutral-900 dark:text-white">Contratações</h3>
+              <div className="space-y-2">
+                {myContracts.slice(0, 5).map((c) => (
+                  <div key={c.id} className="flex w-full items-center gap-2 rounded-lg border border-neutral-100 p-2 transition hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-800">
+                    <button onClick={() => setEscrowContract(c)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                      <Avatar src={c.freelancerPhoto} alt={c.freelancerName} size={32} />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-neutral-800 dark:text-neutral-200">{c.freelancerName}</p>
+                        <p className="text-xs text-neutral-400">{formatCurrency(c.total)}</p>
+                      </div>
+                    </button>
+                    <Badge tone={c.status === 'completed' ? 'success' : c.status === 'paid' ? 'warning' : 'primary'}>{c.status}</Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </aside>
-      </div>
-
-      {viewing && <FreelancerDetailModal freelancer={viewing} open={!!viewing} onClose={() => setViewing(null)} onHire={handleHire} />}
-      {escrowContract && <EscrowFlowModal contract={escrowContract} open={!!escrowContract} onClose={() => setEscrowContract(null)} />}
-      <JobFormModal open={jobForm.open} onClose={() => setJobForm({ open: false, editing: null })} editing={jobForm.editing} establishment={me} />
-      <EstablishmentEditModal establishment={me} open={editEstablishment} onClose={() => setEditEstablishment(false)} />
-    </div>
-  );
-}
-
-function StatCard({ icon: Icon, label, value, tone }: { icon: typeof Store; label: string; value: string; tone: 'primary' | 'secondary' | 'accent' | 'neutral' }) {
-  const toneClass = {
-    primary: 'bg-primary-100 text-primary-600 dark:bg-primary-500/15 dark:text-primary-400',
-    secondary: 'bg-secondary-100 text-secondary-600 dark:bg-secondary-500/15 dark:text-secondary-400',
-    accent: 'bg-accent-100 text-accent-600 dark:bg-accent-500/15 dark:text-accent-400',
-    neutral: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300',
-  }[tone];
-  return (
-    <div className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
-      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${toneClass}`}><Icon className="h-5 w-5" /></div>
-      <div className="min-w-0"><p className="font-display text-lg font-extrabold leading-none text-neutral-900 dark:text-white">{value}</p><p className="mt-0.5 truncate text-xs text-neutral-400">{label}</p></div>
-    </div>
-  );
-}
