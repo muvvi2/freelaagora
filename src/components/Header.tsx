@@ -5,6 +5,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { Avatar } from './ui/Avatar';
 import { formatCurrency, timeAgo } from '@/utils';
 import { AdminProfileModal } from './AdminView';
+import { VipSquareWidget } from './VipSquareWidget';
 import type { AppNotification } from '@/types';
 
 export function Header({ onNavigateHome, onNavigateVip }: { onNavigateHome?: () => void; onNavigateVip?: () => void }) {
@@ -48,7 +49,7 @@ export function Header({ onNavigateHome, onNavigateVip }: { onNavigateHome?: () 
   if (!currentUser) return null;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-neutral-200/70 bg-white/80 backdrop-blur-xl dark:border-neutral-800/70 dark:bg-neutral-950/80">
+    <header className="sticky top-0 z-40 border-b border-neutral-200/70 bg-white/85 backdrop-blur-xl dark:border-neutral-800/70 dark:bg-neutral-950/85">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
         {/* Logo e Botão Início */}
         <div className="flex items-center gap-3">
@@ -114,17 +115,24 @@ export function Header({ onNavigateHome, onNavigateVip }: { onNavigateHome?: () 
               <ChevronDown className="h-4 w-4 text-neutral-400" />
             </button>
             {menuOpen && (
-              <div className="animate-slide-down absolute right-0 top-12 w-56 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-card-hover dark:border-neutral-800 dark:bg-neutral-900">
+              <div className="animate-slide-down absolute right-0 top-12 w-64 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-card-hover dark:border-neutral-800 dark:bg-neutral-900">
                 <div className="border-b border-neutral-100 px-4 py-3 dark:border-neutral-800">
                   <p className="truncate text-sm font-bold text-neutral-900 dark:text-white">{currentUser.name}</p>
                   <p className="truncate text-xs text-neutral-400">{currentUser.email}</p>
                   {isAdmin && <span className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-primary-500"><Shield className="h-3 w-3" /> Administrador</span>}
                 </div>
-                <div className="p-2">
+                
+                <div className="p-2 space-y-2">
+                  {/* ANÚNCIO VIP POSICIONADO EXATAMENTE ACIMA DE CARTEIRA */}
+                  <div className="overflow-hidden rounded-xl border border-neutral-100 dark:border-neutral-800">
+                    <VipSquareWidget pageType={currentUser.accountType === 'establishment' ? 'establishments' : 'freelancers'} slot={2} />
+                  </div>
+
                   <div className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-neutral-600 dark:text-neutral-300">
                     <span className="inline-flex items-center gap-2"><Wallet className="h-4 w-4 text-primary-500" /> Carteira</span>
                     <span className="font-bold">{formatCurrency(balance)}</span>
                   </div>
+
                   {isAdmin && adminMode && (
                     <>
                       <div className="my-1 border-t border-neutral-100 dark:border-neutral-800" />
