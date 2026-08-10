@@ -125,13 +125,13 @@ export function FreelancerView() {
                 )}
               </section>
 
-              {/* SLOT 3: Exatamente no rodapé esquerdo da página */}
+              {/* SLOT 3: No rodapé esquerdo da página */}
               <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm mt-auto">
                 <VipSquareWidget pageType="freelancers" slot={3} />
               </div>
             </div>
 
-            {/* COLUNAS 2 E 3: Mural de Vagas unificado com Slot 2 exatamente do tamanho de um card */}
+            {/* COLUNA 2 E COLUNA 3: Mural de Vagas unificado (Grid de 2 colunas com Slot 1 e Slot 2 no tamanho exato de cards) */}
             <section className="lg:col-span-2 rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-neutral-100 dark:border-neutral-800">
                 <h2 className="flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white">
@@ -154,18 +154,28 @@ export function FreelancerView() {
 
               {openJobs.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
-                  {/* Coluna 1 do Mural */}
+                  {/* Coluna 2 (Esquerda do Mural) */}
                   <div className="space-y-3">
-                    {openJobs.map((j, i) => (i % 2 === 0 ? <JobCard key={j.id} job={j} variant="apply" /> : null))}
-                  </div>
-
-                  {/* Coluna 2 do Mural (Com o Slot 2 ocupando o espaço exato de um card de vaga) */}
-                  <div className="space-y-3">
-                    {openJobs[1] && <JobCard job={openJobs[1]} variant="apply" />}
+                    {openJobs[0] && <JobCard job={openJobs[0]} variant="apply" />}
+                    
+                    {/* SLOT 2 na Coluna 2, Linha 2 */}
                     <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
                       <VipSquareWidget pageType="freelancers" slot={2} />
                     </div>
-                    {openJobs.map((j, i) => (i > 1 && i % 2 !== 0 ? <JobCard key={j.id} job={j} variant="apply" /> : null))}
+
+                    {openJobs.slice(2).map((j, i) => (i % 2 === 0 ? <JobCard key={j.id} job={j} variant="apply" /> : null))}
+                  </div>
+
+                  {/* Coluna 3 (Direita do Mural) */}
+                  <div className="space-y-3">
+                    {/* SLOT 1 na Coluna 3, Linha 1 */}
+                    <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
+                      <VipSquareWidget pageType="freelancers" slot={1} />
+                    </div>
+
+                    {openJobs[1] && <JobCard job={openJobs[1]} variant="apply" />}
+
+                    {openJobs.slice(2).map((j, i) => (i % 2 !== 0 ? <JobCard key={j.id} job={j} variant="apply" /> : null))}
                   </div>
                 </div>
               ) : (
