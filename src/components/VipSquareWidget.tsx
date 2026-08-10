@@ -45,10 +45,15 @@ export function VipSquareWidget({ pageType = 'freelancers', slot = 1 }: { pageTy
   if (activeAds.length === 0) return null;
 
   const currentAd = activeAds[currentIndex % activeAds.length];
-  const aspectClass = slot === 1 ? 'aspect-[600/900]' : slot === 2 ? 'aspect-[6/5]' : 'aspect-[3/1]';
+  
+  const sizeClass = slot === 1 
+    ? 'aspect-[600/900]' 
+    : slot === 2 
+    ? 'h-[235px] w-full' 
+    : 'aspect-[3/1]';
 
   return (
-    <a href={currentAd.linkUrl || '#'} target="_blank" rel="noopener noreferrer" className={`block w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition-transform hover:scale-[1.01] dark:border-neutral-800 dark:bg-neutral-900 ${aspectClass}`}>
+    <a href={currentAd.linkUrl || '#'} target="_blank" rel="noopener noreferrer" className={`block w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition-transform hover:scale-[1.01] dark:border-neutral-800 dark:bg-neutral-900 ${sizeClass}`}>
       <img src={currentAd.imageUrl} alt="Anúncio" className="w-full h-full object-cover" />
     </a>
   );
