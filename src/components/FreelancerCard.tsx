@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MapPin, Clock, Crown, Pencil, Trash2, Check, DollarSign, Briefcase, Lock, Eye } from 'lucide-react';
+import { MapPin, Clock, Crown, Pencil, Trash2, Check, DollarSign, Briefcase, Lock, Eye, Globe, Upload } from 'lucide-react';
 import { useApp } from '@/AppContext';
 import { useToast } from './ui/Toast';
 import { Modal } from './ui/Modal';
@@ -64,8 +64,8 @@ export function FreelancerCard({ freelancer: f, onHire, onView, showAdminActions
             </div>
             <div className="mt-1.5 flex items-center gap-3 text-xs text-neutral-400">
               <span className="inline-flex items-center gap-1">
-                <MapPin className="h-3.5 w-3.5" /> 
-                {showIdentity ? `${f.address.city}${distanceKm != null && distanceKm < 9999 ? ` · ${distanceKm < 1 ? '<1' : Math.round(distanceKm)}km` : ''}` : 'Região Metropolitana'}
+                {f.unlimitedKm ? <Globe className="h-3.5 w-3.5 text-primary-500" /> : <MapPin className="h-3.5 w-3.5" />} 
+                {showIdentity ? (f.unlimitedKm ? 'KM Livre / Disponível para viagens' : `${f.address?.city}${distanceKm != null && distanceKm < 9999 ? ` · ${distanceKm < 1 ? '<1' : Math.round(distanceKm)}km` : ''}`) : 'Região Metropolitana'}
               </span>
               <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {countAvailableSlots(f.availability)} horários</span>
             </div>
@@ -110,7 +110,7 @@ export function FreelancerCard({ freelancer: f, onHire, onView, showAdminActions
       </div>
 
       {editing && isSelf && (
-        <FreelancerEditModal freelancer={f} open={editing} onClose={() => setEditing(false)} onSave={(patch) => { updateUser(f.id, patch); setEditing(false); notify('Perfil atualizado'); }} />
+        <FreelancerEditModal freelancer={f} open={editing} onClose={() => setEditing(false)} onSave={(patch) => { updateUser(f.id, patch); setEditing(false); notify('Perfil atualizado com sucesso!'); }} />
       )}
 
       <Modal open={confirmDelete} onClose={() => setConfirmDelete(false)} title="Excluir freelancer" size="sm"
@@ -128,15 +128,28 @@ export function FreelancerEditModal({ freelancer, open, onClose, onSave }: { fre
   const [dailyRate, setDailyRate] = useState(String(freelancer.dailyRate ?? 0));
   const [hourlyRate, setHourlyRate] = useState(String(freelancer.hourlyRate ?? 0));
   const [pixKey, setPixKey] = useState(freelancer.pixKey ?? '');
-  const [city, setCity] = useState(freelancer.address.city);
-  const [state, setState] = useState(freelancer.address.state);
+  const [city, setCity] = useState(freelancer.address?.city || '');
+  const [state, setState] = useState(freelancer.address?.state || 'SP');
   const [cpf, setCpf] = useState(freelancer.cpf ?? '');
   const [phone, setPhone] = useState(freelancer.phone);
   const [whatsapp, setWhatsapp] = useState(freelancer.whatsapp);
+  const [unlimitedKm, setUnlimitedKm] = useState(freelancer.unlimitedKm || false);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhoto(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   return (
     <Modal open={open} onClose={onClose} title="Editar perfil" subtitle="Todos os campos são editáveis em tempo real" size="lg"
-      footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={onClose}>Cancelar</Button><Button fullWidth onClick={() => onSave({ name, photo, bio, dailyRate: Number(dailyRate) || 0, hourlyRate: Number(hourlyRate) || 0, pixKey, address: { ...freelancer.address, city, state }, cpf, phone, whatsapp })}><Check className="h-4 w-4" /> Salvar</Button></div>}>
+      footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={onClose}>Cancelar</Button><Button fullWidth onClick={() => onSave({ name, photo, bio, dailyRate: Number(dailyRate) || 0, hourlyRate: Number(hourlyRate) || 0, pixKey, address: { ...freelancer.address, city, state }, cpf, phone, whatsapp, unlimitedKm })}><Check className="h-4 w-4" /> Salvar</Button></div>}>
+      
       <div className="grid gap-4 sm:grid-cols-2">
         <Input label="Nome completo" value={name} onChange={(e) => setName(e.target.value)} />
         <Input label="Cidade" value={city} onChange={(e) => setCity(e.target.value)} />
@@ -146,8 +159,33 @@ export function FreelancerEditModal({ freelancer, open, onClose, onSave }: { fre
         <Input label="WhatsApp (oculto)" value={whatsapp} onChange={(e) => setWhatsapp(maskPhone(e.target.value))} />
         <Input label="Diária (R$)" type="number" value={dailyRate} onChange={(e) => setDailyRate(e.target.value)} />
         <Input label="Hora (R$)" type="number" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} />
-        <div className="sm:col-span-2"><Input label="Chave PIX" value={pixKey} onChange={(e) => setPixKey(e.target.value)} /></div>
-        <div className="sm:col-span-2"><Input label="URL da foto" value={photo} onChange={(e) => setPhoto(e.target.value)} /></div>
+        
+        <div className="sm:col-span-2">
+          <Input label="Chave PIX" value={pixKey} onChange={(e) => setPixKey(e.target.value)} />
+        </div>
+
+        <div className="sm:col-span-2 space-y-2">
+          <label className="block text-xs font-semibold text-neutral-500">Foto de Perfil (Carregar Arquivo)</label>
+          <div className="flex items-center gap-4">
+            <Avatar src={photo} alt="Preview" size={64} />
+            <label className="cursor-pointer inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200">
+              <Upload className="h-4 w-4" /> Escolher nova imagem
+              <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+            </label>
+          </div>
+        </div>
+
+        <div className="sm:col-span-2 flex items-center justify-between p-4 rounded-xl border border-primary-100 bg-primary-50/50 dark:border-primary-900/30 dark:bg-primary-900/10">
+          <div className="flex items-center gap-3">
+            <Globe className="h-6 w-6 text-primary-600 dark:text-primary-400" />
+            <div>
+              <p className="font-semibold text-sm text-neutral-900 dark:text-white">KM Livre / Disponível para viagens</p>
+              <p className="text-xs text-neutral-500">Aceita propostas de qualquer região ou cidade.</p>
+            </div>
+          </div>
+          <input type="checkbox" checked={unlimitedKm} onChange={(e) => setUnlimitedKm(e.target.checked)} className="h-5 w-5 rounded border-neutral-300 text-primary-600 focus:ring-primary-500" />
+        </div>
+
         <div className="sm:col-span-2"><Textarea label="Biografia" rows={3} value={bio} onChange={(e) => setBio(e.target.value)} /></div>
       </div>
     </Modal>
