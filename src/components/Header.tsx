@@ -5,7 +5,6 @@ import { useTheme } from '@/hooks/useTheme';
 import { Avatar } from './ui/Avatar';
 import { formatCurrency, timeAgo } from '@/utils';
 import { AdminProfileModal } from './AdminView';
-import { VipSquareWidget } from './VipSquareWidget';
 import type { AppNotification } from '@/types';
 
 export function Header({ onNavigateHome, onNavigateVip }: { onNavigateHome?: () => void; onNavigateVip?: () => void }) {
@@ -65,11 +64,6 @@ export function Header({ onNavigateHome, onNavigateVip }: { onNavigateHome?: () 
             <Home className="h-4 w-4 text-primary-500" />
             <span className="hidden sm:inline">Início</span>
           </button>
-        </div>
-
-        {/* SLOT 1 VISÍVEL NO HEADER */}
-        <div className="hidden md:block w-48 h-12 overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-sm">
-          <VipSquareWidget pageType={currentUser.accountType === 'establishment' ? 'establishments' : 'freelancers'} slot={1} />
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
