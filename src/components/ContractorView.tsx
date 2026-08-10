@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Search, SlidersHorizontal, Plus, Megaphone, Store, Users, FileText, Pencil, MapPin, Navigation, Crown, Globe } from 'lucide-react';
 import { useApp } from '@/AppContext';
 import { useToast } from './ui/Toast';
@@ -208,7 +208,8 @@ export function ContractorView() {
 
             <div>
               <p className="mb-2 text-xs font-semibold text-neutral-500">Categorias:</p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {/* CATEGORIAS EM 3 COLUNAS */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                 <button
                   onClick={() => { setMacroFilter('all'); setCategory('all'); }}
                   className={`rounded-xl px-3 py-2 text-xs font-semibold transition text-center truncate ${macroFilter === 'all' ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'}`}
@@ -251,8 +252,8 @@ export function ContractorView() {
           )}
         </div>
 
-        {/* COLUNA DIREITA: Minhas Vagas, Slot 2, Restante, Slot 3, Contratações */}
-        <aside className="space-y-6">
+        {/* COLUNA DIREITA: Minhas Vagas, Slot 2, Restante, Slot 3, Contratações (Alinhada ao topo com sticky) */}
+        <aside className="sticky top-24 space-y-6">
           <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="font-display font-bold text-neutral-900 dark:text-white">Minhas vagas</h3>
