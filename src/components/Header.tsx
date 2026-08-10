@@ -123,9 +123,9 @@ export function Header({ onNavigateHome, onNavigateVip }: { onNavigateHome?: () 
                 </div>
                 
                 <div className="p-2 space-y-2">
-                  {/* ANÚNCIO VIP POSICIONADO EXATAMENTE ACIMA DE CARTEIRA */}
+                  {/* ANÚNCIO VIP SLOT 1 POSICIONADO EXATAMENTE ACIMA DE CARTEIRA */}
                   <div className="overflow-hidden rounded-xl border border-neutral-100 dark:border-neutral-800">
-                    <VipSquareWidget pageType={currentUser.accountType === 'establishment' ? 'establishments' : 'freelancers'} slot={2} />
+                    <VipSquareWidget pageType={currentUser.accountType === 'establishment' ? 'establishments' : 'freelancers'} slot={1} />
                   </div>
 
                   <div className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-neutral-600 dark:text-neutral-300">
