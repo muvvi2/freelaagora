@@ -15,7 +15,7 @@ import { VipSquareWidget } from './VipSquareWidget';
 import { EscrowFlowModal } from './EscrowFlowModal';
 import { ReviewModal } from './ReviewModal';
 
-import { formatCurrency, getPlan, countAvailableSlots, maskCEP, maskDocumentDisplay, formatDateTime } from '@/utils';
+import { formatCurrency, getPlan, countAvailableSlots, maskCEP, maskCPF, maskPhone, formatDateTime } from '@/utils';
 import type { Contract, ShiftSlot, Address } from '@/types';
 import { CATEGORIES, MACRO_CATEGORIES } from '@/mockData';
 
@@ -45,7 +45,6 @@ export function FreelancerView() {
     { id: 'wallet' as const, label: 'Carteira', icon: Wallet },
   ];
 
-  // Se a aba selecionada for 'vip', renderiza a página inteira dedicada ao Plano VIP
   if (tab === 'vip') {
     return (
       <VipPanel 
@@ -138,8 +137,9 @@ export function FreelancerView() {
               </section>
             </div>
           )}
-          {tab === 'personal' && <PersonalTab me={me} onSave={(patch) => { updateUser(me.id, patch); notify('Dados pessoais atualizados!'); }} />}
-          {tab === 'address' && <AddressTab me={me} onSave={(addr: Address) => { updateUser(me.id, { address: addr }); notify('Endereço atualizado!'); }} />}
+
+          {tab === 'personal' && <PersonalTab me={me} onSave={(patch) => { updateUser(me.id, patch); notify('Dados pessoais atualizados com sucesso!'); }} />}
+          {tab === 'address' && <AddressTab me={me} onSave={(addr: Address) => { updateUser(me.id, { address: addr }); notify('Endereço atualizado com sucesso!'); }} />}
           {tab === 'specialties' && <SpecialtiesTab me={me} onToggleCat={(catId: string) => { const res = toggleCategory(me.id, catId); if (!res.ok) notify(res.error ?? 'Erro', 'warning'); else notify('Categoria atualizada'); }} onSave={(patch) => { updateUser(me.id, patch); notify('Valores atualizados!'); }} />}
           {tab === 'agenda' && (
             <section className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
@@ -163,7 +163,7 @@ export function FreelancerView() {
           )}
         </div>
 
-        {/* Sidebar: Widget VIP (passando explicitamente o pageType='freelancers') + Contracts */}
+        {/* Sidebar: Widget VIP + Contracts */}
         <aside className="space-y-4">
           <VipSquareWidget pageType="freelancers" />
 
@@ -197,14 +197,78 @@ export function FreelancerView() {
   );
 }
 
-// TAB ESPECIALIDADES (Layout Profissional 2 Colunas)
+// ABA DADOS PESSOAIS CORRIGIDA
+function PersonalTab({ me, onSave }: { me: any; onSave: (patch: any) => void }) {
+  const [name, setName] = useState(me.name || '');
+  const [nickname, setNickname] = useState(me.nickname || '');
+  const [phone, setPhone] = useState(me.phone || '');
+  const [whatsapp, setWhatsapp] = useState(me.whatsapp || '');
+  const [cpf, setCpf] = useState(me.cpf || '');
+  const [asaasWalletId, setAsaasWalletId] = useState(me.asaasWalletId || '');
+  const [bio, setBio] = useState(me.bio || '');
+  const [photo, setPhoto] = useState(me.photo || '');
+
+  return (
+    <section className="rounded-2xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900 space-y-4">
+      <h2 className="flex items-center gap-2 font-display text-lg font-bold text-neutral-900 dark:text-white">
+        <UserIcon className="h-5 w-5 text-primary-500" /> Dados Pessoais
+      </h2>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Input label="Nome completo" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input label="Apelido / Nickname" value={nickname} onChange={(e) => setNickname(e.target.value)} />
+        <Input label="Telefone" value={phone} onChange={(e) => setPhone(maskPhone(e.target.value))} />
+        <Input label="WhatsApp" value={whatsapp} onChange={(e) => setWhatsapp(maskPhone(e.target.value))} />
+        <Input label="CPF" value={cpf} onChange={(e) => setCpf(maskCPF(e.target.value))} />
+        <Input label="ID da Conta Asaas" value={asaasWalletId} onChange={(e) => setAsaasWalletId(e.target.value)} />
+        <div className="sm:col-span-2">
+          <Input label="URL da Foto de Perfil" value={photo} onChange={(e) => setPhoto(e.target.value)} />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="mb-1 block text-xs font-semibold text-neutral-500">Biografia / Apresentação</label>
+          <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3} className="w-full rounded-xl border border-neutral-200 bg-white p-3 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100" />
+        </div>
+      </div>
+      <Button onClick={() => onSave({ name, nickname, phone, whatsapp, cpf, asaasWalletId, bio, photo })}><Save className="h-4 w-4" /> Salvar alterações</Button>
+    </section>
+  );
+}
+
+// ABA ENDEREÇO CORRIGIDA
+function AddressTab({ me, onSave }: { me: any; onSave: (addr: Address) => void }) {
+  const [cep, setCep] = useState(me.address?.cep || '');
+  const [street, setStreet] = useState(me.address?.street || '');
+  const [number, setNumber] = useState(me.address?.number || '');
+  const [complement, setComplement] = useState(me.address?.complement || '');
+  const [neighborhood, setNeighborhood] = useState(me.address?.neighborhood || '');
+  const [city, setCity] = useState(me.address?.city || '');
+  const [state, setState] = useState(me.address?.state || 'SP');
+
+  return (
+    <section className="rounded-2xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900 space-y-4">
+      <h2 className="flex items-center gap-2 font-display text-lg font-bold text-neutral-900 dark:text-white">
+        <MapPin className="h-5 w-5 text-primary-500" /> Endereço Residencial / Atuação
+      </h2>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Input label="CEP" value={cep} onChange={(e) => setCep(maskCEP(e.target.value))} />
+        <div className="sm:col-span-2"><Input label="Logradouro (Rua)" value={street} onChange={(e) => setStreet(e.target.value)} /></div>
+        <Input label="Número" value={number} onChange={(e) => setNumber(e.target.value)} />
+        <Input label="Complemento" value={complement} onChange={(e) => setComplement(e.target.value)} />
+        <Input label="Bairro" value={neighborhood} onChange={(e) => setNeighborhood(e.target.value)} />
+        <Input label="Cidade" value={city} onChange={(e) => setCity(e.target.value)} />
+        <Select label="Estado (UF)" value={state} onChange={(e) => setState(e.target.value)}>
+          {STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+        </Select>
+      </div>
+      <Button onClick={() => onSave({ cep, street, number, complement, neighborhood, city, state })}><Save className="h-4 w-4" /> Salvar endereço</Button>
+    </section>
+  );
+}
+
+// TAB ESPECIALIDADES
 function SpecialtiesTab({ me, onToggleCat, onSave }: { me: any; onToggleCat: (catId: string) => void; onSave: (patch: any) => void }) {
   const { data } = useApp();
-  const plan = getPlan(me.vipTier ?? 'free', data.vipPlans);
   const [hourlyRate, setHourlyRate] = useState(String(me.hourlyRate ?? 0));
   const [dailyRate, setDailyRate] = useState(String(me.dailyRate ?? 0));
-  const [serviceRadius, setServiceRadius] = useState(String(me.serviceRadiusKm ?? 25));
-  const [interstate, setInterstate] = useState(me.acceptsInterstate ?? false);
   const [selectedMacro, setSelectedMacro] = useState(MACRO_CATEGORIES[0].id);
 
   const filteredCategories = CATEGORIES.filter(cat => cat.macro === selectedMacro);
@@ -283,6 +347,4 @@ function SpecialtiesTab({ me, onToggleCat, onSave }: { me: any; onToggleCat: (ca
   );
 }
 
-function PersonalTab({ me, onSave }: { me: any; onSave: (patch: any) => void }) { /* ... mantido igual ... */ }
-function AddressTab({ me, onSave }: { me: any; onSave: (addr: any) => void }) { /* ... mantido igual ... */ }
 function InfoBox({ label, value }: { label: string; value: string }) { return <div><p className="text-xs text-neutral-400">{label}</p><p className="mt-0.5 font-semibold text-neutral-900 dark:text-white">{value}</p></div>; }
