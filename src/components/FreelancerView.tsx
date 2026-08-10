@@ -144,7 +144,7 @@ export function FreelancerView() {
               </div>
             </div>
 
-            {/* COLUNA 2 E 3: Mural de Vagas com Slot 2 estritamente na 2ª linha da 1ª coluna do mural */}
+            {/* COLUNA 2 E 3: Mural de Vagas com Grid Rigoroso de 2 Colunas e Slot 2 na Coluna 1, Linha 2 */}
             <section className="lg:col-span-2 rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-neutral-100 dark:border-neutral-800">
                 <h2 className="flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white">
@@ -166,36 +166,40 @@ export function FreelancerView() {
               </div>
 
               {openJobs.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 justify-items-center md:justify-items-stretch">
                   
-                  {/* COLUNA 1 DO MURAL: [Job 0] -> [Slot 2] -> [Job 2] -> [Job 4] ... */}
-                  <div className="flex flex-col gap-3">
-                    {openJobs[0] && (
-                      <div className="h-full">
-                        <JobCard job={openJobs[0]} variant="apply" />
-                      </div>
-                    )}
-                    
-                    {/* SLOT 2 EXATAMENTE NA SEGUNDA LINHA DA PRIMEIRA COLUNA */}
-                    <div className="w-full h-full flex flex-col">
-                      <VipSquareWidget pageType="freelancers" slot={2} />
+                  {/* Linha 1, Coluna 1: Job 0 */}
+                  {openJobs[0] && (
+                    <div className="w-full max-w-[380px] justify-self-center">
+                      <JobCard job={openJobs[0]} variant="apply" />
                     </div>
+                  )}
 
-                    {openJobs.slice(2).map((j, i) => (i % 2 === 0 ? (
-                      <div key={j.id} className="h-full">
-                        <JobCard job={j} variant="apply" />
-                      </div>
-                    ) : null))}
+                  {/* Linha 1, Coluna 2: Job 1 */}
+                  {openJobs[1] && (
+                    <div className="w-full max-w-[380px] justify-self-center">
+                      <JobCard job={openJobs[1]} variant="apply" />
+                    </div>
+                  )}
+
+                  {/* Linha 2, Coluna 1: Anúncio SLOT 2 (Exatamente com max-width 380px e altura 250px) */}
+                  <div className="w-full max-w-[380px] h-[250px] justify-self-center">
+                    <VipSquareWidget pageType="freelancers" slot={2} />
                   </div>
 
-                  {/* COLUNA 2 DO MURAL: [Job 1] -> [Job 3] -> [Job 5] ... */}
-                  <div className="flex flex-col gap-3">
-                    {openJobs.slice(1).map((j, i) => (i % 2 === 0 ? (
-                      <div key={j.id} className="h-full">
-                        <JobCard job={j} variant="apply" />
-                      </div>
-                    ) : null))}
-                  </div>
+                  {/* Linha 2, Coluna 2: Job 2 */}
+                  {openJobs[2] && (
+                    <div className="w-full max-w-[380px] justify-self-center">
+                      <JobCard job={openJobs[2]} variant="apply" />
+                    </div>
+                  )}
+
+                  {/* Demais vagas seguindo a grade de 2 colunas */}
+                  {openJobs.slice(3).map((j) => (
+                    <div key={j.id} className="w-full max-w-[380px] justify-self-center">
+                      <JobCard job={j} variant="apply" />
+                    </div>
+                  ))}
 
                 </div>
               ) : (
