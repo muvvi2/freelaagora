@@ -123,58 +123,67 @@ export function ContractorView() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 space-y-6">
+    <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 space-y-6">
       
-      {/* HEADER COMPACTO E LIMPO */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-xs">
-        <div className="flex items-center gap-4">
-          <Avatar src={me.photo} alt={me.name} size={60} />
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="font-display text-xl font-extrabold text-neutral-900 dark:text-white">{me.name}</h1>
-              <Badge tone="primary">{me.establishmentType}</Badge>
-            </div>
-            <p className="text-xs text-neutral-400 mt-0.5">{establishmentCity} - {establishmentState} · <Rating value={me.rating ?? 0} count={me.reviewsCount ?? 0} /></p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => setEditEstablishment(true)}><Pencil className="h-3.5 w-3.5" /> Editar Perfil</Button>
-          <Button size="sm" className="bg-gradient-to-r from-warning-500 to-warning-600 text-white shadow-md hover:from-warning-600 hover:to-warning-700" onClick={() => setViewVipPage(true)}><Crown className="h-3.5 w-3.5" /> Plano VIP & Banners</Button>
-        </div>
-      </div>
-
-      {isEstablishmentOnTrial(me) && (
-        <div className="flex items-center gap-3 rounded-2xl border border-success-200 bg-success-50 p-4 dark:border-success-500/30 dark:bg-success-500/10">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-success-500 text-white">
-            <Crown className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="font-display text-sm font-bold text-success-800 dark:text-success-300">
-              Período de teste gratuito — {trialDaysLeft(me)} dias restantes
-            </p>
-            <p className="text-xs text-success-700 dark:text-success-400">Você não paga taxa de intermediação durante os 15 primeiros dias.</p>
-          </div>
-        </div>
-      )}
-
-      {/* QUICK STATS (RESTAURADOS) */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard icon={Megaphone} label="Vagas publicadas" value={String(myJobs.length)} tone="primary" />
-        <StatCard icon={Users} label="Candidaturas" value={String(myJobs.reduce((acc, j) => acc + j.applicants.length, 0))} tone="secondary" />
-        <StatCard icon={FileText} label="Contratações" value={String(myContracts.length)} tone="accent" />
-        <StatCard icon={MapPin} label="Profissionais próximos" value={String(filtered.length)} tone="neutral" />
-      </div>
-
-      {/* GRID COM O BANNER VERTICAL (600x900) NA ESQUERDA ALINHADO NO TOPO */}
-      <div className="grid gap-6 lg:grid-cols-[260px_1fr_320px] items-start">
+      {/* SEÇÃO DO TOPO: ANÚNCIO (SLOT 1) NO TOPO ESQUERDO + PERFIL E STATS COMPACTOS À DIREITA */}
+      <div className="grid gap-6 lg:grid-cols-[280px_1fr] items-start">
         
-        {/* COLUNA ESQUERDA: Banner Vertical (Slot 1 - 600x900) */}
-        <aside className="hidden lg:block space-y-4">
+        {/* COLUNA ESQUERDA: Anúncio Vertical Slot 1 (Posicionado no Topo Esquerdo) */}
+        <aside className="w-full">
           <div className="w-full aspect-[600/900] overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
              <VipSquareWidget pageType="establishments" slot={1} />
           </div>
         </aside>
 
+        {/* COLUNA DIREITA: Perfil Compacto + Métricas Reduzidas */}
+        <div className="space-y-4">
+          
+          {/* PERFIL COMPACTO */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900 shadow-xs">
+            <div className="flex items-center gap-3">
+              <Avatar src={me.photo} alt={me.name} size={52} />
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="font-display text-lg font-extrabold text-neutral-900 dark:text-white">{me.name}</h1>
+                  <Badge tone="primary">{me.establishmentType}</Badge>
+                </div>
+                <p className="text-xs text-neutral-400 mt-0.5">{establishmentCity} - {establishmentState} · <Rating value={me.rating ?? 0} count={me.reviewsCount ?? 0} /></p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={() => setEditEstablishment(true)}><Pencil className="h-3.5 w-3.5" /> Editar Perfil</Button>
+              <Button size="sm" className="bg-gradient-to-r from-warning-500 to-warning-600 text-white shadow-md hover:from-warning-600 hover:to-warning-700" onClick={() => setViewVipPage(true)}><Crown className="h-3.5 w-3.5" /> Plano VIP & Banners</Button>
+            </div>
+          </div>
+
+          {isEstablishmentOnTrial(me) && (
+            <div className="flex items-center gap-3 rounded-2xl border border-success-200 bg-success-50 p-3.5 dark:border-success-500/30 dark:bg-success-500/10">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-success-500 text-white">
+                <Crown className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="font-display text-xs font-bold text-success-800 dark:text-success-300">
+                  Período de teste gratuito — {trialDaysLeft(me)} dias restantes
+                </p>
+                <p className="text-[11px] text-success-700 dark:text-success-400">Você não paga taxa de intermediação durante os 15 primeiros dias.</p>
+              </div>
+            </div>
+          )}
+
+          {/* CAIXINHAS DE MÉTRICAS REDUZIDAS E EMPURRADAS À DIREITA */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <CompactStatCard icon={Megaphone} label="Vagas publicadas" value={String(myJobs.length)} tone="primary" />
+            <CompactStatCard icon={Users} label="Candidaturas" value={String(myJobs.reduce((acc, j) => acc + j.applicants.length, 0))} tone="secondary" />
+            <CompactStatCard icon={FileText} label="Contratações" value={String(myContracts.length)} tone="accent" />
+            <CompactStatCard icon={MapPin} label="Profissionais próximos" value={String(filtered.length)} tone="neutral" />
+          </div>
+
+        </div>
+      </div>
+
+      {/* SEÇÃO INFERIOR: Feed de Profissionais + Barra Lateral de Vagas */}
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px] items-start">
+        
         {/* COLUNA CENTRAL: Feed de Profissionais */}
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-3">
@@ -242,10 +251,8 @@ export function ContractorView() {
           )}
         </div>
 
-        {/* COLUNA DIREITA: Vagas, Banners Intercalados e Contratações */}
+        {/* COLUNA DIREITA: Minhas Vagas, Slot 2, Restante, Slot 3, Contratações */}
         <aside className="space-y-6">
-          
-          {/* Minhas Vagas (Cabeçalho + 1ª Vaga) */}
           <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="font-display font-bold text-neutral-900 dark:text-white">Minhas vagas</h3>
@@ -257,24 +264,22 @@ export function ContractorView() {
             </div>
           </div>
 
-          {/* SLOT 2: CENTRO (600x500 - Logo abaixo da 1ª vaga) */}
+          {/* SLOT 2: CENTRO (600x500) */}
           <div className="w-full aspect-[6/5] overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
             <VipSquareWidget pageType="establishments" slot={2} />
           </div>
 
-          {/* Restante das Vagas */}
           {myJobs.slice(1).length > 0 && (
             <div className="space-y-3">
               {myJobs.slice(1).map((j) => <JobCard key={j.id} job={j} variant="manage" />)}
             </div>
           )}
 
-          {/* SLOT 3: RODAPÉ (600x200 - Na posição do rodapé da coluna) */}
+          {/* SLOT 3: RODAPÉ (600x200) */}
           <div className="w-full aspect-[3/1] overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
             <VipSquareWidget pageType="establishments" slot={3} />
           </div>
 
-          {/* Contratações */}
           {myContracts.length > 0 && (
             <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
               <h3 className="mb-3 font-display font-bold text-neutral-900 dark:text-white">Contratações</h3>
@@ -294,7 +299,6 @@ export function ContractorView() {
               </div>
             </div>
           )}
-
         </aside>
       </div>
 
@@ -306,7 +310,7 @@ export function ContractorView() {
   );
 }
 
-function StatCard({ icon: Icon, label, value, tone }: { icon: typeof Store; label: string; value: string; tone: 'primary' | 'secondary' | 'accent' | 'neutral' }) {
+function CompactStatCard({ icon: Icon, label, value, tone }: { icon: typeof Store; label: string; value: string; tone: 'primary' | 'secondary' | 'accent' | 'neutral' }) {
   const toneClass = {
     primary: 'bg-primary-100 text-primary-600 dark:bg-primary-500/15 dark:text-primary-400',
     secondary: 'bg-secondary-100 text-secondary-600 dark:bg-secondary-500/15 dark:text-secondary-400',
@@ -314,9 +318,9 @@ function StatCard({ icon: Icon, label, value, tone }: { icon: typeof Store; labe
     neutral: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300',
   }[tone];
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
-      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${toneClass}`}><Icon className="h-5 w-5" /></div>
-      <div className="min-w-0"><p className="font-display text-lg font-extrabold leading-none text-neutral-900 dark:text-white">{value}</p><p className="mt-0.5 truncate text-xs text-neutral-400">{label}</p></div>
+    <div className="flex items-center gap-2.5 rounded-xl border border-neutral-200 bg-white p-2.5 dark:border-neutral-800 dark:bg-neutral-900">
+      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${toneClass}`}><Icon className="h-4 w-4" /></div>
+      <div className="min-w-0"><p className="font-display text-base font-extrabold leading-none text-neutral-900 dark:text-white">{value}</p><p className="mt-0.5 truncate text-[11px] text-neutral-400">{label}</p></div>
     </div>
   );
 }
