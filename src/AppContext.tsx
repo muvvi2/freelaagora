@@ -3,6 +3,7 @@ import { AppContext, type AppContextValue, useApp } from './context';
 import { initialData, CATEGORIES, metroNearby, emptyAvailability } from './mockData';
 import { uid, getPlan, canSelectCategories, getEstPlan, getIntermediationFeePercent, calculateFees } from './utils';
 import { setPaymentSettings } from '@/services/paymentService';
+import { supabase } from '@/lib/supabase'; // Importado para permitir chamadas RPC diretas
 import type { AppData, User, Job, Contract, WalletTx, AppNotification, Review, Tier, Period, WeekAvailability, DateAvailability, ContractStatus, EstTier, TermsAcceptance, Coupon, VipPlan, EstVipPlan, PaymentSettings } from './types';
 import {
   loadAllData, dbInsertUser, dbUpdateUser, dbDeleteUser,
@@ -392,10 +393,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return contract;
   }, [data, setData]);
 
-  const confirmAvailability = useCallback((contractId: string) => {
+  // Modificado para usar a função RPC segura do Supabase (bypass RLS de forma correta)
+  const confirmAvailability = useCallback(async (contractId: string) => {
     if (!data) return;
-    setData((d) => ({ ...d, contracts: d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'confirmed', history: [...ct.history, { status: 'confirmed', at: new Date().toISOString() }] } : ct) }));
-    void dbUpdateContractStatus(contractId, 'confirmed').catch(() => {});
+    const contract = data.contracts.find((c) => c.id === contractId);
+    if (!contract) return;
+
+    // Atualiza via função RPC do banco
+    const { error } = await supabase.rpc('accept_contract', {
+      p_contract_id: contractId,
+      p_freelancer_id: contract.freelancerId
+    });
+
+    if (error) {
+      console.error('❌ Erro ao aceitar contrato via RPC:', error.message);
+      // Fallback para update direto caso a RPC falhe
+      setData((d) => ({ ...d, contracts: d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'confirmed', history: [...ct.history, { status: 'confirmed', at: new Date().toISOString() }] } : ct) }));
+      void dbUpdateContractStatus(contractId, 'confirmed').catch(() => {});
+    } else {
+      setData((d) => ({ ...d, contracts: d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'confirmed', history: [...ct.history, { status: 'confirmed', at: new Date().toISOString() }] } : ct) }));
+    }
   }, [data, setData]);
 
   const payEscrow = useCallback((contractId: string) => {
