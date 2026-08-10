@@ -16,10 +16,11 @@ import type { Contract } from '@/types';
 const STEP_ICONS = [Send, Check, Wallet, Clock, MapPin, DollarSign];
 
 export function EscrowFlowModal({ contract, open, onClose }: { contract: Contract; open: boolean; onClose: () => void }) {
-  const { currentUser, confirmAvailability, payEscrow, requestCheckIn, confirmCheckIn, finishService, cancelContract } = useApp();
+  const { currentUser, data, confirmAvailability, payEscrow, requestCheckIn, confirmCheckIn, finishService, cancelContract } = useApp();
   const { notify } = useToast();
   const [processing, setProcessing] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [payMethod, setPayMethod] = useState<'wallet' | 'pix' | 'card'>('wallet');
 
   if (!currentUser) return null;
   const isFreelancer = currentUser.id === contract.freelancerId;
@@ -28,9 +29,25 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
   const contactUnlocked = contract.status === 'paid' || contract.status === 'check_in_pending' || contract.status === 'checked_in' || contract.status === 'completed';
   const canReview = contract.status === 'completed';
 
+  const estUser = data?.users.find(u => u.id === contract.establishmentId);
+  const balance = estUser?.walletBalance ?? 0;
+  const hasEnoughBalance = balance >= contract.total;
+
   const handlePay = () => {
+    if (payMethod === 'wallet' && !hasEnoughBalance) {
+      notify('Saldo insuficiente na carteira. Escolha PIX ou Cartão de Crédito.', 'error');
+      return;
+    }
     setProcessing(true);
-    setTimeout(() => { payEscrow(contract.id); setProcessing(false); notify('Pagamento realizado! Contato do freelancer liberado.'); }, 1400);
+    setTimeout(() => {
+      const res = payEscrow(contract.id, payMethod);
+      setProcessing(false);
+      if (!res.ok) {
+        notify(res.error || 'Erro ao processar pagamento.', 'error');
+      } else {
+        notify('Pagamento em garantia realizado! Contato do freelancer liberado.');
+      }
+    }, 1400);
   };
 
   const handleFinish = () => {
@@ -132,24 +149,59 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
             </Button>
           )}
 
+          {/* Opções de Pagamento para o Estabelecimento */}
           {isEstablishment && contract.status === 'confirmed' && (
-            <div className="space-y-3">
+            <div className="space-y-4 rounded-xl border border-neutral-200 p-4 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50">
+              <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Escolha a Forma de Pagamento</p>
+              
+              <div className="grid grid-cols-3 gap-2">
+                <button 
+                  type="button"
+                  onClick={() => setPayMethod('wallet')}
+                  className={`flex flex-col items-center justify-center p-3 rounded-xl border text-xs font-semibold transition ${payMethod === 'wallet' ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300' : 'border-neutral-200 bg-white text-neutral-600 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-300'}`}
+                >
+                  <Wallet className="h-4 w-4 mb-1 text-primary-500" />
+                  Carteira
+                  <span className="text-[10px] text-neutral-400 font-normal mt-0.5">{formatCurrency(balance)}</span>
+                </button>
+
+                <button 
+                  type="button"
+                  onClick={() => setPayMethod('pix')}
+                  className={`flex flex-col items-center justify-center p-3 rounded-xl border text-xs font-semibold transition ${payMethod === 'pix' ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300' : 'border-neutral-200 bg-white text-neutral-600 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-300'}`}
+                >
+                  <DollarSign className="h-4 w-4 mb-1 text-success-500" />
+                  PIX Instantâneo
+                </button>
+
+                <button 
+                  type="button"
+                  onClick={() => setPayMethod('card')}
+                  className={`flex flex-col items-center justify-center p-3 rounded-xl border text-xs font-semibold transition ${payMethod === 'card' ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300' : 'border-neutral-200 bg-white text-neutral-600 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-300'}`}
+                >
+                  <Shield className="h-4 w-4 mb-1 text-secondary-500" />
+                  Cartão de Crédito
+                </button>
+              </div>
+
+              {payMethod === 'wallet' && !hasEnoughBalance && (
+                <p className="text-[11px] text-error-500 font-medium">⚠️ Saldo em carteira insuficiente. Selecione PIX ou Cartão para prosseguir.</p>
+              )}
+
               {processing && (
-                <div className="rounded-xl border border-primary-200 bg-primary-50 p-4 dark:border-primary-500/30 dark:bg-primary-500/10">
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-5 w-5 animate-spin text-primary-500" />
-                    <p className="text-sm font-semibold text-primary-700 dark:text-primary-300">Processando pagamento...</p>
-                  </div>
-                  <p className="mt-1 text-xs text-primary-600 dark:text-primary-400">Garantia em processamento · {formatCurrency(contract.total)}</p>
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-300 text-xs">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary-500" />
+                  Processando pagamento ({payMethod.toUpperCase()})...
                 </div>
               )}
-              <Button fullWidth size="lg" onClick={handlePay} disabled={processing}>
+
+              <Button fullWidth size="lg" onClick={handlePay} disabled={processing || (payMethod === 'wallet' && !hasEnoughBalance)}>
                 {processing ? <><Loader2 className="h-5 w-5 animate-spin" /> Processando...</> : <><Lock className="h-5 w-5" /> Pagar {formatCurrency(contract.total)} em Garantia</>}
               </Button>
             </div>
           )}
 
-          {/* 🛠️ CHECK-IN DUPLO: Botão do Freelancer para registrar chegada */}
+          {/* CHECK-IN DUPLO: Solicitação do Freelancer */}
           {isFreelancer && contract.status === 'paid' && (
             <Button fullWidth size="lg" variant="secondary" onClick={() => { requestCheckIn(contract.id); notify('Check-in registrado! Aguardando confirmação do estabelecimento.'); }}>
               <MapPin className="h-5 w-5" /> Registrar Chegada (Fazer Check-in)
@@ -162,7 +214,7 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
             </div>
           )}
 
-          {/* 🛠️ CHECK-IN DUPLO: Botão do Estabelecimento para validar a presença */}
+          {/* CHECK-IN DUPLO: Confirmação do Estabelecimento */}
           {isEstablishment && contract.status === 'check_in_pending' && (
             <div className="space-y-2">
               <div className="rounded-xl border border-warning-200 bg-warning-50 p-3 text-center dark:border-warning-500/30 dark:bg-warning-500/10">
