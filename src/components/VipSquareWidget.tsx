@@ -6,6 +6,7 @@ export function VipSquareWidget({ pageType = 'freelancers', slot = 1 }: { pageTy
   const slotIndex = slot - 1; 
   const activeAds: { imageUrl: string; linkUrl: string }[] = [];
   
+  // Filtra anúncios de estabelecimentos VIPs
   data.users.forEach((u) => {
     if (u.accountType === 'establishment' && u.estVipTier && u.estVipTier !== 'free') {
       const isOnTrial = u.trialEndsAt ? new Date(u.trialEndsAt) > new Date() : false;
@@ -21,6 +22,7 @@ export function VipSquareWidget({ pageType = 'freelancers', slot = 1 }: { pageTy
         if (allowedSlots.includes(slot)) {
           const targetAds = adsBySlot[slotIndex] || [];
           const targetLinks = linksBySlot[slotIndex] || [];
+          
           targetAds.forEach((img, imgIndex) => {
             if (img && typeof img === 'string' && img.trim() !== '') {
               const link = targetLinks[imgIndex] || '';
@@ -34,6 +36,7 @@ export function VipSquareWidget({ pageType = 'freelancers', slot = 1 }: { pageTy
 
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  // Rodízio automático de anúncios
   useEffect(() => {
     if (activeAds.length <= 1) return;
     const timer = setInterval(() => {
@@ -45,10 +48,20 @@ export function VipSquareWidget({ pageType = 'freelancers', slot = 1 }: { pageTy
   if (activeAds.length === 0) return null;
 
   const currentAd = activeAds[currentIndex % activeAds.length];
+  
+  // Define o formato baseado no slot para respeitar o design de cada área
+  // Slot 1 (Header): Aspecto 600/900 ou mais compacto conforme o CSS do header
+  // Slot 2 (Mural): Quadrado/Retangular
+  // Slot 3 (Rodapé): Faixa horizontal
   const aspectClass = slot === 1 ? 'aspect-[600/900]' : slot === 2 ? 'aspect-[6/5]' : 'aspect-[3/1]';
 
   return (
-    <a href={currentAd.linkUrl || '#'} target="_blank" rel="noopener noreferrer" className={`block w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition-transform hover:scale-[1.01] dark:border-neutral-800 dark:bg-neutral-900 ${aspectClass}`}>
+    <a 
+      href={currentAd.linkUrl || '#'} 
+      target="_blank" 
+      rel="noopener noreferrer" 
+      className={`block w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition-transform hover:scale-[1.01] dark:border-neutral-800 dark:bg-neutral-900 ${aspectClass}`}
+    >
       <img src={currentAd.imageUrl} alt="Anúncio" className="w-full h-full object-cover" />
     </a>
   );
