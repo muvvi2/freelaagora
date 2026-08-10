@@ -41,10 +41,8 @@ export function ContractorView() {
   const [jobForm, setJobForm] = useState<{ open: boolean; editing: Job | null }>({ open: false, editing: null });
   const [editEstablishment, setEditEstablishment] = useState(false);
   
-  // Estado para alternar para a página inteira de VIP
   const [viewVipPage, setViewVipPage] = useState(false);
 
-  // Blindagem contra carregamento nulo (evita tela branca)
   if (!currentUser) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
@@ -54,7 +52,6 @@ export function ContractorView() {
   }
 
   const me = currentUser;
-
   const myJobs = data.jobs.filter((j) => j.establishmentId === me.id);
   const myContracts = data.contracts.filter((c) => c.establishmentId === me.id);
 
@@ -78,7 +75,6 @@ export function ContractorView() {
   const filtered = useMemo(() => {
     let list = data.users.filter((f) => {
       if (f.accountType !== 'freelancer' || f.isAdmin || f.banned) return false;
-      
       if (!isUnlimited && !isWithinRadius(f, origin, radiusKm)) return false;
 
       if (macroFilter !== 'all') {
@@ -118,7 +114,6 @@ export function ContractorView() {
     notify('Solicitação de contratação enviada! Aguarde a confirmação do freelancer.');
   };
 
-  // Se o usuário clicou em Plano VIP, renderiza a página inteira dedicada
   if (viewVipPage) {
     return (
       <VipPanel 
@@ -130,88 +125,79 @@ export function ContractorView() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
-      {/* Establishment banner */}
-      <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
-        <img src={me.photo} alt={me.name} className="h-32 w-full object-cover sm:h-40" />
-        <div className="absolute inset-0 bg-gradient-to-t from-neutral-950/80 via-neutral-950/30 to-transparent" />
-        <div className="absolute bottom-0 left-0 flex w-full items-end justify-between gap-3 p-4">
-          <div className="flex items-end gap-3">
-            <div className="rounded-xl border-2 border-white bg-white p-1 shadow-lg dark:border-neutral-900"><Avatar src={me.photo} alt={me.name} size={52} /></div>
-            <div className="text-white">
-              <h1 className="font-display text-xl font-extrabold drop-shadow sm:text-2xl">{me.name}</h1>
-              <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm">
-                <Rating value={me.rating ?? 0} count={me.reviewsCount ?? 0} />
-                <span className="text-white/80">{me.establishmentType} · {establishmentCity} - {establishmentState}</span>
-              </div>
+    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 space-y-6">
+      
+      {/* HEADER COMPacto e Limpo (Sem capa poluidora, ganho total de espaço) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-xs">
+        <div className="flex items-center gap-4">
+          <Avatar src={me.photo} alt={me.name} size={60} />
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="font-display text-xl font-extrabold text-neutral-900 dark:text-white">{me.name}</h1>
+              <Badge tone="primary">{me.establishmentType}</Badge>
             </div>
+            <p className="text-xs text-neutral-400 mt-0.5">{establishmentCity} - {establishmentState} · <Rating value={me.rating ?? 0} count={me.reviewsCount ?? 0} /></p>
           </div>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" className="border-white/30 bg-white/10 text-white backdrop-blur hover:bg-white/20" onClick={() => setEditEstablishment(true)}><Pencil className="h-3.5 w-3.5" /> Editar</Button>
-            <Button size="sm" className="bg-gradient-to-r from-warning-500 to-warning-600 text-white shadow-lg hover:from-warning-600 hover:to-warning-700" onClick={() => setViewVipPage(true)}><Crown className="h-3.5 w-3.5" /> Plano VIP</Button>
-          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => setEditEstablishment(true)}><Pencil className="h-3.5 w-3.5" /> Editar Perfil</Button>
+          <Button size="sm" className="bg-gradient-to-r from-warning-500 to-warning-600 text-white shadow-md hover:from-warning-600 hover:to-warning-700" onClick={() => setViewVipPage(true)}><Crown className="h-3.5 w-3.5" /> Plano VIP & Banners</Button>
         </div>
       </div>
 
       {isEstablishmentOnTrial(me) && (
-        <div className="mt-4 flex items-center gap-3 rounded-2xl border border-success-200 bg-success-50 p-4 dark:border-success-500/30 dark:bg-success-500/10">
+        <div className="flex items-center gap-3 rounded-2xl border border-success-200 bg-success-50 p-4 dark:border-success-500/30 dark:bg-success-500/10">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-success-500 text-white">
             <Crown className="h-5 w-5" />
           </div>
           <div>
             <p className="font-display text-sm font-bold text-success-800 dark:text-success-300">
-              Período de teste gratuito — {trialDaysLeft(me)} dias restantes {me.trialEndsAt ? `(Expira em ${formatDateBR(me.trialEndsAt)})` : ''}
+              Período de teste gratuito — {trialDaysLeft(me)} dias restantes
             </p>
-            <p className="text-xs text-success-700 dark:text-success-400">Você não paga nenhuma taxa de intermediação durante os 15 primeiros dias. Após esse período, as taxas do seu plano serão aplicadas automaticamente.</p>
+            <p className="text-xs text-success-700 dark:text-success-400">Você não paga taxa de intermediação durante os 15 primeiros dias.</p>
           </div>
         </div>
       )}
 
       {/* Quick stats */}
-      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard icon={Megaphone} label="Vagas publicadas" value={String(myJobs.length)} tone="primary" />
         <StatCard icon={Users} label="Candidaturas" value={String(myJobs.reduce((acc, j) => acc + j.applicants.length, 0))} tone="secondary" />
         <StatCard icon={FileText} label="Contratações" value={String(myContracts.length)} tone="accent" />
         <StatCard icon={MapPin} label="Profissionais próximos" value={String(filtered.length)} tone="neutral" />
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
-        {/* Freelancer feed */}
+      {/* Grid Principal com os 3 Slots de Anúncios Distribuídos nas Proporções Corretas */}
+      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+        
+        {/* Feed Esquerdo */}
         <div>
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <h2 className="font-display text-lg font-bold text-neutral-900 dark:text-white">Profissionais na sua região</h2>
               <p className="text-xs text-neutral-400">
-                {isUnlimited 
-                  ? 'Filtrando por: Km Livre (Atendimento Nacional / Sem Limite de Raio)' 
-                  : `Filtrando a até ${radiusKm} km de ${establishmentCity} - ${establishmentState}.`}
+                {isUnlimited ? 'Filtrando por: Km Livre (Nacional)' : `Filtrando a até ${radiusKm} km de ${establishmentCity} - ${establishmentState}.`}
               </p>
             </div>
           </div>
 
-          {/* Search + filters */}
           <div className="mb-4 space-y-3">
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
                 <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por nome, categoria ou descrição..."
-                  className="w-full rounded-xl border border-neutral-200 bg-white py-2.5 pl-10 pr-3 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100" />
+                  className="w-full rounded-xl border border-neutral-200 bg-white py-2.5 pl-10 pr-3 text-sm focus:border-primary-400 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100" />
               </div>
-              <Button variant="outline" onClick={handleGps} className={useGps ? 'border-secondary-400 text-secondary-600 bg-secondary-50' : ''} title="Usar minha localização GPS"><Navigation className={`h-4 w-4 ${useGps ? 'fill-current' : ''}`} /></Button>
+              <Button variant="outline" onClick={handleGps} className={useGps ? 'border-secondary-400 text-secondary-600 bg-secondary-50' : ''}><Navigation className={`h-4 w-4 ${useGps ? 'fill-current' : ''}`} /></Button>
               <Button variant="outline" onClick={() => setShowFilters((s) => !s)} className={showFilters ? 'border-primary-400 text-primary-600' : ''}><SlidersHorizontal className="h-4 w-4" /></Button>
             </div>
 
-            {/* Macro category chips em Grid */}
             <div>
               <p className="mb-2 text-xs font-semibold text-neutral-500">Categorias:</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <button
                   onClick={() => { setMacroFilter('all'); setCategory('all'); }}
-                  className={`rounded-xl px-3 py-2 text-xs font-semibold transition text-center truncate ${
-                    macroFilter === 'all'
-                      ? 'bg-neutral-900 text-white shadow-sm dark:bg-neutral-100 dark:text-neutral-900'
-                      : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
-                  }`}
+                  className={`rounded-xl px-3 py-2 text-xs font-semibold transition text-center truncate ${macroFilter === 'all' ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'}`}
                 >
                   Todas
                 </button>
@@ -219,11 +205,8 @@ export function ContractorView() {
                   <button
                     key={m.id}
                     onClick={() => { setMacroFilter(m.id); setCategory('all'); }}
-                    className={`rounded-xl px-3 py-2 text-xs font-semibold transition text-center truncate ${
-                      macroFilter === m.id ? 'text-white shadow-sm' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
-                    }`}
+                    className={`rounded-xl px-3 py-2 text-xs font-semibold transition text-center truncate ${macroFilter === m.id ? 'text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'}`}
                     style={macroFilter === m.id ? { backgroundColor: m.color } : undefined}
-                    title={m.label}
                   >
                     {m.label}
                   </button>
@@ -231,94 +214,37 @@ export function ContractorView() {
               </div>
             </div>
 
-            {/* Distance slider / Km Livre */}
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3 dark:border-neutral-800 dark:bg-neutral-900">
               <div className="flex items-center gap-3 flex-1 min-w-[200px]">
                 <MapPin className="h-4 w-4 shrink-0 text-neutral-400" />
-                <span className="text-xs font-semibold text-neutral-500">Distância Máxima</span>
-                <input
-                  type="range"
-                  min={1}
-                  max={100}
-                  disabled={isUnlimited}
-                  value={radiusKm}
-                  onChange={(e) => setRadiusKm(Number(e.target.value))}
-                  className={`flex-1 accent-primary-500 ${isUnlimited ? 'opacity-40' : ''}`}
-                />
-                <span className="w-16 text-right text-xs font-bold text-neutral-700 dark:text-neutral-300">
-                  {isUnlimited ? 'Ilimitado' : `${radiusKm}km`}
-                </span>
+                <span className="text-xs font-semibold text-neutral-500">Distância</span>
+                <input type="range" min={1} max={100} disabled={isUnlimited} value={radiusKm} onChange={(e) => setRadiusKm(Number(e.target.value))} className={`flex-1 accent-primary-500 ${isUnlimited ? 'opacity-40' : ''}`} />
+                <span className="w-16 text-right text-xs font-bold text-neutral-700 dark:text-neutral-300">{isUnlimited ? 'Ilimitado' : `${radiusKm}km`}</span>
               </div>
-              <Button
-                size="sm"
-                variant={isUnlimited ? 'warning' : 'outline'}
-                onClick={() => setIsUnlimited(!isUnlimited)}
-              >
+              <Button size="sm" variant={isUnlimited ? 'warning' : 'outline'} onClick={() => setIsUnlimited(!isUnlimited)}>
                 <Globe className="h-4 w-4" /> {isUnlimited ? 'Km Livre Ativo' : 'Ativar Km Livre'}
               </Button>
             </div>
-
-            {showFilters && (
-              <div className="animate-slide-down grid gap-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-neutral-500">Subcategoria</label>
-                  <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full rounded-lg border border-neutral-200 bg-white px-2.5 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100">
-                    <option value="all">Todas</option>
-                    {CATEGORIES.filter((c) => macroFilter === 'all' || c.macro === macroFilter).map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-neutral-500">Avaliação mínima</label>
-                  <select value={minRating} onChange={(e) => setMinRating(Number(e.target.value))} className="w-full rounded-lg border border-neutral-200 bg-white px-2.5 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100">
-                    <option value={0}>Qualquer</option>
-                    <option value={4.5}>4.5+</option>
-                    <option value={4.7}>4.7+</option>
-                    <option value={4.9}>4.9+</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1 flex items-center gap-1 text-xs font-semibold text-neutral-500"><Calendar className="h-3 w-3" /> Disponibilidade</label>
-                  <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value as 'any' | 'today' | 'tomorrow' | 'custom')} className="w-full rounded-lg border border-neutral-200 bg-white px-2.5 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100">
-                    <option value="any">Qualquer dia</option>
-                    <option value="today">Disponível hoje</option>
-                    <option value="tomorrow">Disponível amanhã</option>
-                    <option value="custom">Data específica</option>
-                  </select>
-                </div>
-                {dateFilter === 'custom' && (
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold text-neutral-500">Data</label>
-                    <input type="date" value={customDate} onChange={(e) => setCustomDate(e.target.value)} className="w-full rounded-lg border border-neutral-200 bg-white px-2.5 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100" />
-                  </div>
-                )}
-                <div className="sm:col-span-2">
-                  <label className="mb-1 block text-xs font-semibold text-neutral-500">Ordenar por</label>
-                  <div className="flex gap-2">
-                    <SortChip active={sortBy === 'distance'} onClick={() => setSortBy('distance')} icon={Navigation} label="Mais próximos" />
-                    <SortChip active={sortBy === 'rating'} onClick={() => setSortBy('rating')} icon={Star} label="Melhor avaliação" />
-                    <SortChip active={sortBy === 'price'} onClick={() => setSortBy('price')} icon={DollarSign} label="Menor diária" />
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
-
-          {useGps && <p className="mb-2 flex items-center gap-1 text-xs text-secondary-600 dark:text-secondary-400"><Navigation className="h-3 w-3 fill-current" /> Usando sua localização GPS atual</p>}
-          <p className="mb-3 text-xs text-neutral-400"><strong className="text-neutral-600 dark:text-neutral-300">{filtered.length}</strong> profissionais encontrados dentro dos critérios de distância configurados</p>
 
           <div className="grid gap-4 sm:grid-cols-2">
             {filtered.map((f) => <FreelancerCard key={f.id} freelancer={f} onHire={handleHire} onView={setViewing} distanceKm={distanceBetween(f.address, origin)} />)}
           </div>
           {filtered.length === 0 && (
             <div className="rounded-2xl border border-dashed border-neutral-300 py-12 text-center dark:border-neutral-700">
-              <p className="text-neutral-400">Nenhum profissional encontrado com esses filtros. Tente aumentar o raio, ativar o Km Livre ou limpar os filtros.</p>
+              <p className="text-neutral-400">Nenhum profissional encontrado com esses filtros.</p>
             </div>
           )}
         </div>
 
-        {/* Sidebar: Widget VIP (passando explicitamente o pageType='establishments') + My Jobs + Active Contracts */}
-        <aside className="space-y-4">
-          <VipSquareWidget pageType="establishments" />
+        {/* Sidebar Direita: Distribuindo os 3 slots com proporções exatas (600x900, 600x500, 600x200) */}
+        <aside className="space-y-6">
+          
+          {/* SLOT 1: TOPO (Proporção alta vertical 600x900) */}
+          <div className="w-full">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1 block">Patrocínio Topo (600x900)</span>
+            <VipSquareWidget pageType="establishments" slot={1} aspectRatio="portrait" />
+          </div>
 
           <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
             <div className="mb-3 flex items-center justify-between">
@@ -331,9 +257,15 @@ export function ContractorView() {
             </div>
           </div>
 
+          {/* SLOT 2: CENTRO (Proporção quadrada/média 600x500) */}
+          <div className="w-full">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1 block">Patrocínio Centro (600x500)</span>
+            <VipSquareWidget pageType="establishments" slot={2} aspectRatio="square" />
+          </div>
+
           {myContracts.length > 0 && (
             <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
-              <h3 className="mb-3 font-display font-bold text-neutral-900 dark:text-white">Contratações em andamento</h3>
+              <h3 className="mb-3 font-display font-bold text-neutral-900 dark:text-white">Contratações</h3>
               <div className="space-y-2">
                 {myContracts.slice(0, 5).map((c) => (
                   <div key={c.id} className="flex w-full items-center gap-2 rounded-lg border border-neutral-100 p-2 transition hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-800">
@@ -341,24 +273,25 @@ export function ContractorView() {
                       <Avatar src={c.freelancerPhoto} alt={c.freelancerName} size={32} />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold text-neutral-800 dark:text-neutral-200">{c.freelancerName}</p>
-                        <p className="text-xs text-neutral-400">{formatCurrency(c.total)} · {c.platformFeePercentage}% taxa</p>
+                        <p className="text-xs text-neutral-400">{formatCurrency(c.total)}</p>
                       </div>
                     </button>
                     <Badge tone={c.status === 'completed' ? 'success' : c.status === 'paid' ? 'warning' : 'primary'}>{c.status}</Badge>
-                    {c.status === 'completed' && (
-                      <Button size="sm" variant="outline" onClick={() => downloadTaxReceipt(c)}>
-                        <Download className="h-3.5 w-3.5" /> Baixar Comprovante
-                      </Button>
-                    )}
                   </div>
                 ))}
               </div>
             </div>
           )}
+
+          {/* SLOT 3: RODAPÉ (Proporção faixa/horizontal 600x200) */}
+          <div className="w-full">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1 block">Patrocínio Rodapé (600x200)</span>
+            <VipSquareWidget pageType="establishments" slot={3} aspectRatio="banner" />
+          </div>
+
         </aside>
       </div>
 
-      {/* Modals */}
       {viewing && <FreelancerDetailModal freelancer={viewing} open={!!viewing} onClose={() => setViewing(null)} onHire={handleHire} />}
       {escrowContract && <EscrowFlowModal contract={escrowContract} open={!!escrowContract} onClose={() => setEscrowContract(null)} />}
       <JobFormModal open={jobForm.open} onClose={() => setJobForm({ open: false, editing: null })} editing={jobForm.editing} establishment={me} />
@@ -379,13 +312,5 @@ function StatCard({ icon: Icon, label, value, tone }: { icon: typeof Store; labe
       <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${toneClass}`}><Icon className="h-5 w-5" /></div>
       <div className="min-w-0"><p className="font-display text-lg font-extrabold leading-none text-neutral-900 dark:text-white">{value}</p><p className="mt-0.5 truncate text-xs text-neutral-400">{label}</p></div>
     </div>
-  );
-}
-
-function SortChip({ active, onClick, icon: Icon, label }: { active: boolean; onClick: () => void; icon: typeof Star; label: string }) {
-  return (
-    <button onClick={onClick} className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition ${active ? 'bg-primary-500 text-white' : 'bg-white text-neutral-600 hover:bg-neutral-100 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'}`}>
-      <Icon className="h-4 w-4" /> {label}
-    </button>
   );
 }
