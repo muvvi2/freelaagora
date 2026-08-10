@@ -277,7 +277,7 @@ function establishmentTierToId(tier: string): number {
   }
 }
 
-function categorySlugToId(slug: string): number | null {
+function categorySlugToId(slug: string): number {
   const index = CATEGORIES.findIndex((c) => c.id === slug);
   if (index === -1) return 1;
   return index + 1;
@@ -623,7 +623,7 @@ function mapJobToDbRow(j: Job): Partial<DbJob> {
     category_id: categorySlugToId(j.category),
     title: j.title,
     description: j.description,
-    job_date: j.date.slice(0, 10),
+    job_date: j.date ? j.date.slice(0, 10) : new Date().toISOString().slice(0, 10),
     start_time: j.startTime,
     hours: j.hours,
     value: j.value,
@@ -631,7 +631,7 @@ function mapJobToDbRow(j: Job): Partial<DbJob> {
     status: j.status,
     city: j.city,
     state: j.state,
-    created_at: j.createdAt,
+    created_at: j.createdAt || new Date().toISOString(),
     establishment_name: j.establishmentName,
     establishment_photo: j.establishmentPhoto,
   };
@@ -1037,7 +1037,6 @@ export async function dbUpdateUser(id: string, patch: Partial<User>): Promise<vo
     if (e2) throw new Error(`Erro ao atualizar perfil freelancer: ${e2.message}`);
   }
 
-  // ADICIONADO: Atualiza as categorias do freelancer no banco quando alteradas no perfil
   if (patch.categories !== undefined) {
     await supabase.from('freelancer_categories').delete().eq('freelancer_id', id);
     if (patch.categories.length > 0) {
