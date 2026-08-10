@@ -220,7 +220,7 @@ class MultiPaymentProvider {
 
 export const paymentService = new MultiPaymentProvider();
 
-export const ASAAS_REFERRAL_LINK = 'https://www.asaas.com/r/FREELAAGORA';
+export const ASAAS_REFERRAL_LINK = 'https://www.asaas.com/r/b2562b18-85e3-43b8-81e1-8196b577ce44';
 export function getAsaasEnv(): string {
   return getActiveConfig()?.env ?? 'production';
 }
