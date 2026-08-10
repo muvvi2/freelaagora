@@ -478,15 +478,34 @@ function mapUserToEsProfile(user: User): Partial<DbEstablishmentProfile> {
   };
 }
 
-function mapAvailabilityToRows(userId: string, av: WeekAvailability): Array<{ freelancer_id: string; day_of_week: number; shift_morning: boolean; shift_afternoon: boolean; shift_night: boolean; specific_date: null }> {
-  return DAY_KEYS.map((day) => ({
-    freelancer_id: userId,
-    day_of_week: DAY_INDEX[day],
-    shift_morning: av[day]?.manha ?? false,
-    shift_afternoon: av[day]?.tarde ?? false,
-    shift_night: av[day]?.noite ?? false,
-    specific_date: null,
-  }));
+function mapAvailabilityToRows(userId: string, av: WeekAvailability, dateAv?: DateAvailability): Array<{ freelancer_id: string; day_of_week: number; shift_morning: boolean; shift_afternoon: boolean; shift_night: boolean; specific_date: string | null }> {
+  const rows: Array<{ freelancer_id: string; day_of_week: number; shift_morning: boolean; shift_afternoon: boolean; shift_night: boolean; specific_date: string | null }> = [];
+  
+  for (const day of DAY_KEYS) {
+    rows.push({
+      freelancer_id: userId,
+      day_of_week: DAY_INDEX[day],
+      shift_morning: av[day]?.manha ?? false,
+      shift_afternoon: av[day]?.tarde ?? false,
+      shift_night: av[day]?.noite ?? false,
+      specific_date: null,
+    });
+  }
+
+  if (dateAv) {
+    for (const [dateKey, shifts] of Object.entries(dateAv)) {
+      rows.push({
+        freelancer_id: userId,
+        day_of_week: 0,
+        shift_morning: shifts.manha ?? false,
+        shift_afternoon: shifts.tarde ?? false,
+        shift_night: shifts.noite ?? false,
+        specific_date: dateKey,
+      });
+    }
+  }
+
+  return rows;
 }
 
 function mapRowsToAvailability(rows: DbFreelancerAvailability[]): WeekAvailability {
@@ -925,7 +944,7 @@ export async function dbInsertUser(user: User): Promise<void> {
     }
 
     if (user.availability) {
-      const avRows = mapAvailabilityToRows(user.id, user.availability);
+      const avRows = mapAvailabilityToRows(user.id, user.availability, user.dateAvailability);
       const { error: e4 } = await supabase.from('freelancer_availability').insert(avRows as never);
       if (e4) throw new Error(`Erro ao inserir disponibilidade: ${e4.message}`);
     }
@@ -1035,6 +1054,24 @@ export async function dbUpdateUser(id: string, patch: Partial<User>): Promise<vo
 
     const { error: e2 } = await supabase.from('freelancer_profiles').upsert(flPatch as never);
     if (e2) throw new Error(`Erro ao atualizar perfil freelancer: ${e2.message}`);
+  }
+
+  // 🛠️ PERSISTÊNCIA DA AGENDA E TURNOS (Disponibilidade Semanal e de Datas Específicas)
+  if (patch.availability !== undefined || patch.dateAvailability !== undefined) {
+    // Buscamos a disponibilidade atual do usuário no estado/banco para sincronizar corretamente se apenas uma delas veio no patch
+    const { data: currentRows } = await supabase.from('freelancer_availability').select('*').eq('freelancer_id', id);
+    const existingAv = mapRowsToAvailability((currentRows ?? []) as unknown as DbFreelancerAvailability[]);
+    const existingDateAv = mapRowsToDateAvailability((currentRows ?? []) as unknown as DbFreelancerAvailability[]);
+
+    const finalAv = patch.availability !== undefined ? patch.availability : existingAv;
+    const finalDateAv = patch.dateAvailability !== undefined ? patch.dateAvailability : existingDateAv;
+
+    await supabase.from('freelancer_availability').delete().eq('freelancer_id', id);
+    const avRows = mapAvailabilityToRows(id, finalAv, finalDateAv);
+    if (avRows.length > 0) {
+      const { error: eAv } = await supabase.from('freelancer_availability').insert(avRows as never);
+      if (eAv) console.error('Erro ao atualizar disponibilidade/agenda:', eAv.message);
+    }
   }
 
   if (patch.categories !== undefined) {
