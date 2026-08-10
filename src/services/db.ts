@@ -971,7 +971,6 @@ export async function dbUpdateUser(id: string, patch: Partial<User>): Promise<vo
   if (patch.includeFreelancerAd !== undefined) dbPatch.include_freelancer_ad = patch.includeFreelancerAd;
   if (patch.includeEstablishmentAd !== undefined) dbPatch.include_establishment_ad = patch.includeEstablishmentAd;
 
-  // ADICIONADO: Mapeamento correto para os slots e links por slot
   if (patch.freelancerAdsBySlot !== undefined) dbPatch.freelancer_ads_by_slot = patch.freelancerAdsBySlot;
   if (patch.establishmentAdsBySlot !== undefined) dbPatch.establishment_ads_by_slot = patch.establishmentAdsBySlot;
   if (patch.freelancerLinksBySlot !== undefined) dbPatch.freelancer_links_by_slot = patch.freelancerLinksBySlot;
@@ -1036,6 +1035,21 @@ export async function dbUpdateUser(id: string, patch: Partial<User>): Promise<vo
 
     const { error: e2 } = await supabase.from('freelancer_profiles').upsert(flPatch as never);
     if (e2) throw new Error(`Erro ao atualizar perfil freelancer: ${e2.message}`);
+  }
+
+  // ADICIONADO: Atualiza as categorias do freelancer no banco quando alteradas no perfil
+  if (patch.categories !== undefined) {
+    await supabase.from('freelancer_categories').delete().eq('freelancer_id', id);
+    if (patch.categories.length > 0) {
+      const catRows = patch.categories.map((cat) => ({
+        freelancer_id: id,
+        category_id: categorySlugToId(cat),
+      })).filter((r) => r.category_id !== null);
+      if (catRows.length > 0) {
+        const { error: eCat } = await supabase.from('freelancer_categories').insert(catRows as never);
+        if (eCat) console.error('Erro ao atualizar categorias:', eCat.message);
+      }
+    }
   }
 
   if (patch.accountType === 'establishment' || patch.establishmentType !== undefined || patch.address !== undefined) {
