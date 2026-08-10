@@ -56,27 +56,37 @@ export function FreelancerView() {
   const activeInvites = myContracts.filter((c) => c.status === 'requested' || c.status === 'confirmed');
 
   return (
-    <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 space-y-6">
+    <div className="mx-auto w-[98%] max-w-[1800px] px-4 py-6 sm:px-6 space-y-6">
       
-      {/* PROFILE HEADER CARD COM SLOT 1 À DIREITA */}
+      {/* PROFILE HEADER CARD COM ESTATÍSTICAS INTEGRADAS E SLOT 1 À DIREITA */}
       <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 sm:p-6 shadow-sm">
         {me.vipTier && me.vipTier !== 'free' && <div className="absolute right-4 top-4 z-10"><Badge tone="vip"><Crown className="h-3 w-3" /> {plan.label}</Badge></div>}
         
-        <div className="grid gap-6 lg:grid-cols-[1fr_260px] items-center">
+        <div className="grid gap-6 lg:grid-cols-[1fr_300px] items-center">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
             <Avatar src={me.photo} alt={me.name} size={96} ring={me.vipTier && me.vipTier !== 'free' ? 'vip' : 'primary'} vipBadge={me.vipTier === 'vip2' || me.vipTier === 'vip3'} />
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <h1 className="font-display text-2xl font-extrabold text-neutral-900 dark:text-white">{me.name}</h1>
-                {me.documentVerified && <ShieldCheck className="h-5 w-5 text-secondary-500" />}
+            <div className="flex-1 space-y-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="font-display text-2xl font-extrabold text-neutral-900 dark:text-white">{me.name}</h1>
+                  {me.documentVerified && <ShieldCheck className="h-5 w-5 text-secondary-500" />}
+                </div>
+                {me.nickname && <p className="text-sm text-neutral-400">"{me.nickname}"</p>}
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <Rating value={me.rating ?? 0} count={me.reviewsCount ?? 0} />
+                  <span className="inline-flex items-center gap-1 text-sm text-neutral-400"><Briefcase className="h-4 w-4" /> {me.completedShifts ?? 0} turnos</span>
+                  <span className="text-sm text-neutral-400">{me.unlimitedKm ? '🌐 KM Livre / Disponível para viagens' : `${me.address?.city}, ${me.address?.state}`}</span>
+                </div>
+                <p className="mt-3 text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">{me.bio ?? 'Sem biografia. Edite seu perfil para adicionar uma descrição.'}</p>
               </div>
-              {me.nickname && <p className="text-sm text-neutral-400">"{me.nickname}"</p>}
-              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-                <Rating value={me.rating ?? 0} count={me.reviewsCount ?? 0} />
-                <span className="inline-flex items-center gap-1 text-sm text-neutral-400"><Briefcase className="h-4 w-4" /> {me.completedShifts ?? 0} turnos</span>
-                <span className="text-sm text-neutral-400">{me.unlimitedKm ? '🌐 KM Livre / Disponível para viagens' : `${me.address?.city}, ${me.address?.state}`}</span>
+
+              {/* ESTATÍSTICAS INTEGRADAS */}
+              <div className="grid grid-cols-2 gap-3 border-t border-neutral-100 pt-4 dark:border-neutral-800 sm:grid-cols-4">
+                <InfoBox label="Diária fechada" value={formatCurrency(me.dailyRate ?? 0)} />
+                <InfoBox label="Hora comercial" value={formatCurrency(me.hourlyRate ?? 0)} />
+                <InfoBox label="Disponibilidade" value={`${countAvailableSlots(me.availability)} turnos`} />
+                <InfoBox label="Plano" value={plan.label} />
               </div>
-              <p className="mt-3 text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">{me.bio ?? 'Sem biografia. Edite seu perfil para adicionar uma descrição.'}</p>
             </div>
           </div>
 
@@ -84,13 +94,6 @@ export function FreelancerView() {
           <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
             <VipSquareWidget pageType="freelancers" slot={1} />
           </div>
-        </div>
-
-        <div className="mt-5 grid grid-cols-2 gap-3 border-t border-neutral-100 pt-5 dark:border-neutral-800 sm:grid-cols-4">
-          <InfoBox label="Diária fechada" value={formatCurrency(me.dailyRate ?? 0)} />
-          <InfoBox label="Hora comercial" value={formatCurrency(me.hourlyRate ?? 0)} />
-          <InfoBox label="Disponibilidade" value={`${countAvailableSlots(me.availability)} turnos`} />
-          <InfoBox label="Plano" value={plan.label} />
         </div>
       </div>
 
@@ -141,7 +144,7 @@ export function FreelancerView() {
               </div>
             </div>
 
-            {/* COLUNA 2 E 3: Mural de Vagas (Grid 2 colunas: Coluna 2 e Coluna 3) */}
+            {/* COLUNA 2 E 3: Mural de Vagas */}
             <section className="lg:col-span-2 rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-neutral-100 dark:border-neutral-800">
                 <h2 className="flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white">
@@ -163,29 +166,29 @@ export function FreelancerView() {
               </div>
 
               {openJobs.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch">
                   
-                  {/* COLUNA 2 DO MURAL: [Linha 1: Job 0] -> [Linha 2: SLOT 2] -> [Linha 3: Job 3] -> [Linha 4: Job 5] */}
-                  <div className="space-y-3">
-                    {openJobs[0] && <JobCard job={openJobs[0]} variant="apply" />}
+                  {/* COLUNA 2 DO MURAL */}
+                  <div className="flex flex-col gap-3">
+                    {openJobs.map((j, i) => (i % 2 === 0 ? (
+                      <div key={j.id} className="h-full">
+                        <JobCard job={j} variant="apply" />
+                      </div>
+                    ) : null))}
                     
-                    {/* SLOT 2 EXATAMENTE NA LINHA 2, COLUNA 2 */}
-                    <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
+                    {/* SLOT 2: Na segunda linha da coluna esquerda */}
+                    <div className="w-full h-full flex flex-col">
                       <VipSquareWidget pageType="freelancers" slot={2} />
                     </div>
-
-                    {openJobs[3] && <JobCard job={openJobs[3]} variant="apply" />}
-                    {openJobs[5] && <JobCard job={openJobs[5]} variant="apply" />}
-                    {openJobs.slice(7).filter((_, i) => i % 2 === 0).map((j) => <JobCard key={j.id} job={j} variant="apply" />)}
                   </div>
 
-                  {/* COLUNA 3 DO MURAL: [Linha 1: Job 1] -> [Linha 2: Job 2] -> [Linha 3: Job 4] -> [Linha 4: Job 6] */}
-                  <div className="space-y-3">
-                    {openJobs[1] && <JobCard job={openJobs[1]} variant="apply" />}
-                    {openJobs[2] && <JobCard job={openJobs[2]} variant="apply" />}
-                    {openJobs[4] && <JobCard job={openJobs[4]} variant="apply" />}
-                    {openJobs[6] && <JobCard job={openJobs[6]} variant="apply" />}
-                    {openJobs.slice(7).filter((_, i) => i % 2 !== 0).map((j) => <JobCard key={j.id} job={j} variant="apply" />)}
+                  {/* COLUNA 3 DO MURAL */}
+                  <div className="flex flex-col gap-3">
+                    {openJobs.map((j, i) => (i % 2 !== 0 ? (
+                      <div key={j.id} className="h-full">
+                        <JobCard job={j} variant="apply" />
+                      </div>
+                    ) : null))}
                   </div>
 
                 </div>
@@ -311,19 +314,25 @@ function SpecialtiesTab({ me, onToggleCat, onSave }: { me: any; onToggleCat: (ca
     <section className="rounded-2xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm space-y-6">
       <h2 className="flex items-center gap-2 font-display text-lg font-bold text-neutral-900 dark:text-white"><Tags className="h-5 w-5 text-primary-500" /> Especialidades e Valores</h2>
       
+      {/* LISTA COMPACTA EM 2 COLUNAS PARA NÃO EXPLODIR O TAMANHO (IDEAL PARA VIP 3 / VIP 4) */}
       {me.categories?.length > 0 && (
         <div className="space-y-3 rounded-xl border border-neutral-200 p-4 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50">
-          <p className="text-xs font-semibold uppercase text-neutral-500">Definir Valores Individuais por Especialidade ({me.categories.length} selecionadas)</p>
-          <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase text-neutral-500">Valores Individuais por Especialidade ({me.categories.length} selecionadas)</p>
+            <span className="text-[11px] text-neutral-400">Opcional: se vazio, vale o padrão global</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 max-h-60 overflow-y-auto pr-1">
             {me.categories.map((catId: string) => {
               const cat = CATEGORIES.find(c => c.id === catId);
               if (!cat) return null;
               const currentRate = categoryRates[catId] || { hourly: '', daily: '' };
               return (
-                <div key={catId} className="flex flex-col sm:flex-row items-center gap-3 bg-white dark:bg-neutral-900 p-3 rounded-xl border border-neutral-200 dark:border-neutral-700">
-                  <span className="text-sm font-semibold flex-1 text-neutral-900 dark:text-white">{cat.label}</span>
-                  <input type="number" placeholder="R$/h" className="w-28 rounded-lg border border-neutral-200 p-2 text-sm dark:bg-neutral-800 dark:border-neutral-700 text-neutral-900 dark:text-white" value={currentRate.hourly} onChange={(e) => setCategoryRates({ ...categoryRates, [catId]: { ...currentRate, hourly: e.target.value } })} />
-                  <input type="number" placeholder="Diária R$" className="w-28 rounded-lg border border-neutral-200 p-2 text-sm dark:bg-neutral-800 dark:border-neutral-700 text-neutral-900 dark:text-white" value={currentRate.daily} onChange={(e) => setCategoryRates({ ...categoryRates, [catId]: { ...currentRate, daily: e.target.value } })} />
+                <div key={catId} className="flex items-center justify-between gap-2 bg-white dark:bg-neutral-900 p-2.5 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                  <span className="text-xs font-medium text-neutral-800 dark:text-neutral-200 truncate flex-1" title={cat.label}>{cat.label}</span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <input type="number" placeholder="R$/h" className="w-20 rounded border border-neutral-200 px-2 py-1 text-xs dark:bg-neutral-800 dark:border-neutral-700 text-neutral-900 dark:text-white" value={currentRate.hourly} onChange={(e) => setCategoryRates({ ...categoryRates, [catId]: { ...currentRate, hourly: e.target.value } })} />
+                    <input type="number" placeholder="Diária" className="w-20 rounded border border-neutral-200 px-2 py-1 text-xs dark:bg-neutral-800 dark:border-neutral-700 text-neutral-900 dark:text-white" value={currentRate.daily} onChange={(e) => setCategoryRates({ ...categoryRates, [catId]: { ...currentRate, daily: e.target.value } })} />
+                  </div>
                 </div>
               );
             })}
