@@ -1056,9 +1056,7 @@ export async function dbUpdateUser(id: string, patch: Partial<User>): Promise<vo
     if (e2) throw new Error(`Erro ao atualizar perfil freelancer: ${e2.message}`);
   }
 
-  // 🛠️ PERSISTÊNCIA DA AGENDA E TURNOS (Disponibilidade Semanal e de Datas Específicas)
   if (patch.availability !== undefined || patch.dateAvailability !== undefined) {
-    // Buscamos a disponibilidade atual do usuário no estado/banco para sincronizar corretamente se apenas uma delas veio no patch
     const { data: currentRows } = await supabase.from('freelancer_availability').select('*').eq('freelancer_id', id);
     const existingAv = mapRowsToAvailability((currentRows ?? []) as unknown as DbFreelancerAvailability[]);
     const existingDateAv = mapRowsToDateAvailability((currentRows ?? []) as unknown as DbFreelancerAvailability[]);
@@ -1174,8 +1172,29 @@ export async function dbInsertContract(contract: Contract): Promise<void> {
   }
 }
 
+// 🛠️ Atualizado para utilizar a RPC accept_contract quando for confirmação de disponibilidade
 export async function dbUpdateContractStatus(contractId: string, status: string, note?: string): Promise<void> {
   const dbStatus = STATUS_TO_DB[status] ?? status;
+
+  if (status === 'confirmed') {
+    // Buscamos o contrato para pegar o ID do freelancer
+    const { data: contractData } = await supabase
+      .from('contracts')
+      .select('freelancer_id')
+      .eq('id', contractId)
+      .single();
+
+    if (contractData) {
+      const { error: rpcError } = await supabase.rpc('accept_contract', {
+        p_contract_id: contractId,
+        p_freelancer_id: (contractData as { freelancer_id: string }).freelancer_id
+      });
+      if (!rpcError) return; // Se a RPC executou com sucesso, encerra aqui.
+      console.warn('⚠️ Falha ao usar RPC no status, tentando fallback direto:', rpcError.message);
+    }
+  }
+
+  // Fallback padrão caso não seja o status de confirmação ou a RPC falhe
   const { error } = await supabase.from('contracts').update({ status: dbStatus }).eq('id', contractId);
   if (error) throw new Error(`Erro ao atualizar contrato: ${error.message}`);
 
