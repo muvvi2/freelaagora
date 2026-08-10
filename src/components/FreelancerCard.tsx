@@ -28,12 +28,10 @@ export function FreelancerCard({ freelancer: f, onHire, onView, showAdminActions
   const [confirmDelete, setConfirmDelete] = useState(false);
   const plan = getPlan(f.vipTier ?? 'free', data.vipPlans);
 
-  // Verifica se o usuário atual (estabelecimento) possui contrato pago, em serviço ou concluído com este freelancer
   const hasActiveContract = currentUser ? data.contracts.some(
     (c) => c.freelancerId === f.id && c.establishmentId === currentUser.id && (c.status === 'paid' || c.status === 'checked_in' || c.status === 'completed')
   ) : false;
 
-  // Se for o próprio freelancer vendo seu card, ou se for admin, ou se houver contrato pago, mostra a identidade. Caso contrário, oculta.
   const isSelf = currentUser?.id === f.id;
   const showIdentity = isSelf || showAdminActions || hasActiveContract;
 
@@ -84,7 +82,6 @@ export function FreelancerCard({ freelancer: f, onHire, onView, showAdminActions
 
         <p className="line-clamp-2 text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">{f.bio ?? 'Sem descrição.'}</p>
 
-        {/* Locked contact preview */}
         <div className="flex items-center gap-2 text-xs text-neutral-400">
           <Lock className="h-3.5 w-3.5" /> {showIdentity ? 'Contato liberado' : 'Nome e contato liberados após contratação e pagamento'}
         </div>
@@ -101,22 +98,11 @@ export function FreelancerCard({ freelancer: f, onHire, onView, showAdminActions
             {showEdit && isSelf && <Button size="sm" variant="ghost" onClick={() => setEditing(true)}><Pencil className="h-3.5 w-3.5" /> Editar</Button>}
           </div>
         </div>
-
-        {showAdminActions && (
-          <div className="flex items-center gap-2 border-t border-neutral-100 pt-3 dark:border-neutral-800">
-            <Button size="sm" variant="ghost" className="text-error-500 hover:bg-error-50 dark:hover:bg-error-500/10" onClick={() => setConfirmDelete(true)}><Trash2 className="h-3.5 w-3.5" /> Excluir</Button>
-          </div>
-        )}
       </div>
 
       {editing && isSelf && (
         <FreelancerEditModal freelancer={f} open={editing} onClose={() => setEditing(false)} onSave={(patch) => { updateUser(f.id, patch); setEditing(false); notify('Perfil atualizado com sucesso!'); }} />
       )}
-
-      <Modal open={confirmDelete} onClose={() => setConfirmDelete(false)} title="Excluir freelancer" size="sm"
-        footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={() => setConfirmDelete(false)}>Cancelar</Button><Button variant="danger" fullWidth onClick={() => { deleteEntity(f.id); setConfirmDelete(false); notify('Freelancer excluído', 'warning'); }}><Trash2 className="h-4 w-4" /> Excluir</Button></div>}>
-        <p className="text-sm text-neutral-600 dark:text-neutral-300">Excluir <strong>{f.name}</strong>?</p>
-      </Modal>
     </>
   );
 }
@@ -127,45 +113,60 @@ export function FreelancerEditModal({ freelancer, open, onClose, onSave }: { fre
   const [bio, setBio] = useState(freelancer.bio ?? '');
   const [dailyRate, setDailyRate] = useState(String(freelancer.dailyRate ?? 0));
   const [hourlyRate, setHourlyRate] = useState(String(freelancer.hourlyRate ?? 0));
-  const [pixKey, setPixKey] = useState(freelancer.pixKey ?? '');
-  const [city, setCity] = useState(freelancer.address?.city || '');
-  const [state, setState] = useState(freelancer.address?.state || 'SP');
-  const [cpf, setCpf] = useState(freelancer.cpf ?? '');
-  const [phone, setPhone] = useState(freelancer.phone);
-  const [whatsapp, setWhatsapp] = useState(freelancer.whatsapp);
+  const [categoryRates, setCategoryRates] = useState<Record<string, { hourly: string; daily: string }>>(freelancer.categoryRates || {});
   const [unlimitedKm, setUnlimitedKm] = useState(freelancer.unlimitedKm || false);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhoto(reader.result as string);
-      };
+      reader.onloadend = () => setPhoto(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Editar perfil" subtitle="Todos os campos são editáveis em tempo real" size="lg"
-      footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={onClose}>Cancelar</Button><Button fullWidth onClick={() => onSave({ name, photo, bio, dailyRate: Number(dailyRate) || 0, hourlyRate: Number(hourlyRate) || 0, pixKey, address: { ...freelancer.address, city, state }, cpf, phone, whatsapp, unlimitedKm })}><Check className="h-4 w-4" /> Salvar</Button></div>}>
+    <Modal open={open} onClose={onClose} title="Editar perfil" size="lg"
+      footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={onClose}>Cancelar</Button><Button fullWidth onClick={() => onSave({ name, photo, bio, dailyRate: Number(dailyRate) || 0, hourlyRate: Number(hourlyRate) || 0, categoryRates, unlimitedKm })}><Check className="h-4 w-4" /> Salvar</Button></div>}>
       
       <div className="grid gap-4 sm:grid-cols-2">
         <Input label="Nome completo" value={name} onChange={(e) => setName(e.target.value)} />
-        <Input label="Cidade" value={city} onChange={(e) => setCity(e.target.value)} />
-        <Input label="Estado" value={state} onChange={(e) => setState(e.target.value)} />
-        <Input label="CPF" value={cpf} onChange={(e) => setCpf(maskCPF(e.target.value))} />
-        <Input label="Telefone (oculto)" value={phone} onChange={(e) => setPhone(maskPhone(e.target.value))} />
-        <Input label="WhatsApp (oculto)" value={whatsapp} onChange={(e) => setWhatsapp(maskPhone(e.target.value))} />
-        <Input label="Diária (R$)" type="number" value={dailyRate} onChange={(e) => setDailyRate(e.target.value)} />
-        <Input label="Hora (R$)" type="number" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} />
-        
-        <div className="sm:col-span-2">
-          <Input label="Chave PIX" value={pixKey} onChange={(e) => setPixKey(e.target.value)} />
-        </div>
+        <Input label="Diária padrão (R$)" type="number" value={dailyRate} onChange={(e) => setDailyRate(e.target.value)} />
+        <Input label="Hora padrão (R$)" type="number" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} />
+
+        {/* Valores individuais por categoria selecionada */}
+        {freelancer.categories?.length > 0 && (
+          <div className="sm:col-span-2 space-y-3 rounded-xl border border-neutral-200 p-4 dark:border-neutral-700">
+            <p className="text-xs font-semibold uppercase text-neutral-500">Valores Individuais por Especialidade</p>
+            {freelancer.categories.map((catId: string) => {
+              const cat = CATEGORIES.find(c => c.id === catId);
+              if (!cat) return null;
+              const currentRate = categoryRates[catId] || { hourly: '', daily: '' };
+              return (
+                <div key={catId} className="flex flex-col sm:flex-row items-center gap-2 bg-neutral-50 dark:bg-neutral-800 p-3 rounded-lg">
+                  <span className="text-sm font-semibold flex-1 text-neutral-900 dark:text-white">{cat.label}</span>
+                  <input 
+                    type="number" 
+                    placeholder="R$/h" 
+                    className="w-28 rounded-lg border border-neutral-200 p-2 text-sm dark:bg-neutral-900 dark:border-neutral-700" 
+                    value={currentRate.hourly}
+                    onChange={(e) => setCategoryRates({ ...categoryRates, [catId]: { ...currentRate, hourly: e.target.value } })}
+                  />
+                  <input 
+                    type="number" 
+                    placeholder="Diária R$" 
+                    className="w-28 rounded-lg border border-neutral-200 p-2 text-sm dark:bg-neutral-900 dark:border-neutral-700" 
+                    value={currentRate.daily}
+                    onChange={(e) => setCategoryRates({ ...categoryRates, [catId]: { ...currentRate, daily: e.target.value } })}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         <div className="sm:col-span-2 space-y-2">
-          <label className="block text-xs font-semibold text-neutral-500">Foto de Perfil (Carregar Arquivo)</label>
+          <label className="block text-xs font-semibold text-neutral-500">Foto de Perfil</label>
           <div className="flex items-center gap-4">
             <Avatar src={photo} alt="Preview" size={64} />
             <label className="cursor-pointer inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200">
