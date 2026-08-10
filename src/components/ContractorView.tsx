@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Search, SlidersHorizontal, Plus, Megaphone, Store, Users, FileText, Pencil, MapPin, Navigation, Crown, Globe } from 'lucide-react';
+import { Search, SlidersHorizontal, Plus, Megaphone, Store, Users, FileText, Pencil, MapPin, Navigation, Crown, Globe, Calendar, Clock, Trash2, Pause, Play, CheckCircle2 } from 'lucide-react';
 import { useApp } from '@/AppContext';
 import { useToast } from './ui/Toast';
 import { Button } from './ui/Button';
@@ -14,12 +14,13 @@ import { EscrowFlowModal } from './EscrowFlowModal';
 import { VipPanel } from './VipPanel';
 import { VipSquareWidget } from './VipSquareWidget';
 import { EstablishmentEditModal } from './EstablishmentEditModal';
+import { Modal } from './ui/Modal';
 import { CATEGORIES, MACRO_CATEGORIES } from '@/mockData';
-import { formatCurrency, distanceBetween, isWithinRadius, isAvailableToday, isAvailableTomorrow, isFreelancerAvailableOn, isEstablishmentOnTrial, trialDaysLeft } from '@/utils';
+import { formatCurrency, formatDateBR, distanceBetween, isWithinRadius, isAvailableToday, isAvailableTomorrow, isFreelancerAvailableOn, isEstablishmentOnTrial, trialDaysLeft, contractStatusLabel, contractStatusTone } from '@/utils';
 import type { User, Job, Contract } from '@/types';
 
 export function ContractorView() {
-  const { currentUser, data, requestHire, categoryById } = useApp();
+  const { currentUser, data, requestHire, categoryById, deleteJob, pauseJob } = useApp();
   const { notify } = useToast();
 
   const [query, setQuery] = useState('');
@@ -40,6 +41,12 @@ export function ContractorView() {
   const [jobForm, setJobForm] = useState<{ open: boolean; editing: Job | null }>({ open: false, editing: null });
   const [editEstablishment, setEditEstablishment] = useState(false);
   const [viewVipPage, setViewVipPage] = useState(false);
+  
+  // Estados para controlar os Modais dos Contadores Clicáveis
+  const [showJobsModal, setShowJobsModal] = useState(false);
+  const [showApplicantsModal, setShowApplicantsModal] = useState(false);
+  const [showContractsModal, setShowContractsModal] = useState(false);
+  const [showNearbyModal, setShowNearbyModal] = useState(false);
 
   if (!currentUser || !data) {
     return (
@@ -126,18 +133,15 @@ export function ContractorView() {
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 space-y-6 text-neutral-900 dark:text-white">
       
-      {/* LAYOUT PRINCIPAL EM DUAS COLUNAS (ESQUERDA: BANNER + FEED | DIREITA: PERFIL + VAGAS) */}
+      {/* LAYOUT PRINCIPAL EM DUAS COLUNAS */}
       <div className="grid gap-6 lg:grid-cols-[280px_1fr] items-start">
         
         {/* ================= COLUNA ESQUERDA ================= */}
         <aside className="space-y-6 w-full">
-          
-          {/* Anúncio Vertical Slot 1 */}
           <div className="w-full aspect-[600/900] overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
              <VipSquareWidget pageType="establishments" slot={1} />
           </div>
 
-          {/* Se houver profissionais, o primeiro entra logo abaixo do Slot 1 para preencher o espaço */}
           {filtered[0] && (
             <div>
               <FreelancerCard freelancer={filtered[0]} onHire={handleHire} onView={setViewing} distanceKm={distanceBetween(filtered[0].address, origin)} />
@@ -148,7 +152,7 @@ export function ContractorView() {
         {/* ================= COLUNA DIREITA ================= */}
         <div className="space-y-6">
           
-          {/* TOPO DIREITA: Perfil do Estabelecimento + Estatísticas */}
+          {/* TOPO DIREITA: Perfil do Estabelecimento + Estatísticas Clicáveis */}
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
               <div className="flex items-center gap-4">
@@ -181,18 +185,26 @@ export function ContractorView() {
               </div>
             )}
 
+            {/* CONTADORES TODOS CLICÁVEIS */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <CompactStatCard icon={Megaphone} label="Vagas publicadas" value={String(myJobs.length)} tone="primary" />
-              <CompactStatCard icon={Users} label="Candidaturas" value={String(myJobs.reduce((acc, j) => acc + j.applicants.length, 0))} tone="secondary" />
-              <CompactStatCard icon={FileText} label="Contratações" value={String(myContracts.length)} tone="accent" />
-              <CompactStatCard icon={MapPin} label="Profissionais próximos" value={String(filtered.length)} tone="neutral" />
+              <div onClick={() => setShowJobsModal(true)} className="cursor-pointer transition-transform hover:scale-[1.02]">
+                <CompactStatCard icon={Megaphone} label="Vagas publicadas" value={String(myJobs.length)} tone="primary" />
+              </div>
+              <div onClick={() => setShowApplicantsModal(true)} className="cursor-pointer transition-transform hover:scale-[1.02]">
+                <CompactStatCard icon={Users} label="Candidaturas" value={String(myJobs.reduce((acc, j) => acc + j.applicants.length, 0))} tone="secondary" />
+              </div>
+              <div onClick={() => setShowContractsModal(true)} className="cursor-pointer transition-transform hover:scale-[1.02]">
+                <CompactStatCard icon={FileText} label="Contratações" value={String(myContracts.length)} tone="accent" />
+              </div>
+              <div onClick={() => setShowNearbyModal(true)} className="cursor-pointer transition-transform hover:scale-[1.02]">
+                <CompactStatCard icon={MapPin} label="Profissionais próximos" value={String(filtered.length)} tone="neutral" />
+              </div>
             </div>
           </div>
 
-          {/* CONTEÚDO ABAIXO DO PERFIL: Feed de Busca + Sidebar de Vagas e Anúncios */}
+          {/* CONTEÚDO ABAIXO DO PERFIL */}
           <div className="grid gap-6 lg:grid-cols-[1fr_320px] items-start">
             
-            {/* FEED DE PROFISSIONAIS (A partir do 2º) */}
             <div className="space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -259,7 +271,7 @@ export function ContractorView() {
               )}
             </div>
 
-            {/* SIDEBAR DIREITA: Minhas Vagas + Slot 2 + Slot 3 */}
+            {/* SIDEBAR DIREITA */}
             <aside className="space-y-6">
               <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
                 <div className="mb-3 flex items-center justify-between">
@@ -272,7 +284,6 @@ export function ContractorView() {
                 </div>
               </div>
 
-              {/* SLOT 2 */}
               <div className="w-full aspect-[6/5] overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
                 <VipSquareWidget pageType="establishments" slot={2} />
               </div>
@@ -283,7 +294,6 @@ export function ContractorView() {
                 </div>
               )}
 
-              {/* SLOT 3 */}
               <div className="w-full aspect-[3/1] overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
                 <VipSquareWidget pageType="establishments" slot={3} />
               </div>
@@ -292,6 +302,123 @@ export function ContractorView() {
           </div>
         </div>
       </div>
+
+      {/* ================= MODAIS DOS CONTADORES ================= */}
+
+      {/* 1. Modal de Vagas Publicadas */}
+      <Modal open={showJobsModal} onClose={() => setShowJobsModal(false)} title={`Vagas Publicadas (${myJobs.length})`} size="md">
+        <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+          {myJobs.length === 0 ? (
+            <p className="text-center text-sm text-neutral-400 py-8">Você não possui vagas publicadas.</p>
+          ) : (
+            myJobs.map((job) => (
+              <div key={job.id} className="flex items-center justify-between p-3.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50">
+                <div>
+                  <p className="font-semibold text-sm text-neutral-900 dark:text-white">{job.title}</p>
+                  <p className="text-xs text-neutral-400">{formatDateBR(job.date)} · {formatCurrency(job.value ?? job.dailyRate ?? 0)} · {job.applicants.length} candidato(s)</p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button size="sm" variant="outline" onClick={() => { pauseJob(job.id); notify('Status alterado'); }}>
+                    {job.status === 'paused' ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
+                  </Button>
+                  <Button size="sm" variant="ghost" className="text-error-500" onClick={() => deleteJob(job.id)}>
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </Modal>
+
+      {/* 2. Modal de Candidaturas */}
+      <Modal open={showApplicantsModal} onClose={() => setShowApplicantsModal(false)} title="Candidaturas Recebidas" size="md">
+        <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+          {myJobs.flatMap(j => j.applicants).length === 0 ? (
+            <p className="text-center text-sm text-neutral-400 py-8">Nenhuma candidatura recebida nas suas vagas ainda.</p>
+          ) : (
+            myJobs.map((job) => {
+              const applicantsList = data?.users?.filter((u) => job.applicants?.includes(u.id)) || [];
+              if (applicantsList.length === 0) return null;
+              return (
+                <div key={job.id} className="space-y-2">
+                  <p className="text-xs font-bold text-primary-600 dark:text-primary-400 uppercase tracking-wider">Vaga: {job.title}</p>
+                  {applicantsList.map((applicant) => (
+                    <div key={applicant.id} className="flex items-center justify-between p-3 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50">
+                      <div className="flex items-center gap-3">
+                        <Avatar src={applicant.photo} alt={applicant.name} size={36} />
+                        <div>
+                          <p className="font-semibold text-sm text-neutral-900 dark:text-white">{applicant.name}</p>
+                          <p className="text-xs text-neutral-400">Diária: {formatCurrency(applicant.dailyRate || job.value || 0)}</p>
+                        </div>
+                      </div>
+                      <Button size="sm" onClick={() => { requestHire(me.id, applicant.id, job.id, job.hours, applicant.dailyRate || job.value || 0); notify('Solicitação de contratação enviada!'); setShowApplicantsModal(false); }}>
+                        Contratar
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </Modal>
+
+      {/* 3. Modal de Contratações */}
+      <Modal open={showContractsModal} onClose={() => setShowContractsModal(false)} title={`Contratações (${myContracts.length})`} size="md">
+        <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+          {myContracts.length === 0 ? (
+            <p className="text-center text-sm text-neutral-400 py-8">Nenhuma contratação realizada até o momento.</p>
+          ) : (
+            myContracts.map((contract) => (
+              <div key={contract.id} className="flex items-center justify-between p-3.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50">
+                <div className="flex items-center gap-3">
+                  <Avatar src={contract.freelancerPhoto} alt={contract.freelancerName} size={40} />
+                  <div>
+                    <p className="font-semibold text-sm text-neutral-900 dark:text-white">{contract.freelancerName}</p>
+                    <p className="text-xs text-neutral-400">Total: {formatCurrency(contract.total)} · {contract.hours}h</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge tone={contractStatusTone(contract.status)}>{contractStatusLabel(contract.status)}</Badge>
+                  <Button size="sm" variant="outline" onClick={() => { setEscrowContract(contract); setShowContractsModal(false); }}>
+                    Ver Detalhes
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </Modal>
+
+      {/* 4. Modal de Profissionais Próximos */}
+      <Modal open={showNearbyModal} onClose={() => setShowNearbyModal(false)} title={`Profissionais Próximos (${filtered.length})`} size="md">
+        <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+          {filtered.length === 0 ? (
+            <p className="text-center text-sm text-neutral-400 py-8">Nenhum profissional encontrado no raio de distância atual.</p>
+          ) : (
+            filtered.map((freelancer) => (
+              <div key={freelancer.id} className="flex items-center justify-between p-3.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50">
+                <div className="flex items-center gap-3">
+                  <Avatar src={freelancer.photo} alt={freelancer.name} size={40} />
+                  <div>
+                    <p className="font-semibold text-sm text-neutral-900 dark:text-white">{freelancer.name}</p>
+                    <p className="text-xs text-neutral-400">{freelancer.address?.city || 'Pitangueiras'} · {formatCurrency(freelancer.dailyRate || 0)} / diária</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" variant="outline" onClick={() => { setViewing(freelancer); setShowNearbyModal(false); }}>
+                    Ver Perfil
+                  </Button>
+                  <Button size="sm" onClick={() => { handleHire(freelancer); setShowNearbyModal(false); }}>
+                    Contratar
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </Modal>
 
       {viewing && <FreelancerDetailModal freelancer={viewing} open={!!viewing} onClose={() => setViewing(null)} onHire={handleHire} />}
       {escrowContract && <EscrowFlowModal contract={escrowContract} open={!!escrowContract} onClose={() => setEscrowContract(null)} />}
