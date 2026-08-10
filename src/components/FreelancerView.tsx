@@ -53,7 +53,8 @@ export function FreelancerView() {
     return <VipPanel userId={me.id} accountType="freelancer" onBack={() => setTab('opportunities')} />;
   }
 
-  const activeInvites = myContracts.filter((c) => c.status === 'requested' || c.status === 'confirmed');
+  // 🛠️ ATUALIZADO: Inclui 'paid' e 'checked_in' para o contrato não sumir após o pagamento do estabelecimento
+  const activeInvites = myContracts.filter((c) => ['requested', 'confirmed', 'paid', 'checked_in'].includes(c.status));
 
   return (
     <div className="mx-auto w-[98%] max-w-[1800px] px-4 py-6 sm:px-6 space-y-6">
@@ -64,7 +65,7 @@ export function FreelancerView() {
         
         <div className="grid gap-6 lg:grid-cols-[1fr_300px] items-center">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-            <Avatar src={me.photo} alt={me.name} size={96} ring={me.vipTier && me.vipTier !== 'free' ? 'vip' : 'primary'} vipBadge={me.vipTier === 'vip2' || me.vipTier === 'vip3'} />
+            <Avatar src={me.photo} alt={me.name} size={96} ring={me.vipTier && me.vipTier !== 'free' ? 'vip' : 'primary'} vipBadge={me.vipTier === 'vip2' || me.vipTier === 'vip3' || me.vipTier === 'vip4'} />
             <div className="flex-1 space-y-4">
               <div>
                 <div className="flex items-center gap-2">
@@ -116,24 +117,28 @@ export function FreelancerView() {
         {tab === 'opportunities' && (
           <div className="grid gap-6 lg:grid-cols-[280px_1fr_1fr] items-start">
             
-            {/* COLUNA 1: Convites Diretos no topo + SLOT 3 no rodapé esquerdo da página */}
+            {/* COLUNA 1: Convites Diretos / Contratos Ativos no topo + SLOT 3 no rodapé esquerdo */}
             <div className="flex flex-col justify-between h-full space-y-6">
               <section className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
-                <h2 className="mb-4 flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white"><Inbox className="h-5 w-5 text-primary-500" /> Convites Diretos</h2>
+                <h2 className="mb-4 flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white"><Inbox className="h-5 w-5 text-primary-500" /> Propostas e Contratos</h2>
                 {activeInvites.length > 0 ? (
                   <div className="space-y-3">
-                    {activeInvites.map((c) => (
-                      <button key={c.id} onClick={() => setEscrowContract(c)} className="flex w-full items-center gap-3 rounded-xl border border-neutral-100 p-3 text-left transition hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-800">
-                        <Avatar src={c.freelancerPhoto} alt={c.freelancerName} size={40} />
-                        <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-neutral-900 dark:text-white">{c.establishmentName}</p><p className="text-xs text-neutral-400">{formatCurrency(c.freelancerFee)} · {c.category}</p></div>
-                        <Badge tone={c.status === 'confirmed' ? 'success' : 'warning'}>{c.status === 'requested' ? 'Pendente' : 'Confirmado'}</Badge>
-                      </button>
-                    ))}
+                    {activeInvites.map((c) => {
+                      const statusBadgeTone = c.status === 'confirmed' ? 'success' : c.status === 'paid' ? 'warning' : c.status === 'checked_in' ? 'secondary' : 'warning';
+                      const statusLabel = c.status === 'requested' ? 'Pendente' : c.status === 'confirmed' ? 'Confirmado' : c.status === 'paid' ? 'Pago em Garantia' : 'Check-in Realizado';
+                      return (
+                        <button key={c.id} onClick={() => setEscrowContract(c)} className="flex w-full items-center gap-3 rounded-xl border border-neutral-100 p-3 text-left transition hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-800">
+                          <Avatar src={c.freelancerPhoto} alt={c.freelancerName} size={40} />
+                          <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-neutral-900 dark:text-white">{c.establishmentName}</p><p className="text-xs text-neutral-400">{formatCurrency(c.freelancerFee)} · {c.category}</p></div>
+                          <Badge tone={statusBadgeTone}>{statusLabel}</Badge>
+                        </button>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="rounded-xl bg-neutral-50 p-6 text-center dark:bg-neutral-800/50">
                     <Inbox className="mx-auto mb-2 h-8 w-8 text-neutral-300" />
-                    <p className="text-sm text-neutral-400">Nenhum convite direto no momento.</p>
+                    <p className="text-sm text-neutral-400">Nenhum convite ou contrato ativo no momento.</p>
                   </div>
                 )}
               </section>
@@ -144,7 +149,7 @@ export function FreelancerView() {
               </div>
             </div>
 
-            {/* COLUNA 2 E 3: Mural de Vagas com Grid Rigoroso de 2 Colunas e Slot 2 na Coluna 1, Linha 2 */}
+            {/* COLUNA 2 E 3: Mural de Vagas */}
             <section className="lg:col-span-2 rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-neutral-100 dark:border-neutral-800">
                 <h2 className="flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white">
@@ -168,33 +173,29 @@ export function FreelancerView() {
               {openJobs.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 justify-items-center md:justify-items-stretch">
                   
-                  {/* Linha 1, Coluna 1: Job 0 */}
                   {openJobs[0] && (
                     <div className="w-full max-w-[380px] justify-self-center">
                       <JobCard job={openJobs[0]} variant="apply" />
                     </div>
                   )}
 
-                  {/* Linha 1, Coluna 2: Job 1 */}
                   {openJobs[1] && (
                     <div className="w-full max-w-[380px] justify-self-center">
                       <JobCard job={openJobs[1]} variant="apply" />
                     </div>
                   )}
 
-                  {/* Linha 2, Coluna 1: Anúncio SLOT 2 (Exatamente com max-width 380px e altura 250px) */}
+                  {/* Anúncio SLOT 2 */}
                   <div className="w-full max-w-[380px] h-[250px] justify-self-center">
                     <VipSquareWidget pageType="freelancers" slot={2} />
                   </div>
 
-                  {/* Linha 2, Coluna 2: Job 2 */}
                   {openJobs[2] && (
                     <div className="w-full max-w-[380px] justify-self-center">
                       <JobCard job={openJobs[2]} variant="apply" />
                     </div>
                   )}
 
-                  {/* Demais vagas seguindo a grade de 2 colunas */}
                   {openJobs.slice(3).map((j) => (
                     <div key={j.id} className="w-full max-w-[380px] justify-self-center">
                       <JobCard job={j} variant="apply" />
