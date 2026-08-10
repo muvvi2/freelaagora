@@ -431,9 +431,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
     void dbInsertWalletTx(estTx).catch(() => {});
   }, [data, setData]);
 
-  const checkInFreelancer = useCallback((contractId: string) => {
+  // 🛠️ 1. O Freelancer solicita o check-in (Chegada ao local)
+  const requestCheckIn = useCallback((contractId: string) => {
     if (!data) return;
-    setData((d) => ({ ...d, contracts: d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'checked_in', history: [...ct.history, { status: 'checked_in', at: new Date().toISOString() }] } : ct) }));
+    const c = data.contracts.find(x => x.id === contractId);
+    if (!c) return;
+
+    setData((d) => ({
+      ...d,
+      contracts: d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'check_in_pending', history: [...ct.history, { status: 'check_in_pending', at: new Date().toISOString(), note: 'Profissional registrou chegada, aguardando estabelecimento.' }] } : ct),
+      notifications: [
+        { id: crypto.randomUUID(), userId: c.establishmentId, type: 'announcement', title: 'Chegada do Profissional', body: `${c.freelancerName} fez o check-in e aguarda sua confirmação de presença.`, read: false, date: new Date().toISOString(), contractId },
+        ...d.notifications
+      ]
+    }));
+    void dbUpdateContractStatus(contractId, 'check_in_pending').catch(() => {});
+  }, [data, setData]);
+
+  // 🛠️ 2. O Estabelecimento confirma a presença do profissional (Check-in duplo concluído)
+  const confirmCheckIn = useCallback((contractId: string) => {
+    if (!data) return;
+    const c = data.contracts.find(x => x.id === contractId);
+    if (!c) return;
+
+    setData((d) => ({
+      ...d,
+      contracts: d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'checked_in', history: [...ct.history, { status: 'checked_in', at: new Date().toISOString(), note: 'Estabelecimento confirmou a presença.' }] } : ct),
+      notifications: [
+        { id: crypto.randomUUID(), userId: c.freelancerId, type: 'announcement', title: 'Check-in Confirmado!', body: `O estabelecimento ${c.establishmentName} confirmou sua presença. Bom trabalho!`, read: false, date: new Date().toISOString(), contractId },
+        ...d.notifications
+      ]
+    }));
     void dbUpdateContractStatus(contractId, 'checked_in').catch(() => {});
   }, [data, setData]);
 
@@ -637,7 +665,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     data: data!, currentUser, isAdmin, isSuperAdmin, login, register, logout, updateUser, adminUpdateUser, deleteEntity, banUser, unbanUser, setVipTier, setEstVipTier, setTermsAcceptance,
     setAvailability, toggleAvailabilitySlot, toggleDateShift, toggleCategory,
     addJob, updateJob, deleteJob, pauseJob, applyToJob,
-    requestHire, confirmAvailability, payEscrow, checkInFreelancer, finishService, cancelContract,
+    requestHire, confirmAvailability, payEscrow, requestCheckIn, confirmCheckIn, finishService, cancelContract,
     submitReview, notify: notifyUser, markNotificationRead, markAllNotificationsRead, userNotifications,
     userWalletBalance, userWalletTxs, adminWalletTxs, depositToWallet, withdrawFromWallet,
     reviewsFor, setDefaultFeePercent, updatePaymentSettings, overrideContractStatus, forceRefund, resetData,
@@ -649,7 +677,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }), [
     data, currentUser, isAdmin, isSuperAdmin, login, register, logout, updateUser, adminUpdateUser, deleteEntity, banUser, unbanUser, setVipTier, setEstVipTier, setTermsAcceptance,
     setAvailability, toggleAvailabilitySlot, toggleDateShift, toggleCategory, addJob, updateJob, deleteJob, pauseJob, applyToJob,
-    requestHire, confirmAvailability, payEscrow, checkInFreelancer, finishService, cancelContract,
+    requestHire, confirmAvailability, payEscrow, requestCheckIn, confirmCheckIn, finishService, cancelContract,
     submitReview, notifyUser, markNotificationRead, markAllNotificationsRead, userNotifications,
     userWalletBalance, userWalletTxs, adminWalletTxs, depositToWallet, withdrawFromWallet,
     reviewsFor, setDefaultFeePercent, updatePaymentSettings, overrideContractStatus, forceRefund, resetData, freelancers, establishments, nearbyFreelancers, categoryById,
