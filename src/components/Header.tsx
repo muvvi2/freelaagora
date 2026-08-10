@@ -117,7 +117,7 @@ export function Header({ onNavigateHome, onNavigateVip }: { onNavigateHome?: () 
                 </div>
                 
                 <div className="p-2 space-y-2">
-                  {/* SLOT 1 EXATAMENTE ACIMA DE CARTEIRA */}
+                  {/* SLOT 1 NO HEADER (ACIMA DA CARTEIRA) */}
                   <div className="overflow-hidden rounded-xl border border-neutral-100 dark:border-neutral-800">
                     <VipSquareWidget pageType={currentUser.accountType === 'establishment' ? 'establishments' : 'freelancers'} slot={1} />
                   </div>
