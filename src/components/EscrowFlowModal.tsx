@@ -12,6 +12,7 @@ import { Avatar } from './ui/Avatar';
 import { formatCurrency, formatDateBR, contractStatusLabel, contractStepIndex, CONTRACT_STATUS_FLOW, downloadTaxReceipt } from '@/utils';
 import { ReviewModal } from './ReviewModal';
 import type { Contract } from '@/types';
+import { paymentService } from '@/services/paymentService';
 
 const STEP_ICONS = [Send, Check, Wallet, Clock, MapPin, DollarSign];
 
@@ -21,6 +22,10 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
   const [processing, setProcessing] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [payMethod, setPayMethod] = useState<'wallet' | 'pix' | 'card'>('wallet');
+  const [paymentStage, setPaymentStage] = useState<'select' | 'pix' | 'card'>('select');
+  const [pixQrCode, setPixQrCode] = useState<string | null>(null);
+  const [pixPayload, setPixPayload] = useState<string | null>(null);
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
 
   if (!currentUser) return null;
   const isFreelancer = currentUser.id === contract.freelancerId;
@@ -33,21 +38,52 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
   const balance = estUser?.walletBalance ?? 0;
   const hasEnoughBalance = balance >= contract.total;
 
-  const handlePay = () => {
-    if (payMethod === 'wallet' && !hasEnoughBalance) {
-      notify('Saldo insuficiente na carteira. Escolha PIX ou Cartão de Crédito.', 'error');
-      return;
-    }
-    setProcessing(true);
-    setTimeout(() => {
-      const res = payEscrow(contract.id, payMethod);
+  const handlePay = async () => {
+    if (payMethod === 'wallet') {
+      if (!hasEnoughBalance) {
+        notify('Saldo insuficiente na carteira. Escolha PIX ou Cartão de Crédito.', 'error');
+        return;
+      }
+      setProcessing(true);
+      const res = payEscrow(contract.id, 'wallet');
       setProcessing(false);
       if (!res.ok) {
         notify(res.error || 'Erro ao processar pagamento.', 'error');
       } else {
         notify('Pagamento em garantia realizado! Contato do freelancer liberado.');
       }
-    }, 1400);
+      return;
+    }
+
+    setProcessing(true);
+    try {
+      const result = await paymentService.createPaymentWithSplit({
+        customer: contract.establishmentId,
+        billingType: payMethod === 'pix' ? 'PIX' : 'CREDIT_CARD',
+        value: contract.total,
+        dueDate: new Date().toISOString().slice(0, 10),
+        description: `Escrow — ${contract.freelancerName}`,
+        splits: [],
+        externalReference: contract.id,
+      });
+
+      if (payMethod === 'pix') {
+        if (!result.pixQrCode) throw new Error('O gateway não retornou um QR Code PIX.');
+        setPixQrCode(result.pixQrCode);
+        setPixPayload(result.pixQrCode);
+        setPaymentStage('pix');
+        notify('QR Code PIX gerado. O contrato será liberado após a confirmação do pagamento.');
+      } else {
+        if (!result.invoiceUrl) throw new Error('O gateway não retornou um checkout para cartão.');
+        setCheckoutUrl(result.invoiceUrl);
+        setPaymentStage('card');
+        notify('Checkout seguro criado. Conclua o pagamento na nova página.');
+      }
+    } catch {
+      notify('Não foi possível iniciar este pagamento. O provedor de pagamentos ainda não está disponível.', 'error');
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const handleFinish = () => {
@@ -196,8 +232,34 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
               )}
 
               <Button fullWidth size="lg" onClick={handlePay} disabled={processing || (payMethod === 'wallet' && !hasEnoughBalance)}>
-                {processing ? <><Loader2 className="h-5 w-5 animate-spin" /> Processando...</> : <><Lock className="h-5 w-5" /> Pagar {formatCurrency(contract.total)} em Garantia</>}
+                {processing ? <><Loader2 className="h-5 w-5 animate-spin" /> Processando...</> : <><Lock className="h-5 w-5" /> {payMethod === 'wallet' ? `Pagar ${formatCurrency(contract.total)} em Garantia` : `Gerar pagamento de ${formatCurrency(contract.total)}`}</>}
               </Button>
+
+              {paymentStage === 'pix' && pixQrCode && (
+                <div className="space-y-3 rounded-xl border border-success-200 bg-success-50 p-4 dark:border-success-500/30 dark:bg-success-500/10">
+                  <div>
+                    <p className="font-semibold text-success-800 dark:text-success-300">PIX aguardando pagamento</p>
+                    <p className="mt-1 text-xs text-success-700 dark:text-success-400">Escaneie o QR Code ou copie o código. O contato só será liberado após a confirmação.</p>
+                  </div>
+                  {pixQrCode.startsWith('data:image/') ? (
+                    <img src={pixQrCode} alt="QR Code PIX" className="mx-auto h-48 w-48 rounded-lg bg-white p-2" />
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-success-300 bg-white p-3 text-center text-xs text-neutral-600">O provedor retornou o código PIX. Copie o código abaixo para pagar.</div>
+                  )}
+                  <div className="flex gap-2">
+                    <input readOnly value={pixPayload ?? ''} className="min-w-0 flex-1 rounded-lg border border-success-200 bg-white px-3 py-2 text-xs text-neutral-700" aria-label="Código PIX" />
+                    <Button size="sm" variant="outline" onClick={() => { if (pixPayload) void navigator.clipboard.writeText(pixPayload); notify('Código PIX copiado.'); }}>Copiar</Button>
+                  </div>
+                </div>
+              )}
+
+              {paymentStage === 'card' && checkoutUrl && (
+                <div className="space-y-3 rounded-xl border border-secondary-200 bg-secondary-50 p-4 dark:border-secondary-500/30 dark:bg-secondary-500/10">
+                  <p className="font-semibold text-secondary-800 dark:text-secondary-300">Checkout seguro do cartão</p>
+                  <p className="text-xs text-secondary-700 dark:text-secondary-400">Os dados do cartão serão preenchidos diretamente no provedor. Este contrato continua aguardando até o pagamento ser confirmed.</p>
+                  <a href={checkoutUrl} target="_blank" rel="noreferrer" className="inline-flex w-full items-center justify-center rounded-lg bg-secondary-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-secondary-700">Abrir checkout do cartão</a>
+                </div>
+              )}
             </div>
           )}
 
