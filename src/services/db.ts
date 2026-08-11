@@ -250,7 +250,7 @@ const STATUS_FROM_DB: Record<string, string> = {
   check_in_pending: 'check_in_pending',
   check_in_done: 'checked_in',
   completed_split: 'completed',
-  canceled: 'cancelled',
+  canceled: 'canceled',
 };
 
 function freelancerTierToId(tier: string): number {
