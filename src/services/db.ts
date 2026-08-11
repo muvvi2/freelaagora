@@ -233,7 +233,6 @@ export interface DbAuditLog {
   created_at: string;
 }
 
-// 🛠️ MAPEAMENTO DE STATUS COM SUPORTE AO CHECK-IN DUPLO
 const STATUS_TO_DB: Record<string, string> = {
   requested: 'pending_admin_check',
   confirmed: 'accepted_by_freela',
@@ -243,6 +242,7 @@ const STATUS_TO_DB: Record<string, string> = {
   completed: 'completed_split',
   cancelled: 'canceled',
 };
+
 const STATUS_FROM_DB: Record<string, string> = {
   pending_admin_check: 'requested',
   accepted_by_freela: 'confirmed',
@@ -742,7 +742,21 @@ export async function dbApplyToJob(jobId: string, freelancerId: string): Promise
 
 export async function dbInsertContract(contract: Contract): Promise<void> {
   const row = mapContractToDbRow(contract);
-  await supabase.from('contracts').insert(row as never);
+  
+  // 1. Insere o contrato no banco
+  const { error } = await supabase.from('contracts').insert(row as never);
+  if (error) throw new Error(`Erro ao inserir contrato: ${error.message}`);
+
+  // 2. Se o contrato estiver associado a uma vaga, remove o candidato e fecha a vaga
+  if (contract.jobId) {
+    await supabase.from('job_applicants')
+      .delete()
+      .match({ job_id: contract.jobId, freelancer_id: contract.freelancerId });
+
+    await supabase.from('jobs')
+      .update({ status: 'completed' })
+      .eq('id', contract.jobId);
+  }
 }
 
 export async function dbUpdateContractStatus(contractId: string, status: string, note?: string): Promise<void> {
