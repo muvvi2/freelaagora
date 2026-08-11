@@ -293,6 +293,23 @@ function categoryIdToSlug(id: number): string {
   return 'geral';
 }
 
+function mapAvailabilityRows(rows: DbFreelancerAvailability[], freelancerId: string): { availability: WeekAvailability; dateAvailability: DateAvailability } {
+  const availability = emptyAvailability();
+  const dateAvailability: DateAvailability = {};
+
+  rows.filter((r) => r.freelancer_id === freelancerId).forEach((r) => {
+    const shifts = { manha: r.shift_morning, tarde: r.shift_afternoon, noite: r.shift_night };
+    if (r.specific_date) {
+      dateAvailability[r.specific_date] = shifts;
+      return;
+    }
+    const day = INDEX_TO_DAY[r.day_of_week];
+    if (day) availability[day] = shifts;
+  });
+
+  return { availability, dateAvailability };
+}
+
 function mapDbUserToUser(
   row: DbUser,
   flProfile?: DbFreelancerProfile | null,
@@ -512,6 +529,7 @@ export async function loadAllData(): Promise<AppData> {
   const flProfiles = (flProfilesRes.data ?? []) as unknown as DbFreelancerProfile[];
   const esProfiles = (esProfilesRes.data ?? []) as unknown as DbEstablishmentProfile[];
   const flCategories = (flCategoriesRes.data ?? []) as unknown as DbFreelancerCategory[];
+  const availabilityRows = (flAvailRes.data ?? []) as unknown as DbFreelancerAvailability[];
   const contractsRows = (contractsRes.data ?? []) as unknown as DbContract[];
   const eventsRows = (eventsRes.data ?? []) as unknown as DbContractEvent[];
   const contractReviewsRows = (contractReviewsRes.data ?? []) as unknown as DbContractReview[];
@@ -525,7 +543,8 @@ export async function loadAllData(): Promise<AppData> {
     const flProfile = flProfiles.find((p) => p.user_id === row.id);
     const esProfile = esProfiles.find((p) => p.user_id === row.id);
     const userCatIds = flCategories.filter((c) => c.freelancer_id === row.id).map((c) => categoryIdToSlug(c.category_id));
-    return mapDbUserToUser(row, flProfile, esProfile, userCatIds);
+    const userAvail = mapAvailabilityRows(availabilityRows, row.id);
+    return mapDbUserToUser(row, flProfile, esProfile, userCatIds, userAvail.availability, userAvail.dateAvailability);
   });
 
   const eventsByContract = new Map<string, DbContractEvent[]>();
@@ -711,7 +730,12 @@ export async function dbUpdateUser(id: string, patch: Partial<User>): Promise<vo
   if (patch.walletBalance !== undefined) dbPatch.wallet_balance = patch.walletBalance;
 
   if (Object.keys(dbPatch).length > 0) {
-    await supabase.from('users').update(dbPatch).eq('id', id);
+    const { error } = await supabase.from('users').update(dbPatch).eq('id', id);
+    if (error) throw error;
+  }
+
+  if (patch.availability !== undefined || patch.dateAvailability !== undefined) {
+    await dbSaveAvailability(id, patch.availability ?? emptyAvailability(), patch.dateAvailability ?? {});
   }
 }
 
@@ -737,36 +761,67 @@ export async function dbDeleteJob(id: string): Promise<void> {
 }
 
 export async function dbApplyToJob(jobId: string, freelancerId: string): Promise<void> {
-  await supabase.from('job_applicants').insert({ job_id: jobId, freelancer_id: freelancerId } as never);
+  const { error } = await supabase.from('job_applicants').upsert(
+    { job_id: jobId, freelancer_id: freelancerId } as never,
+    { onConflict: 'job_id,freelancer_id', ignoreDuplicates: true },
+  );
+  if (error) throw error;
+}
+
+export async function dbSaveAvailability(userId: string, availability: WeekAvailability, dateAvailability: DateAvailability): Promise<void> {
+  const rows = [
+    ...DAY_KEYS.map((day) => ({
+      freelancer_id: userId,
+      day_of_week: DAY_INDEX[day],
+      shift_morning: availability[day]?.manha ?? false,
+      shift_afternoon: availability[day]?.tarde ?? false,
+      shift_night: availability[day]?.noite ?? false,
+      specific_date: null as string | null,
+    })),
+    ...Object.entries(dateAvailability).map(([specificDate, shifts]) => ({
+      freelancer_id: userId,
+      day_of_week: new Date(`${specificDate}T00:00:00Z`).getUTCDay(),
+      shift_morning: shifts.manha,
+      shift_afternoon: shifts.tarde,
+      shift_night: shifts.noite,
+      specific_date: specificDate,
+    })),
+  ];
+
+  const { error: deleteError } = await supabase.from('freelancer_availability').delete().eq('freelancer_id', userId);
+  if (deleteError) throw deleteError;
+  const { error: insertError } = await supabase.from('freelancer_availability').insert(rows as never);
+  if (insertError) throw insertError;
 }
 
 export async function dbInsertContract(contract: Contract): Promise<void> {
   const row = mapContractToDbRow(contract);
-  
-  // 1. Insere o contrato no banco
   const { error } = await supabase.from('contracts').insert(row as never);
-  if (error) throw new Error(`Erro ao inserir contrato: ${error.message}`);
+  if (error) throw error;
 
-  // 2. Se o contrato estiver associado a uma vaga, remove o candidato e fecha a vaga
   if (contract.jobId) {
-    await supabase.from('job_applicants')
+    const { error: applicantError } = await supabase.from('job_applicants')
       .delete()
       .match({ job_id: contract.jobId, freelancer_id: contract.freelancerId });
+    if (applicantError) throw applicantError;
 
-    await supabase.from('jobs')
-      .update({ status: 'completed' })
+    const { error: jobError } = await supabase.from('jobs')
+      .update({ status: 'closed' })
       .eq('id', contract.jobId);
+    if (jobError) throw jobError;
   }
 }
 
 export async function dbUpdateContractStatus(contractId: string, status: string, note?: string): Promise<void> {
   const dbStatus = STATUS_TO_DB[status] ?? status;
-  await supabase.from('contracts').update({ status: dbStatus }).eq('id', contractId);
-  await supabase.from('contract_events').insert({
+  const { error: updateError } = await supabase.from('contracts').update({ status: dbStatus }).eq('id', contractId);
+  if (updateError) throw updateError;
+  const { error: eventError } = await supabase.from('contract_events').insert({
     contract_id: contractId,
     status: dbStatus,
     note: note ?? null,
   } as never);
+  if (eventError) throw eventError;
 }
 
 export async function dbUpdateContractInvoice(contractId: string, invoiceId: string): Promise<void> {
@@ -871,11 +926,12 @@ export async function dbUpdatePaymentSettings(settings: PaymentSettings): Promis
 }
 
 export async function dbUpsertVipPlan(plan: any): Promise<void> {
-  await supabase.from('vip_plans_establishment').upsert(plan as never);
+  await supabase.from('vip_plans_freelancer').upsert(plan as never);
 }
 
 export async function dbDeleteVipPlan(tier: string): Promise<void> {
-  await supabase.from('vip_plans_freelancer').delete().eq('id', tier);
+  const numericId = freelancerTierToId(tier);
+  await supabase.from('vip_plans_freelancer').delete().eq('id', numericId);
 }
 
 export async function dbUpsertEstVipPlan(plan: any): Promise<void> {
@@ -883,7 +939,8 @@ export async function dbUpsertEstVipPlan(plan: any): Promise<void> {
 }
 
 export async function dbDeleteEstVipPlan(tier: string): Promise<void> {
-  await supabase.from('vip_plans_establishment').delete().eq('id', tier);
+  const numericId = establishmentTierToId(tier);
+  await supabase.from('vip_plans_establishment').delete().eq('id', numericId);
 }
 
 function mapDbContractToContract(row: DbContract, events: DbContractEvent[], reviews: DbContractReview[]): Contract {
