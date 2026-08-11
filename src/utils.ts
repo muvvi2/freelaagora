@@ -76,10 +76,13 @@ export function estPlanPrice(tier: EstTier, period: Period, plans?: EstVipPlan[]
   return getEstPlan(tier, plans).prices[period];
 }
 
-// BUSCA A TAXA CONFIGURADA NO PAINEL ADMIN (Dinâmico)
+// BUSCA A TAXA CONFIGURADA NO PAINEL ADMIN (Com trava de segurança para VIP 6)
 export function getIntermediationFeePercent(user: User, plans?: EstVipPlan[]): number {
   if (user.accountType !== 'establishment') return 15.0;
   if (isEstablishmentOnTrial(user)) return 0;
+  
+  // Trava direta para garantir taxa zero no VIP 6 independente do banco/cache
+  if (user.estVipTier === 'vip6') return 0;
   
   const plan = getEstPlan(user.estVipTier ?? 'free', plans);
   return plan.intermediationFee ?? 0;
