@@ -53,8 +53,8 @@ export function FreelancerView() {
     return <VipPanel userId={me.id} accountType="freelancer" onBack={() => setTab('opportunities')} />;
   }
 
-  // 🛠️ ATUALIZADO: Inclui 'paid' e 'checked_in' para o contrato não sumir após o pagamento do estabelecimento
-  const activeInvites = myContracts.filter((c) => ['requested', 'confirmed', 'paid', 'checked_in'].includes(c.status));
+  // 🛠️ ATUALIZADO: Inclui todos os status ativos para o contrato não sumir da tela do prestador
+  const activeInvites = myContracts.filter((c) => ['requested', 'confirmed', 'paid', 'check_in_pending', 'checked_in'].includes(c.status));
 
   return (
     <div className="mx-auto w-[98%] max-w-[1800px] px-4 py-6 sm:px-6 space-y-6">
@@ -124,8 +124,8 @@ export function FreelancerView() {
                 {activeInvites.length > 0 ? (
                   <div className="space-y-3">
                     {activeInvites.map((c) => {
-                      const statusBadgeTone = c.status === 'confirmed' ? 'success' : c.status === 'paid' ? 'warning' : c.status === 'checked_in' ? 'secondary' : 'warning';
-                      const statusLabel = c.status === 'requested' ? 'Pendente' : c.status === 'confirmed' ? 'Confirmado' : c.status === 'paid' ? 'Pago em Garantia' : 'Check-in Realizado';
+                      const statusBadgeTone = c.status === 'confirmed' ? 'success' : c.status === 'paid' ? 'warning' : c.status === 'check_in_pending' ? 'warning' : c.status === 'checked_in' ? 'secondary' : 'warning';
+                      const statusLabel = c.status === 'requested' ? 'Pendente' : c.status === 'confirmed' ? 'Confirmado' : c.status === 'paid' ? 'Pago em Garantia' : c.status === 'check_in_pending' ? 'Aguardando Aprovação' : 'Check-in Realizado';
                       return (
                         <button key={c.id} onClick={() => setEscrowContract(c)} className="flex w-full items-center gap-3 rounded-xl border border-neutral-100 p-3 text-left transition hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-800">
                           <Avatar src={c.freelancerPhoto} alt={c.freelancerName} size={40} />
@@ -167,7 +167,7 @@ export function FreelancerView() {
                 <MapPin className="h-4 w-4 shrink-0 text-neutral-400" />
                 <span className="text-xs font-semibold text-neutral-500">Raio de Atuação:</span>
                 <input type="range" min={1} max={100} step={1} disabled={me.unlimitedKm} value={radiusKm} onChange={(e) => setRadiusKm(Number(e.target.value))} className={`flex-1 accent-primary-500 ${me.unlimitedKm ? 'opacity-40' : ''}`} />
-                <span className="w-16 text-right text-xs font-bold text-neutral-700 dark:text-neutral-300">{me.unlimitedKm ? 'Ilimitado' : `${radiusKm}km`}</span>
+                <span className="w-16 text-right text-xs font-bold text-neutral-700 dark:text-neutral-300">{me.unlimitedKm ? 'Ilistado' : `${radiusKm}km`}</span>
               </div>
 
               {openJobs.length > 0 ? (
