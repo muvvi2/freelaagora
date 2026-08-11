@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { CATEGORIES, VIP_PLANS, EST_VIP_PLANS } from '@/mockData';
-import { emptyAvailability, fullAvailability } from '@/mockData';
+import { emptyAvailability } from '@/mockData';
 import type {
   User, Job, Contract, WalletTx, AppNotification, Review,
   AppData, WeekAvailability, DateAvailability, DayKey, Tier, EstTier,
@@ -233,7 +233,7 @@ export interface DbAuditLog {
   created_at: string;
 }
 
-// 🛠️ MAPEAMENTO ATUALIZADO COM O STATUS DE CHECK-IN DUPLO (`check_in_pending`)
+// 🛠️ MAPEAMENTO ATUALIZADO COM O STATUS DE CHECK-IN DUPLO E CORREÇÃO DE LEITURA
 const STATUS_TO_DB: Record<string, string> = {
   requested: 'pending_admin_check',
   confirmed: 'accepted_by_freela',
@@ -251,6 +251,11 @@ const STATUS_FROM_DB: Record<string, string> = {
   check_in_done: 'checked_in',
   completed_split: 'completed',
   canceled: 'canceled',
+  // Fallback caso venha diretamente do banco sem tradução
+  check_in_pending: 'check_in_pending',
+  check_in_done: 'checked_in',
+  completed_split: 'completed',
+  canceled: 'cancelled',
 };
 
 function freelancerTierToId(tier: string): number {
@@ -520,7 +525,7 @@ export async function loadAllData(): Promise<AppData> {
   const notifRows = (notifRes.data ?? []) as unknown as DbNotification[];
   const jobsRows = (jobsRes.data ?? []) as unknown as DbJob[];
   const applicantsRows = (applicantsRes.data ?? []) as unknown as DbJobApplicant[];
-  const couponRows = (couponsRes.data ?? []) as unknown as DbCoupon[];
+  const couponRows = (couponRowsRes?.data ?? couponsRes.data ?? []) as unknown as DbCoupon[];
   const auditRows = (auditRes.data ?? []) as unknown as DbAuditLog[];
 
   const users: User[] = usersRows.map((row) => {
@@ -584,14 +589,14 @@ export async function loadAllData(): Promise<AppData> {
     };
   });
 
-  const coupons = couponRows.map((row) => ({
+  const coupons = couponsRes.data ? couponsRes.data.map((row: any) => ({
     id: String(row.id),
     code: row.code,
     discountPercentage: Number(row.discount_percentage),
     isActive: row.is_active,
     expiresAt: row.expires_at ?? undefined,
     createdAt: row.created_at,
-  }));
+  })) : [];
 
   const adminAuditLogs = auditRows.map((row) => ({
     id: row.id,
@@ -621,14 +626,18 @@ export async function loadAllData(): Promise<AppData> {
     return plan;
   });
 
+  // 🛠️ MAPEAMENTO ROBUSTO PARA BUSCAR O VIP 6 CORRETAMENTE
   const estVipPlans: EstVipPlan[] = EST_VIP_PLANS.map(plan => {
-    const targetId = establishmentTierToId(plan.tier);
-    const dbPlan = vipEsRes.data?.find((p: any) => p.id === targetId);
+    const dbPlan = vipEsRes.data?.find((p: any) => 
+      p.id === establishmentTierToId(plan.tier) || 
+      p.name?.toLowerCase().includes(plan.label.toLowerCase()) ||
+      p.name?.toLowerCase().includes(plan.tier.toLowerCase())
+    );
     if (dbPlan) {
       return {
         ...plan,
         label: dbPlan.name || plan.label,
-        intermediationFee: Number(dbPlan.intermediation_fee_percentage ?? plan.intermediationFee),
+        intermediationFee: Number(dbPlan.intermediation_fee_percentage ?? dbPlan.intermediationFee ?? plan.intermediationFee),
         prices: {
           monthly: Number(dbPlan.monthly_price ?? plan.prices.monthly),
           semestral: Number(dbPlan.semestral_price ?? plan.prices.semestral),
@@ -856,7 +865,7 @@ export async function dbUpdatePaymentSettings(settings: PaymentSettings): Promis
 }
 
 export async function dbUpsertVipPlan(plan: any): Promise<void> {
-  await supabase.from('vip_plans_freelancer').upsert(plan as never);
+  await supabase.from('vip_plans_establishment').upsert(plan as never);
 }
 
 export async function dbDeleteVipPlan(tier: string): Promise<void> {
