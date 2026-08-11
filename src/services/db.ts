@@ -233,7 +233,7 @@ export interface DbAuditLog {
   created_at: string;
 }
 
-// 🛠️ MAPEAMENTO ATUALIZADO COM O STATUS DE CHECK-IN DUPLO E CORREÇÃO DE LEITURA
+// 🛠️ MAPEAMENTO DE STATUS COM SUPORTE AO CHECK-IN DUPLO
 const STATUS_TO_DB: Record<string, string> = {
   requested: 'pending_admin_check',
   confirmed: 'accepted_by_freela',
@@ -247,11 +247,6 @@ const STATUS_FROM_DB: Record<string, string> = {
   pending_admin_check: 'requested',
   accepted_by_freela: 'confirmed',
   paid_escrow: 'paid',
-  check_in_pending: 'check_in_pending',
-  check_in_done: 'checked_in',
-  completed_split: 'completed',
-  canceled: 'canceled',
-  // Fallback caso venha diretamente do banco sem tradução
   check_in_pending: 'check_in_pending',
   check_in_done: 'checked_in',
   completed_split: 'completed',
@@ -517,7 +512,6 @@ export async function loadAllData(): Promise<AppData> {
   const flProfiles = (flProfilesRes.data ?? []) as unknown as DbFreelancerProfile[];
   const esProfiles = (esProfilesRes.data ?? []) as unknown as DbEstablishmentProfile[];
   const flCategories = (flCategoriesRes.data ?? []) as unknown as DbFreelancerCategory[];
-  const flAvail = (flAvailRes.data ?? []) as unknown as DbFreelancerAvailability[];
   const contractsRows = (contractsRes.data ?? []) as unknown as DbContract[];
   const eventsRows = (eventsRes.data ?? []) as unknown as DbContractEvent[];
   const contractReviewsRows = (contractReviewsRes.data ?? []) as unknown as DbContractReview[];
@@ -525,7 +519,6 @@ export async function loadAllData(): Promise<AppData> {
   const notifRows = (notifRes.data ?? []) as unknown as DbNotification[];
   const jobsRows = (jobsRes.data ?? []) as unknown as DbJob[];
   const applicantsRows = (applicantsRes.data ?? []) as unknown as DbJobApplicant[];
-  const couponRows = (couponRowsRes?.data ?? couponsRes.data ?? []) as unknown as DbCoupon[];
   const auditRows = (auditRes.data ?? []) as unknown as DbAuditLog[];
 
   const users: User[] = usersRows.map((row) => {
@@ -626,7 +619,6 @@ export async function loadAllData(): Promise<AppData> {
     return plan;
   });
 
-  // 🛠️ MAPEAMENTO ROBUSTO PARA BUSCAR O VIP 6 CORRETAMENTE
   const estVipPlans: EstVipPlan[] = EST_VIP_PLANS.map(plan => {
     const dbPlan = vipEsRes.data?.find((p: any) => 
       p.id === establishmentTierToId(plan.tier) || 
