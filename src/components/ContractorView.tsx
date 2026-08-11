@@ -17,6 +17,7 @@ import { EstablishmentEditModal } from './EstablishmentEditModal';
 import { Modal } from './ui/Modal';
 import { CATEGORIES, MACRO_CATEGORIES } from '@/mockData';
 import { formatCurrency, formatDateBR, distanceBetween, isWithinRadius, isAvailableToday, isAvailableTomorrow, isFreelancerAvailableOn, isEstablishmentOnTrial, trialDaysLeft, contractStatusLabel, contractStatusTone } from '@/utils';
+import { supabase } from '@/lib/supabase';
 import type { User, Job, Contract } from '@/types';
 
 export function ContractorView() {
