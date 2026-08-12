@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { User as UserIcon, MapPin, Tags, Calendar, Crown, Wallet, Briefcase, Fingerprint, ShieldCheck, MessageSquare, Save, Inbox, Megaphone, Upload, Check, X, Globe, Sliders, Info, DollarSign } from 'lucide-react';
 import { useApp } from '@/AppContext';
 import { useToast } from './ui/Toast';
@@ -56,43 +56,41 @@ export function FreelancerView() {
   const activeInvites = myContracts.filter((c) => ['requested', 'confirmed', 'paid', 'check_in_pending', 'checked_in'].includes(c.status));
 
   return (
-    <div className="mx-auto w-[98%] max-w-[1800px] px-4 py-6 sm:px-6 space-y-6">
+    <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 space-y-6 text-neutral-900 dark:text-white">
       
-      {/* PROFILE HEADER CARD COM ESTATÍSTICAS INTEGRADAS E SLOT 1 À DIREITA */}
+      {/* SLOT 1 NO TOPO ABSOLUTO (Hero Ad - Proporção 2:1) */}
+      <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
+        <VipSquareWidget pageType="freelancers" slot={1} />
+      </div>
+
+      {/* PROFILE HEADER CARD COM ESTATÍSTICAS INTEGRADAS */}
       <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 sm:p-6 shadow-sm">
         {me.vipTier && me.vipTier !== 'free' && <div className="absolute right-4 top-4 z-10"><Badge tone="vip"><Crown className="h-3 w-3" /> {plan.label}</Badge></div>}
         
-        <div className="grid gap-6 lg:grid-cols-[1fr_300px] items-center">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-            <Avatar src={me.photo} alt={me.name} size={96} ring={me.vipTier && me.vipTier !== 'free' ? 'vip' : 'primary'} vipBadge={me.vipTier === 'vip2' || me.vipTier === 'vip3' || me.vipTier === 'vip4'} />
-            <div className="flex-1 space-y-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="font-display text-2xl font-extrabold text-neutral-900 dark:text-white">{me.name}</h1>
-                  {me.documentVerified && <ShieldCheck className="h-5 w-5 text-secondary-500" />}
-                </div>
-                {me.nickname && <p className="text-sm text-neutral-400">"{me.nickname}"</p>}
-                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <Rating value={me.rating ?? 0} count={me.reviewsCount ?? 0} />
-                  <span className="inline-flex items-center gap-1 text-sm text-neutral-400"><Briefcase className="h-4 w-4" /> {me.completedShifts ?? 0} turnos</span>
-                  <span className="text-sm text-neutral-400">{me.unlimitedKm ? '🌐 KM Livre / Disponível para viagens' : `${me.address?.city}, ${me.address?.state}`}</span>
-                </div>
-                <p className="mt-3 text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">{me.bio ?? 'Sem biografia. Edite seu perfil para adicionar uma descrição.'}</p>
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+          <Avatar src={me.photo} alt={me.name} size={96} ring={me.vipTier && me.vipTier !== 'free' ? 'vip' : 'primary'} vipBadge={me.vipTier === 'vip2' || me.vipTier === 'vip3' || me.vipTier === 'vip4'} />
+          <div className="flex-1 space-y-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="font-display text-2xl font-extrabold text-neutral-900 dark:text-white">{me.name}</h1>
+                {me.documentVerified && <ShieldCheck className="h-5 w-5 text-secondary-500" />}
               </div>
-
-              {/* ESTATÍSTICAS INTEGRADAS */}
-              <div className="grid grid-cols-2 gap-3 border-t border-neutral-100 pt-4 dark:border-neutral-800 sm:grid-cols-4">
-                <InfoBox label="Diária fechada" value={formatCurrency(me.dailyRate ?? 0)} />
-                <InfoBox label="Hora comercial" value={formatCurrency(me.hourlyRate ?? 0)} />
-                <InfoBox label="Disponibilidade" value={`${countAvailableSlots(me.availability)} turnos`} />
-                <InfoBox label="Plano" value={plan.label} />
+              {me.nickname && <p className="text-sm text-neutral-400">"{me.nickname}"</p>}
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                <Rating value={me.rating ?? 0} count={me.reviewsCount ?? 0} />
+                <span className="inline-flex items-center gap-1 text-sm text-neutral-400"><Briefcase className="h-4 w-4" /> {me.completedShifts ?? 0} turnos</span>
+                <span className="text-sm text-neutral-400">{me.unlimitedKm ? '🌐 KM Livre / Disponível para viagens' : `${me.address?.city}, ${me.address?.state}`}</span>
               </div>
+              <p className="mt-3 text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">{me.bio ?? 'Sem biografia. Edite seu perfil para adicionar uma descrição.'}</p>
             </div>
-          </div>
 
-          {/* SLOT 1 NO HEADER DO PERFIL (LADO DIREITO) */}
-          <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
-            <VipSquareWidget pageType="freelancers" slot={1} />
+            {/* ESTATÍSTICAS INTEGRADAS */}
+            <div className="grid grid-cols-2 gap-3 border-t border-neutral-100 pt-4 dark:border-neutral-800 sm:grid-cols-4">
+              <InfoBox label="Diária fechada" value={formatCurrency(me.dailyRate ?? 0)} />
+              <InfoBox label="Hora comercial" value={formatCurrency(me.hourlyRate ?? 0)} />
+              <InfoBox label="Disponibilidade" value={`${countAvailableSlots(me.availability)} turnos`} />
+              <InfoBox label="Plano" value={plan.label} />
+            </div>
           </div>
         </div>
       </div>
@@ -114,9 +112,9 @@ export function FreelancerView() {
 
       <div>
         {tab === 'opportunities' && (
-          <div className="grid gap-6 lg:grid-cols-[280px_1fr_1fr] items-start">
+          <div className="grid gap-6 lg:grid-cols-[280px_1fr] items-start">
             
-            {/* COLUNA 1: Convites Diretos / Contratos Ativos no topo + SLOT 3 no rodapé esquerdo */}
+            {/* COLUNA 1: Convites / Contratos + SLOT 3 */}
             <div className="flex flex-col justify-between h-full space-y-6">
               <section className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
                 <h2 className="mb-4 flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white"><Inbox className="h-5 w-5 text-primary-500" /> Propostas e Contratos</h2>
@@ -148,8 +146,8 @@ export function FreelancerView() {
               </div>
             </div>
 
-            {/* COLUNA 2 E 3: Mural de Vagas */}
-            <section className="lg:col-span-2 rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm space-y-4">
+            {/* COLUNA 2: Mural de Vagas + SLOT 2 */}
+            <section className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-neutral-100 dark:border-neutral-800">
                 <h2 className="flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white">
                   <Megaphone className="h-5 w-5 text-secondary-500" /> Mural de Vagas
@@ -184,8 +182,8 @@ export function FreelancerView() {
                     </div>
                   )}
 
-                  {/* Anúncio SLOT 2 */}
-                  <div className="w-full max-w-[380px] h-[250px] justify-self-center">
+                  {/* SLOT 2 (In-feed Ad no Mural de Vagas) */}
+                  <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm justify-self-center self-center">
                     <VipSquareWidget pageType="freelancers" slot={2} />
                   </div>
 
