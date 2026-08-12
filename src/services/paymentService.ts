@@ -136,9 +136,9 @@ function getAuthHeaders(provider: PaymentProviderId, apiKey: string): Record<str
 class MultiPaymentProvider {
   // Alterado para chamar a Edge Function do Supabase em vez de expor chaves e sofrer com CORS no front
   private async requestViaEdgeFunction(body: unknown): Promise<any> {
-    const supabaseUrl = supabase.supabaseUrl;
+    const supabaseUrl = (supabase as any).supabaseUrl;
     const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData?.session?.access_token || supabase.supabaseKey;
+    const token = sessionData?.session?.access_token || (supabase as any).supabaseKey;
 
     const res = await fetch(`${supabaseUrl}/functions/v1/asaas-payment`, {
       method: 'POST',
