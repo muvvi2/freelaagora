@@ -83,6 +83,18 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
         throw new Error('É necessário preencher o CPF ou CNPJ no cadastro do estabelecimento para emitir a cobrança.');
       }
 
+      // PUXA A CHAVE asaas_wallet_id DO FREELANCER CADASTRADA NA TABELA users DO BANCO
+      const freelancerUser = data?.users.find(u => u.id === contract.freelancerId);
+      const freelancerWalletId = (freelancerUser as any)?.asaas_wallet_id || (freelancerUser as any)?.asaasWalletId || '';
+
+      const splitsConfig = [];
+      if (freelancerWalletId && contract.freelancerFee > 0) {
+        splitsConfig.push({
+          walletId: freelancerWalletId,
+          fixedValue: contract.freelancerFee
+        });
+      }
+
       const result: any = await paymentService.createPaymentWithSplit({
         customer: contract.establishmentId,
         customerName: estUser?.name || contract.establishmentName || currentUser?.name || 'Cliente',
@@ -92,7 +104,7 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
         value: displayTotal,
         dueDate: new Date().toISOString().slice(0, 10),
         description: `Escrow — ${contract.freelancerName} ${isVipZero ? '(Taxa Configurada: 0%)' : ''}`,
-        splits: [],
+        splits: splitsConfig, // <-- Injeta o asaas_wallet_id do banco para o split automático
         externalReference: contract.id,
       });
 
