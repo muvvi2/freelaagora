@@ -68,7 +68,7 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
         customer: contract.establishmentId,
         customerName: estUser?.name || contract.establishmentName || currentUser?.name || 'Cliente',
         customerEmail: estUser?.email || currentUser?.email || 'cliente@freelaagora.com',
-        cpfCnpj: cleanDocument, // Corrigido para cpfCnpj conforme esperado pela interface
+        cpfCnpj: cleanDocument,
         billingType: payMethod === 'pix' ? 'PIX' : 'CREDIT_CARD',
         value: contract.total,
         dueDate: new Date().toISOString().slice(0, 10),
@@ -78,11 +78,11 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
       });
 
       if (payMethod === 'pix') {
-        const qrCodeBase64 = result.pixQrCode || result.encodedImage || result.pix?.encodedImage || result.pixQrCodeUrl;
-        const copyPaste = result.pixCopyPaste || result.payload || result.pix?.payload;
+        const qrCodeBase64 = result.pixQrCode || result.encodedImage || result.pix?.encodedImage || result.pixQrCodeUrl || result.qrCodeBase64;
+        const copyPaste = result.pixCopyPaste || result.payload || result.pix?.payload || result.pixCopiaECola || result.copiaECola;
 
         if (!qrCodeBase64 && !copyPaste) {
-          throw new Error('O gateway não retornou um QR Code PIX.');
+          throw new Error('O gateway gerou a cobrança, mas não retornou os dados visuais do Pix.');
         }
 
         const formattedQrCode = qrCodeBase64 
@@ -92,7 +92,7 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
         setPixQrCode(formattedQrCode);
         setPixPayload(copyPaste || formattedQrCode);
         setPaymentStage('pix');
-        notify('QR Code PIX gerado. O contrato será liberado após a confirmação do pagamento.');
+        notify('QR Code PIX gerado com sucesso!');
       } else {
         const redirectUrl = result.invoiceUrl || result.bankSlipUrl || result.paymentUrl;
         if (!redirectUrl) throw new Error('O gateway não retornou um checkout para cartão.');
