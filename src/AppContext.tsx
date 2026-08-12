@@ -6,7 +6,7 @@ import { setPaymentSettings } from '@/services/paymentService';
 import { supabase } from '@/lib/supabase';
 import type { AppData, User, Job, Contract, WalletTx, AppNotification, Review, Tier, Period, WeekAvailability, DateAvailability, ContractStatus, EstTier, TermsAcceptance, Coupon, VipPlan, EstVipPlan, PaymentSettings } from './types';
 import {
-  loadAllData, dbInsertUser, dbUpdateUser, dbDeleteUser,
+  loadAllData, dbFetchSingleUser, dbInsertUser, dbUpdateUser, dbDeleteUser,
   dbInsertJob, dbUpdateJob, dbDeleteJob, dbApplyToJob,
   dbInsertContract, dbUpdateContractStatus, dbUpdateContractInvoice,
   dbInsertWalletTx, dbUpdateWalletBalance,
@@ -391,6 +391,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const deletedId = payload.old?.id;
             if (deletedId) setDataState((prev) => ({ ...prev, walletTxs: prev.walletTxs.filter((t) => t.id !== deletedId) }));
           }
+        }
+      )
+      // --- PERFIS DE FREELANCER (FREELANCER_PROFILES) ---
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'freelancer_profiles' },
+        (payload) => {
+          const userId = payload.new?.user_id ?? payload.old?.user_id;
+          if (!userId) return;
+          dbFetchSingleUser(userId).then((freshUser) => {
+            if (!freshUser) return;
+            setDataState((prev) => {
+              const existing = prev.users.find((u) => u.id === userId);
+              if (!existing) return prev;
+              return { ...prev, users: prev.users.map((u) => (u.id === userId ? { ...existing, ...freshUser, name: freshUser.name || existing.name, email: freshUser.email || existing.email, walletBalance: !isNaN(freshUser.walletBalance) ? freshUser.walletBalance : existing.walletBalance } : u)) };
+            });
+          }).catch(() => {});
+        }
+      )
+      // --- PERFIS DE ESTABELECIMENTO (ESTABLISHMENT_PROFILES) ---
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'establishment_profiles' },
+        (payload) => {
+          const userId = payload.new?.user_id ?? payload.old?.user_id;
+          if (!userId) return;
+          dbFetchSingleUser(userId).then((freshUser) => {
+            if (!freshUser) return;
+            setDataState((prev) => {
+              const existing = prev.users.find((u) => u.id === userId);
+              if (!existing) return prev;
+              return { ...prev, users: prev.users.map((u) => (u.id === userId ? { ...existing, ...freshUser, name: freshUser.name || existing.name, email: freshUser.email || existing.email, walletBalance: !isNaN(freshUser.walletBalance) ? freshUser.walletBalance : existing.walletBalance } : u)) };
+            });
+          }).catch(() => {});
         }
       )
       .subscribe();
