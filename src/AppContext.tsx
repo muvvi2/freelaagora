@@ -38,7 +38,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [adminTab, setAdminTab] = useState('overview');
   const [adminMode, setAdminMode] = useState(true);
 
-  // 1. Carregamento Inicial do Banco
+  // 1. Carga Inicial dos Dados do Banco
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -49,50 +49,116 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       } catch (e) { 
         console.warn("⚠️ Falha ao carregar do Supabase:", e); 
-      } opacity: { if (!cancelled) setLoaded(true); }
+      } finally { 
+        if (!cancelled) setLoaded(true); 
+      }
     })();
     return () => { cancelled = true; };
   }, []);
 
-  // 2. Realtime Listener para Atualização Instantânea (Sem F5)
+  // 2. Realtime Listener Global para TODOS os movimentos do site
   useEffect(() => {
     const channel = supabase
-      .channel('realtime-app-updates')
+      .channel('realtime-global-updates')
+      // --- VAGAS (JOBS) ---
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'jobs' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const item = payload.new as Job;
+            setDataState((prev) => (prev.jobs.some((j) => j.id === item.id) ? prev : { ...prev, jobs: [item, ...prev.jobs] }));
+          } else if (payload.eventType === 'UPDATE') {
+            const item = payload.new as Job;
+            setDataState((prev) => ({ ...prev, jobs: prev.jobs.map((j) => (j.id === item.id ? { ...j, ...item } : j)) }));
+          } else if (payload.eventType === 'DELETE') {
+            const deletedId = payload.old.id;
+            setDataState((prev) => ({ ...prev, jobs: prev.jobs.filter((j) => j.id !== deletedId) }));
+          }
+        }
+      )
+      // --- USUÁRIOS E PERFIS (USERS) ---
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'users' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const item = payload.new as User;
+            setDataState((prev) => (prev.users.some((u) => u.id === item.id) ? prev : { ...prev, users: [...prev.users, item] }));
+          } else if (payload.eventType === 'UPDATE') {
+            const item = payload.new as User;
+            setDataState((prev) => ({ ...prev, users: prev.users.map((u) => (u.id === item.id ? { ...u, ...item } : u)) }));
+          } else if (payload.eventType === 'DELETE') {
+            const deletedId = payload.old.id;
+            setDataState((prev) => ({ ...prev, users: prev.users.filter((u) => u.id !== deletedId) }));
+          }
+        }
+      )
+      // --- CONTRATOS (CONTRACTS) ---
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'contracts' },
         (payload) => {
           if (payload.eventType === 'INSERT') {
-            const newContract = payload.new as Contract;
-            setDataState((prev) => {
-              if (prev.contracts.some((c) => c.id === newContract.id)) return prev;
-              return { ...prev, contracts: [newContract, ...prev.contracts] };
-            });
+            const item = payload.new as Contract;
+            setDataState((prev) => (prev.contracts.some((c) => c.id === item.id) ? prev : { ...prev, contracts: [item, ...prev.contracts] }));
           } else if (payload.eventType === 'UPDATE') {
-            const updatedContract = payload.new as Contract;
-            setDataState((prev) => ({
-              ...prev,
-              contracts: prev.contracts.map((c) => (c.id === updatedContract.id ? { ...c, ...updatedContract } : c)),
-            }));
+            const item = payload.new as Contract;
+            setDataState((prev) => ({ ...prev, contracts: prev.contracts.map((c) => (c.id === item.id ? { ...c, ...item } : c)) }));
           } else if (payload.eventType === 'DELETE') {
             const deletedId = payload.old.id;
-            setDataState((prev) => ({
-              ...prev,
-              contracts: prev.contracts.filter((c) => c.id !== deletedId),
-            }));
+            setDataState((prev) => ({ ...prev, contracts: prev.contracts.filter((c) => c.id !== deletedId) }));
           }
         }
       )
+      // --- NOTIFICAÇÕES (NOTIFICATIONS) ---
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'notifications' },
         (payload) => {
           if (payload.eventType === 'INSERT') {
-            const newNotif = payload.new as AppNotification;
-            setDataState((prev) => {
-              if (prev.notifications.some((n) => n.id === newNotif.id)) return prev;
-              return { ...prev, notifications: [newNotif, ...prev.notifications] };
-            });
+            const item = payload.new as AppNotification;
+            setDataState((prev) => (prev.notifications.some((n) => n.id === item.id) ? prev : { ...prev, notifications: [item, ...prev.notifications] }));
+          } else if (payload.eventType === 'UPDATE') {
+            const item = payload.new as AppNotification;
+            setDataState((prev) => ({ ...prev, notifications: prev.notifications.map((n) => (n.id === item.id ? { ...n, ...item } : n)) }));
+          } else if (payload.eventType === 'DELETE') {
+            const deletedId = payload.old.id;
+            setDataState((prev) => ({ ...prev, notifications: prev.notifications.filter((n) => n.id !== deletedId) }));
+          }
+        }
+      )
+      // --- AVALIAÇÕES (REVIEWS) ---
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'reviews' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const item = payload.new as Review;
+            setDataState((prev) => (prev.reviews.some((r) => r.id === item.id) ? prev : { ...prev, reviews: [item, ...prev.reviews] }));
+          } else if (payload.eventType === 'UPDATE') {
+            const item = payload.new as Review;
+            setDataState((prev) => ({ ...prev, reviews: prev.reviews.map((r) => (r.id === item.id ? { ...r, ...item } : r)) }));
+          } else if (payload.eventType === 'DELETE') {
+            const deletedId = payload.old.id;
+            setDataState((prev) => ({ ...prev, reviews: prev.reviews.filter((r) => r.id !== deletedId) }));
+          }
+        }
+      )
+      // --- TRANSAÇÕES DA CARTEIRA (WALLET_TXS) ---
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'wallet_txs' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const item = payload.new as WalletTx;
+            setDataState((prev) => (prev.walletTxs.some((t) => t.id === item.id) ? prev : { ...prev, walletTxs: [item, ...prev.walletTxs] }));
+          } else if (payload.eventType === 'UPDATE') {
+            const item = payload.new as WalletTx;
+            setDataState((prev) => ({ ...prev, walletTxs: prev.walletTxs.map((t) => (t.id === item.id ? { ...t, ...item } : t)) }));
+          } else if (payload.eventType === 'DELETE') {
+            const deletedId = payload.old.id;
+            setDataState((prev) => ({ ...prev, walletTxs: prev.walletTxs.filter((t) => t.id !== deletedId) }));
           }
         }
       )
