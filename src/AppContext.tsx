@@ -153,6 +153,8 @@ const mapUser = (raw: any): User => {
     banned: Boolean(raw.banned ?? false),
     isAdmin: Boolean(raw.is_admin ?? raw.isAdmin ?? false),
     createdAt: raw.created_at ?? raw.createdAt ?? new Date().toISOString(),
+    asaas_wallet_id: raw.asaas_wallet_id ?? raw.asaasWalletId ?? undefined,
+    pix_key: raw.pix_key ?? raw.pixKey ?? undefined,
   } as User;
 };
 
@@ -568,7 +570,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       walletTxs: [...newTxs, ...d.walletTxs]
     }));
 
-    void dbUpdateUser(id, { estVipTier: tier, est_vip_tier: tier, estVipExpiresAt: expiry, trialEndsAt: newTrialEndsAt } as any).catch(() => {});
+    // CORREÇÃO AQUI: Garante envio explícito de estVipTier e est_vip_tier para o Supabase
+    void dbUpdateUser(id, { estVipTier: tier, est_vip_tier: tier, estVipExpiresAt: expiry, trialEndsAt: newTrialEndsAt } as any).catch((err) => {
+      console.error("Erro ao atualizar VIP do estabelecimento no banco:", err);
+    });
     
     if (price > 0 && newTxs[0]) {
       void dbInsertWalletTx(newTxs[0]).catch(() => {});
