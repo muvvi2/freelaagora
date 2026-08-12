@@ -75,6 +75,11 @@ export interface User {
   allowedEstablishmentSlots?: number[];
   includeFreelancerAd?: boolean;
   includeEstablishmentAd?: boolean;
+  cpfCnpj?: string;
+  freelancerAdsBySlot?: string[][];
+  establishmentAdsBySlot?: string[][];
+  freelancerLinksBySlot?: string[][];
+  establishmentLinksBySlot?: string[][];
   // Admin-only
   isAdmin?: boolean;
   adminRole?: 'super' | 'regular';
@@ -124,12 +129,16 @@ export interface VipPlan {
   prices: Record<Period, number>;
   badge?: 'verified' | 'gold' | 'diamond';
   boost?: 'light' | 'top' | 'max';
+  feePercent?: number;
+  id?: string;
 }
 
 export interface EstVipPlan {
   tier: EstTier;
   label: string;
   intermediationFee: number;
+  feePercent?: number;
+  id?: string;
   maxActiveJobs: number;
   allowAds?: boolean;
   maxAds?: number;
@@ -170,6 +179,7 @@ export type ContractStatus =
   | 'requested'
   | 'confirmed'
   | 'paid'
+  | 'check_in_pending'
   | 'checked_in'
   | 'completed'
   | 'cancelled';
