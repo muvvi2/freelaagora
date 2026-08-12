@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { AppContext, type AppContextValue, useApp } from './context';
 import { initialData, CATEGORIES, metroNearby, emptyAvailability } from './mockData';
-import { uid, getPlan, canSelectCategories, getEstPlan, getIntermediationFeePercent, calculateFees, emptyAddress } from './utils';
+import { uid, getPlan, canSelectCategories, getEstPlan, getIntermediationFeePercent, calculateFees, emptyAddress, formatCurrency } from './utils';
 import { setPaymentSettings } from '@/services/paymentService';
 import { supabase } from '@/lib/supabase';
 import type { AppData, User, Job, Contract, WalletTx, AppNotification, Review, Tier, Period, WeekAvailability, DateAvailability, ContractStatus, EstTier, TermsAcceptance, Coupon, VipPlan, EstVipPlan, PaymentSettings } from './types';
@@ -892,13 +892,64 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const cancelContract = useCallback((contractId: string) => {
     if (!data) return;
     const c = data.contracts.find(x => x.id === contractId);
-    const updatedHistory = [...(c?.history || []), { status: 'cancelled' as ContractStatus, at: new Date().toISOString() }];
+    if (!c) return;
+
+    const est = data.users.find(u => u.id === c.establishmentId);
+    const wasPaid = c.status === 'paid' || c.status === 'check_in_pending' || c.status === 'checked_in';
+
+    // Se o contrato já estava pago em garantia, estorna o valor integral para a carteira do estabelecimento
+    const refundAmount = wasPaid ? c.total : 0;
+    const newWalletBalance = (est?.walletBalance ?? 0) + refundAmount;
+
+    const refundTx: WalletTx | null = refundAmount > 0 ? {
+      id: crypto.randomUUID(),
+      userId: c.establishmentId,
+      type: 'deposit',
+      amount: refundAmount,
+      description: `Estorno por cancelamento — Contrato ${c.id.slice(0, 8)}`,
+      contractId,
+      date: new Date().toISOString()
+    } : null;
+
+    const updatedHistory = [...(c.history || []), { status: 'cancelled' as ContractStatus, at: new Date().toISOString() }];
 
     setData((d) => ({
       ...d,
-      contracts: d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'cancelled', history: updatedHistory } : ct)
+      users: d.users.map(u => u.id === c.establishmentId ? { ...u, walletBalance: newWalletBalance } : u),
+      contracts: d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'cancelled', history: updatedHistory } : ct),
+      walletTxs: refundTx ? [refundTx, ...d.walletTxs] : d.walletTxs,
+      notifications: [
+        {
+          id: crypto.randomUUID(),
+          userId: c.establishmentId,
+          type: 'announcement',
+          title: 'Contrato Cancelado e Estornado',
+          body: refundAmount > 0 
+            ? `O contrato foi cancelado. O valor de ${formatCurrency(refundAmount)} foi estornado para sua carteira.` 
+            : 'O contrato foi cancelado com sucesso.',
+          read: false,
+          date: new Date().toISOString(),
+          contractId
+        },
+        {
+          id: crypto.randomUUID(),
+          userId: c.freelancerId,
+          type: 'announcement',
+          title: 'Contrato Cancelado',
+          body: `O contrato com ${c.establishmentName} foi cancelado.`,
+          read: false,
+          date: new Date().toISOString(),
+          contractId
+        },
+        ...d.notifications
+      ]
     }));
+
     void dbUpdateContractStatus(contractId, 'cancelled').catch(() => {});
+    if (refundAmount > 0 && refundTx) {
+      void dbInsertWalletTx(refundTx).catch(() => {});
+      void dbUpdateWalletBalance(c.establishmentId, newWalletBalance).catch(() => {});
+    }
   }, [data, setData]);
 
   const submitReview = useCallback((contractId: string, fromId: string, fromName: string, toId: string, rating: number, comment: string) => {
