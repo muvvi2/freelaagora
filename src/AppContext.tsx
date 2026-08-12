@@ -234,7 +234,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
               const item = mapJob(payload.new, prev.users);
               const existing = prev.jobs.find((j) => j.id === item.id);
               if (existing) {
-                // Mescla candidatos garantindo sem duplicados
                 const mergedApplicants = Array.from(
                   new Set([...(existing.applicants || []), ...(item.applicants || [])])
                 );
@@ -647,15 +646,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [setData, data]);
 
   const applyToJob = useCallback((jobId: string, freelancerId: string) => {
-    setData((d) => ({
-      ...d,
-      jobs: d.jobs.map((j) => {
+    setData((d) => {
+      const updatedJobs = d.jobs.map((j) => {
         if (j.id === jobId && !j.applicants.includes(freelancerId)) {
           return { ...j, applicants: [...j.applicants, freelancerId] };
         }
         return j;
-      })
-    }));
+      });
+      const targetJob = updatedJobs.find(j => j.id === jobId);
+      if (targetJob) {
+        void dbUpdateJob(jobId, { applicants: targetJob.applicants }).catch(() => {});
+      }
+      return { ...d, jobs: updatedJobs };
+    });
     void dbApplyToJob(jobId, freelancerId).catch(() => {});
   }, [setData]);
 
