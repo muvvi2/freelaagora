@@ -66,7 +66,17 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
 
     setProcessing(true);
     try {
-      const rawDocument = estUser?.cnpj || estUser?.cpf || estUser?.cpfCnpj || currentUser?.cnpj || currentUser?.cpf || '';
+      // CAPTURA BLINDADA DO CNPJ/CPF: Varre todas as propriedades possíveis do estUser e do currentUser
+      const rawDocument = 
+        estUser?.cnpj || 
+        estUser?.cpf || 
+        estUser?.cpfCnpj || 
+        (estUser as any)?.cpf_cnpj || 
+        currentUser?.cnpj || 
+        currentUser?.cpf || 
+        currentUser?.cpfCnpj || 
+        (currentUser as any)?.cpf_cnpj || '';
+
       const cleanDocument = rawDocument.replace(/\D/g, '');
 
       if (!cleanDocument) {
@@ -77,7 +87,7 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
         customer: contract.establishmentId,
         customerName: estUser?.name || contract.establishmentName || currentUser?.name || 'Cliente',
         customerEmail: estUser?.email || currentUser?.email || 'cliente@freelaagora.com',
-        customerCpfCnpj: cleanDocument || undefined,
+        cpfCnpj: cleanDocument,
         billingType: payMethod === 'pix' ? 'PIX' : 'CREDIT_CARD',
         value: displayTotal,
         dueDate: new Date().toISOString().slice(0, 10),
