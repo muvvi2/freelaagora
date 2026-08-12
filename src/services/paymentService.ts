@@ -81,7 +81,6 @@ export function getActiveProviderId(): PaymentProviderId {
 }
 
 export function getActiveConfig(): PaymentProviderConfig | null {
-  // Blindagem: Se runtimeSettings não foi injetado, retorna um objeto padrão com a chave do secret do Supabase ou sandbox
   if (!runtimeSettings || !runtimeSettings.configs[runtimeSettings.activeProvider]?.apiKey) {
     return {
       apiKey: '$aact_YTU5YTE0M2M2N2I4MT...', 
@@ -92,7 +91,7 @@ export function getActiveConfig(): PaymentProviderConfig | null {
 }
 
 export function isPaymentConfigured(): boolean {
-  return true; // Blindado para sempre permitir as opções de pagamento na UI
+  return true;
 }
 
 export function getActiveProviderInfo() {
@@ -152,7 +151,7 @@ class MultiPaymentProvider {
       nextDueDate: input.nextDueDate,
       customerName: input.customerName || 'Cliente Assinante',
       customerEmail: input.customerEmail || 'cliente@freelaagora.com',
-      cpfCnpj: input.cpfCnpj || '',
+      customerCpfCnpj: input.cpfCnpj || '',
     });
     return {
       id: data.id as string,
@@ -174,7 +173,7 @@ class MultiPaymentProvider {
       externalReference: input.externalReference,
       customerName: input.customerName || 'Cliente Pagante',
       customerEmail: input.customerEmail || 'cliente@freelaagora.com',
-      cpfCnpj: input.cpfCnpj || '',
+      customerCpfCnpj: input.cpfCnpj || '',
     });
     return {
       id: data.id as string,
