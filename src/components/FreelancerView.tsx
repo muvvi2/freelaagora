@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Fragment } from 'react';
 import { User as UserIcon, MapPin, Tags, Calendar, Crown, Wallet, Briefcase, Fingerprint, ShieldCheck, MessageSquare, Save, Inbox, Megaphone, Upload, Check, X, Globe, Sliders, Info, DollarSign } from 'lucide-react';
 import { useApp } from '@/AppContext';
 import { useToast } from './ui/Toast';
@@ -11,7 +11,7 @@ import { AvailabilityCalendar } from './AvailabilityCalendar';
 import { VipPanel } from './VipPanel';
 import { WalletPanel } from './WalletPanel';
 import { JobCard } from './JobCard';
-import { VipSquareWidget } from './VipSquareWidget';
+import { AdBanner } from './AdBanner';
 import { EscrowFlowModal } from './EscrowFlowModal';
 import { ReviewModal } from './ReviewModal';
 
@@ -58,10 +58,8 @@ export function FreelancerView() {
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 space-y-6 text-neutral-900 dark:text-white">
       
-      {/* SLOT 1 NO TOPO ABSOLUTO (Hero Ad - Proporção 2:1) */}
-      <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
-        <VipSquareWidget pageType="freelancers" slot={1} />
-      </div>
+      {/* SLOT 1 — Hero Ad (topo, proporção 2:1) */}
+      <AdBanner pageType="freelancers" slot="top" />
 
       {/* PROFILE HEADER CARD COM ESTATÍSTICAS INTEGRADAS */}
       <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 sm:p-6 shadow-sm">
@@ -135,16 +133,21 @@ export function FreelancerView() {
               </div>
             </div>
 
-            {/* SLOT 2 (Banner Intermediário) */}
-            <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
-              <VipSquareWidget pageType="freelancers" slot={2} />
-            </div>
+            {/* SLOT 2 — In-feed Ad (após filtros, antes da listagem) */}
+            <AdBanner pageType="freelancers" slot="center" />
 
-            {/* LISTAGEM DE VAGAS */}
+            {/* LISTAGEM DE VAGAS com anúncio in-feed após o 3º card */}
             {openJobs.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {openJobs.map((j) => (
-                  <JobCard key={j.id} job={j} variant="apply" />
+                {openJobs.map((j, idx) => (
+                  <Fragment key={j.id}>
+                    {idx === 3 && (
+                      <div className="col-span-full my-2">
+                        <AdBanner pageType="freelancers" slot="center" />
+                      </div>
+                    )}
+                    <JobCard job={j} variant="apply" />
+                  </Fragment>
                 ))}
               </div>
             ) : (
@@ -179,10 +182,8 @@ export function FreelancerView() {
               )}
             </section>
 
-            {/* SLOT 3 (Banner Inferior) */}
-            <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
-              <VipSquareWidget pageType="freelancers" slot={3} />
-            </div>
+            {/* SLOT 3 — Rodapé Ad (proporção 3.3:1) */}
+            <AdBanner pageType="freelancers" slot="bottom" />
 
           </div>
         )}
