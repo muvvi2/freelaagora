@@ -9,7 +9,7 @@ import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { Avatar } from './ui/Avatar';
-import { formatCurrency, formatDateBR, contractStatusLabel, contractStepIndex, CONTRACT_STATUS_FLOW, downloadTaxReceipt } from '@/utils';
+import { formatCurrency, formatDateBR, contractStatusLabel, contractStepIndex, CONTRACT_STATUS_FLOW, downloadTaxReceipt, getIntermediationFeePercent } from '@/utils';
 import { ReviewModal } from './ReviewModal';
 import type { Contract } from '@/types';
 import { paymentService } from '@/services/paymentService';
@@ -34,9 +34,18 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
   const contactUnlocked = contract.status === 'paid' || contract.status === 'check_in_pending' || contract.status === 'checked_in' || contract.status === 'completed';
   const canReview = contract.status === 'completed';
 
+  // 1. Puxa o estabelecimento correto automaticamente da lista de usuários
   const estUser = data?.users.find(u => u.id === contract.establishmentId);
   const balance = estUser?.walletBalance ?? 0;
-  const hasEnoughBalance = balance >= contract.total;
+
+  // 2. Checagem dupla: Verifica o est_vip_tier e cruza com a tabela/lista de planos para obter o percentual de taxa real
+  const feePercent = estUser ? getIntermediationFeePercent(estUser, data?.estVipPlans, data?.vipPlans) : contract.platformFeePercentage;
+  const isVipZero = feePercent === 0;
+
+  // Recalcula o valor da taxa e o total dinamicamente com base no plano verificado
+  const calculatedFee = Math.round(contract.freelancerFee * (feePercent / 100) * 100) / 100;
+  const displayTotal = Math.round((contract.freelancerFee + calculatedFee) * 100) / 100;
+  const hasEnoughBalance = balance >= displayTotal;
 
   const handlePay = async () => {
     if (payMethod === 'wallet') {
@@ -70,9 +79,9 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
         customerEmail: estUser?.email || currentUser?.email || 'cliente@freelaagora.com',
         cpfCnpj: cleanDocument,
         billingType: payMethod === 'pix' ? 'PIX' : 'CREDIT_CARD',
-        value: contract.total,
+        value: displayTotal,
         dueDate: new Date().toISOString().slice(0, 10),
-        description: `Escrow — ${contract.freelancerName}`,
+        description: `Escrow — ${contract.freelancerName} ${isVipZero ? '(Taxa Zero Aplicada)' : ''}`,
         splits: [],
         externalReference: contract.id,
       });
@@ -127,7 +136,7 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
           <div className="flex flex-col items-center gap-1.5">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-500/15"><Shield className="h-6 w-6 text-primary-500" /></div>
             <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Garantia Escrow</p>
-            <Badge tone="warning">{formatCurrency(contract.total)}</Badge>
+            <Badge tone="warning">{formatCurrency(displayTotal)}</Badge>
           </div>
           <ArrowRight className="h-5 w-5 text-neutral-400" />
           <div className="flex flex-col items-center gap-1.5">
@@ -161,9 +170,12 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
         {/* Cost breakdown */}
         <div className="mt-5 space-y-2 rounded-xl border border-neutral-200 p-4 dark:border-neutral-700">
           <Row label="Valor do freela" value={formatCurrency(contract.freelancerFee)} />
-          <Row label={`Taxa de intermediação (${contract.platformFeePercentage}%)`} value={contract.platformFee === 0 ? 'Isento' : formatCurrency(contract.platformFee)} />
+          <Row label={`Taxa de intermediação (${feePercent}%)`} value={isVipZero ? 'Isento (Plano VIP)' : formatCurrency(calculatedFee)} />
+          {isVipZero && (
+            <p className="text-[11px] text-success-600 dark:text-success-400 font-medium">🎉 Benefício VIP aplicado: Taxa de intermediação zerada com sucesso!</p>
+          )}
           <div className="border-t border-dashed border-neutral-200 pt-2 dark:border-neutral-700">
-            <Row label="Total pago em garantia" value={formatCurrency(contract.total)} bold />
+            <Row label="Total pago em garantia" value={formatCurrency(displayTotal)} bold />
           </div>
         </div>
 
@@ -254,7 +266,7 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
               )}
 
               <Button fullWidth size="lg" onClick={handlePay} disabled={processing || (payMethod === 'wallet' && !hasEnoughBalance)}>
-                {processing ? <><Loader2 className="h-5 w-5 animate-spin" /> Processando...</> : <><Lock className="h-5 w-5" /> {payMethod === 'wallet' ? `Pagar ${formatCurrency(contract.total)} em Garantia` : `Gerar pagamento de ${formatCurrency(contract.total)}`}</>}
+                {processing ? <><Loader2 className="h-5 w-5 animate-spin" /> Processando...</> : <><Lock className="h-5 w-5" /> {payMethod === 'wallet' ? `Pagar ${formatCurrency(displayTotal)} em Garantia` : `Gerar pagamento de ${formatCurrency(displayTotal)}`}</>}
               </Button>
 
               {paymentStage === 'pix' && (pixQrCode || pixPayload) && (
