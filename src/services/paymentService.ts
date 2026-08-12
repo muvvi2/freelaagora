@@ -24,6 +24,9 @@ export interface SubscriptionInput {
   cycle: 'MONTHLY' | 'YEARLY' | 'SEMIANNUALLY';
   description: string;
   nextDueDate: string;
+  customerName?: string;
+  customerEmail?: string;
+  cpfCnpj?: string;
 }
 
 export interface SubscriptionResult {
@@ -43,6 +46,9 @@ export interface SplitPaymentInput {
   description: string;
   splits: SplitReceiver[];
   externalReference?: string;
+  customerName?: string;
+  customerEmail?: string;
+  cpfCnpj?: string;
 }
 
 export interface SplitPaymentResult {
@@ -78,7 +84,7 @@ export function getActiveConfig(): PaymentProviderConfig | null {
   // Blindagem: Se runtimeSettings não foi injetado, retorna um objeto padrão com a chave do secret do Supabase ou sandbox
   if (!runtimeSettings || !runtimeSettings.configs[runtimeSettings.activeProvider]?.apiKey) {
     return {
-      apiKey: '$aact_YTU5YTE0M2M2N2I4MT...', // Insira sua chave de fallback aqui se necessário, ou ela puxa do banco
+      apiKey: '$aact_YTU5YTE0M2M2N2I4MT...', 
       env: 'sandbox'
     };
   }
@@ -106,35 +112,7 @@ export function getProviderConfigs(): ProviderConfigResult[] {
   });
 }
 
-function getBaseUrl(provider: PaymentProviderId, env: 'sandbox' | 'production'): string {
-  switch (provider) {
-    case 'asaas':
-      return env === 'production' ? 'https://api.asaas.com/v3' : 'https://sandbox.asaas.com/v3';
-    case 'mercadopago':
-      return env === 'production' ? 'https://api.mercadopago.com/v1' : 'https://api.mercadopago.com/v1';
-    case 'pagseguro':
-      return env === 'production' ? 'https://ws.pagseguro.uol.com.br/v2' : 'https://ws.sandbox.pagseguro.uol.com.br/v2';
-    case 'stone':
-      return 'https://api.ton.com.br/v1';
-    case 'inter':
-      return 'https://cdpj.partners.bancointer.com.br/v1';
-  }
-}
-
-function getAuthHeaders(provider: PaymentProviderId, apiKey: string): Record<string, string> {
-  switch (provider) {
-    case 'asaas':
-      return { 'access_token': apiKey, 'Content-Type': 'application/json' };
-    case 'mercadopago':
-    case 'pagseguro':
-    case 'stone':
-    case 'inter':
-      return { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' };
-  }
-}
-
 class MultiPaymentProvider {
-  // Alterado para chamar a Edge Function do Supabase em vez de expor chaves e sofrer com CORS no front
   private async requestViaEdgeFunction(body: unknown): Promise<any> {
     const supabaseUrl = (supabase as any).supabaseUrl;
     const { data: sessionData } = await supabase.auth.getSession();
@@ -172,8 +150,9 @@ class MultiPaymentProvider {
       cycle: input.cycle,
       description: input.description,
       nextDueDate: input.nextDueDate,
-      customerName: 'Cliente Assinante',
-      customerEmail: 'cliente@freelaagora.com',
+      customerName: input.customerName || 'Cliente Assinante',
+      customerEmail: input.customerEmail || 'cliente@freelaagora.com',
+      cpfCnpj: input.cpfCnpj || '',
     });
     return {
       id: data.id as string,
@@ -193,8 +172,9 @@ class MultiPaymentProvider {
       dueDate: input.dueDate,
       description: input.description,
       externalReference: input.externalReference,
-      customerName: 'Cliente Pagante',
-      customerEmail: 'cliente@freelaagora.com',
+      customerName: input.customerName || 'Cliente Pagante',
+      customerEmail: input.customerEmail || 'cliente@freelaagora.com',
+      cpfCnpj: input.cpfCnpj || '',
     });
     return {
       id: data.id as string,
