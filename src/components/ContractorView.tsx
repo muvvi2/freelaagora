@@ -251,105 +251,92 @@ export function ContractorView() {
         </div>
       </div>
 
-      {/* CONTEÚDO PRINCIPAL (BUSCA E VAGAS) */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px] items-start">
-        
-        <div className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="font-display text-lg font-bold text-neutral-900 dark:text-white">Profissionais na sua região</h2>
-              <p className="text-xs text-neutral-400">
-                {isUnlimited ? 'Filtrando por: Km Livre (Nacional)' : `Filtrando a até ${radiusKm} km de ${establishmentCity} - ${establishmentState}.`}
-              </p>
-            </div>
+      {/* BARRA DE PESQUISA E FILTROS */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="font-display text-lg font-bold text-neutral-900 dark:text-white">Profissionais na sua região</h2>
+            <p className="text-xs text-neutral-400">
+              {isUnlimited ? 'Filtrando por: Km Livre (Nacional)' : `Filtrando a até ${radiusKm} km de ${establishmentCity} - ${establishmentState}.`}
+            </p>
           </div>
-
-          <div className="space-y-3">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
-                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por nome, categoria ou descrição..."
-                  className="w-full rounded-xl border border-neutral-200 bg-white py-2.5 pl-10 pr-3 text-sm focus:border-primary-400 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100" />
-              </div>
-              <Button variant="outline" onClick={handleGps} className={useGps ? 'border-secondary-400 text-secondary-600 bg-secondary-50' : ''}><Navigation className={`h-4 w-4 ${useGps ? 'fill-current' : ''}`} /></Button>
-              <Button variant="outline" onClick={() => setShowFilters((s) => !s)} className={showFilters ? 'border-primary-400 text-primary-600' : ''}><SlidersHorizontal className="h-4 w-4" /></Button>
-            </div>
-
-            <div>
-              <p className="mb-2 text-xs font-semibold text-neutral-500">Categorias:</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                <button
-                  onClick={() => { setMacroFilter('all'); setCategory('all'); }}
-                  className={`rounded-xl px-3 py-2 text-xs font-semibold transition text-center truncate ${macroFilter === 'all' ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'}`}
-                >
-                  Todas
-                </button>
-                {MACRO_CATEGORIES.map((m) => (
-                  <button
-                    key={m.id}
-                    onClick={() => { setMacroFilter(m.id); setCategory('all'); }}
-                    className={`rounded-xl px-3 py-2 text-xs font-semibold transition text-center truncate ${macroFilter === m.id ? 'text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'}`}
-                    style={macroFilter === m.id ? { backgroundColor: m.color } : undefined}
-                  >
-                    {m.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3 dark:border-neutral-800 dark:bg-neutral-900">
-              <div className="flex items-center gap-3 flex-1 min-w-[200px]">
-                <MapPin className="h-4 w-4 shrink-0 text-neutral-400" />
-                <span className="text-xs font-semibold text-neutral-500">Distância</span>
-                <input type="range" min={1} max={100} disabled={isUnlimited} value={radiusKm} onChange={(e) => setRadiusKm(Number(e.target.value))} className={`flex-1 accent-primary-500 ${isUnlimited ? 'opacity-40' : ''}`} />
-                <span className="w-16 text-right text-xs font-bold text-neutral-700 dark:text-neutral-300">{isUnlimited ? 'Ilimitado' : `${radiusKm}km`}</span>
-              </div>
-              <Button size="sm" variant={isUnlimited ? 'warning' : 'outline'} onClick={() => setIsUnlimited(!isUnlimited)}>
-                <Globe className="h-4 w-4" /> {isUnlimited ? 'Km Livre Ativo' : 'Ativar Km Livre'}
-              </Button>
-            </div>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            {filtered.map((f) => <FreelancerCard key={f.id} freelancer={f} onHire={openDirectHireModal} onView={setViewing} distanceKm={distanceBetween(f.address, origin)} />)}
-          </div>
-          {filtered.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-neutral-300 py-12 text-center dark:border-neutral-700">
-              <p className="text-neutral-400">Nenhum profissional encontrado com esses filtros.</p>
-            </div>
-          )}
         </div>
 
-        {/* COLUNA LATERAL (MINHAS VAGAS E SLOTS 2 E 3) */}
-        <aside className="space-y-6">
-          <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="font-display font-bold text-neutral-900 dark:text-white">Minhas vagas</h3>
-              <Button size="sm" onClick={() => setJobForm({ open: true, editing: null })}><Plus className="h-4 w-4" /> Publicar</Button>
-            </div>
-            <div className="space-y-3">
-              {myJobs.length === 0 && <p className="py-6 text-center text-sm text-neutral-400">Nenhuma vaga publicada.</p>}
-              {myJobs.length > 0 && <JobCard job={myJobs[0]} variant="manage" />}
-            </div>
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por nome, categoria ou descrição..."
+              className="w-full rounded-xl border border-neutral-200 bg-white py-2.5 pl-10 pr-3 text-sm focus:border-primary-400 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100" />
           </div>
+          <Button variant="outline" onClick={handleGps} className={useGps ? 'border-secondary-400 text-secondary-600 bg-secondary-50' : ''}><Navigation className={`h-4 w-4 ${useGps ? 'fill-current' : ''}`} /></Button>
+          <Button variant="outline" onClick={() => setShowFilters((s) => !s)} className={showFilters ? 'border-primary-400 text-primary-600' : ''}><SlidersHorizontal className="h-4 w-4" /></Button>
+        </div>
 
-          {/* SLOT 2 (In-feed Ad) */}
-          <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
-            <VipSquareWidget pageType="establishments" slot={2} />
+        <div>
+          <p className="mb-2 text-xs font-semibold text-neutral-500">Categorias:</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+            <button
+              onClick={() => { setMacroFilter('all'); setCategory('all'); }}
+              className={`rounded-xl px-3 py-2 text-xs font-semibold transition text-center truncate ${macroFilter === 'all' ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'}`}
+            >
+              Todas
+            </button>
+            {MACRO_CATEGORIES.map((m) => (
+              <button
+                key={m.id}
+                onClick={() => { setMacroFilter(m.id); setCategory('all'); }}
+                className={`rounded-xl px-3 py-2 text-xs font-semibold transition text-center truncate ${macroFilter === m.id ? 'text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'}`}
+                style={macroFilter === m.id ? { backgroundColor: m.color } : undefined}
+              >
+                {m.label}
+              </button>
+            ))}
           </div>
+        </div>
 
-          {myJobs.slice(1).length > 0 && (
-            <div className="space-y-3">
-              {myJobs.slice(1).map((j) => <JobCard key={j.id} job={j} variant="manage" />)}
-            </div>
-          )}
-
-          {/* SLOT 3 (Rodapé Lateral) */}
-          <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
-            <VipSquareWidget pageType="establishments" slot={3} />
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3 dark:border-neutral-800 dark:bg-neutral-900">
+          <div className="flex items-center gap-3 flex-1 min-w-[200px]">
+            <MapPin className="h-4 w-4 shrink-0 text-neutral-400" />
+            <span className="text-xs font-semibold text-neutral-500">Distância</span>
+            <input type="range" min={1} max={100} disabled={isUnlimited} value={radiusKm} onChange={(e) => setRadiusKm(Number(e.target.value))} className={`flex-1 accent-primary-500 ${isUnlimited ? 'opacity-40' : ''}`} />
+            <span className="w-16 text-right text-xs font-bold text-neutral-700 dark:text-neutral-300">{isUnlimited ? 'Ilimitado' : `${radiusKm}km`}</span>
           </div>
-        </aside>
+          <Button size="sm" variant={isUnlimited ? 'warning' : 'outline'} onClick={() => setIsUnlimited(!isUnlimited)}>
+            <Globe className="h-4 w-4" /> {isUnlimited ? 'Km Livre Ativo' : 'Ativar Km Livre'}
+          </Button>
+        </div>
+      </div>
 
+      {/* SLOT 2 (Banner Intermediário — logo abaixo dos filtros) */}
+      <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
+        <VipSquareWidget pageType="establishments" slot={2} />
+      </div>
+
+      {/* LISTAGEM DE PROFISSIONAIS */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {filtered.map((f) => <FreelancerCard key={f.id} freelancer={f} onHire={openDirectHireModal} onView={setViewing} distanceKm={distanceBetween(f.address, origin)} />)}
+      </div>
+      {filtered.length === 0 && (
+        <div className="rounded-2xl border border-dashed border-neutral-300 py-12 text-center dark:border-neutral-700">
+          <p className="text-neutral-400">Nenhum profissional encontrado com esses filtros.</p>
+        </div>
+      )}
+
+      {/* MINHAS VAGAS */}
+      <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="font-display font-bold text-neutral-900 dark:text-white">Minhas vagas</h3>
+          <Button size="sm" onClick={() => setJobForm({ open: true, editing: null })}><Plus className="h-4 w-4" /> Publicar</Button>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {myJobs.length === 0 && <p className="py-6 text-center text-sm text-neutral-400 col-span-full">Nenhuma vaga publicada.</p>}
+          {myJobs.map((j) => <JobCard key={j.id} job={j} variant="manage" />)}
+        </div>
+      </div>
+
+      {/* SLOT 3 (Banner Inferior — rodapé da página) */}
+      <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
+        <VipSquareWidget pageType="establishments" slot={3} />
       </div>
 
       {/* MODAL DE CONTRATAÇÃO DIRETA */}
@@ -471,7 +458,7 @@ export function ContractorView() {
                 <div key={job.id} className="space-y-2">
                   <p className="text-xs font-bold text-primary-600 dark:text-primary-400 uppercase tracking-wider">Vaga: {job.title}</p>
                   {applicantsList.map((applicant) => {
-                    const agreedValue = job.value > 0 ? job.value : (applicant.dailyRate || 0);
+                    const agreedValue = job.value;
 
                     return (
                       <div key={applicant.id} className="flex items-center justify-between p-3 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50">
@@ -479,7 +466,7 @@ export function ContractorView() {
                           <Avatar src={applicant.photo} alt={applicant.name} size={36} />
                           <div>
                             <p className="font-semibold text-sm text-neutral-900 dark:text-white">{applicant.name}</p>
-                            <p className="text-xs text-neutral-400">Valor da Vaga: {formatCurrency(agreedValue)} · {job.hours}h</p>
+                            <p className="text-xs text-neutral-400">Valor fixo da vaga: {formatCurrency(agreedValue)} · {job.hours}h</p>
                           </div>
                         </div>
                         <Button size="sm" onClick={() => { 
