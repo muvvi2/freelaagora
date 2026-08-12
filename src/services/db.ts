@@ -730,6 +730,12 @@ export async function dbUpdateUser(id: string, patch: Partial<User>): Promise<vo
   if (patch.name !== undefined) dbPatch.full_name = patch.name;
   if (patch.email !== undefined) dbPatch.email = patch.email;
   if (patch.walletBalance !== undefined) dbPatch.wallet_balance = patch.walletBalance;
+  if (patch.estVipTier !== undefined) {
+    dbPatch.est_vip_tier = patch.estVipTier;
+  }
+  if (patch.vipTier !== undefined) {
+    dbPatch.vip_tier = patch.vipTier;
+  }
 
   if (Object.keys(dbPatch).length > 0) {
     const { error } = await supabase.from('users').update(dbPatch).eq('id', id);
@@ -947,7 +953,18 @@ export async function dbUpdatePaymentSettings(settings: PaymentSettings): Promis
 }
 
 export async function dbUpsertVipPlan(plan: any): Promise<void> {
-  await supabase.from('vip_plans_freelancer').upsert(plan as never);
+  const numericId = freelancerTierToId(plan.tier);
+  const dbPayload = {
+    id: numericId,
+    name: plan.label,
+    max_categories: plan.maxCategories,
+    monthly_price: plan.prices?.monthly,
+    semestral_price: plan.prices?.semestral,
+    annual_price: plan.prices?.annual,
+    badge_type: plan.badge,
+    features: plan.features,
+  };
+  await supabase.from('vip_plans_freelancer').upsert(dbPayload as never, { onConflict: 'id' });
 }
 
 export async function dbDeleteVipPlan(tier: string): Promise<void> {
@@ -956,7 +973,22 @@ export async function dbDeleteVipPlan(tier: string): Promise<void> {
 }
 
 export async function dbUpsertEstVipPlan(plan: any): Promise<void> {
-  await supabase.from('vip_plans_establishment').upsert(plan as never);
+  const numericId = establishmentTierToId(plan.tier);
+  const dbPayload = {
+    id: numericId,
+    name: plan.label,
+    intermediation_fee_percentage: plan.intermediationFee,
+    monthly_price: plan.prices?.monthly,
+    semestral_price: plan.prices?.semestral,
+    annual_price: plan.prices?.annual,
+    allow_ads: plan.allowAds,
+    max_ads: plan.maxAds,
+    price_slot_1: plan.priceSlot1,
+    price_slot_2: plan.priceSlot2,
+    price_slot_3: plan.priceSlot3,
+    features: plan.features,
+  };
+  await supabase.from('vip_plans_establishment').upsert(dbPayload as never, { onConflict: 'id' });
 }
 
 export async function dbDeleteEstVipPlan(tier: string): Promise<void> {
