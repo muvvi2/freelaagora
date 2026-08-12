@@ -13,15 +13,15 @@ export function VipSquareWidget({ pageType = 'freelancers', slot = 1 }: { pageTy
       const plan = data.estVipPlans.find((p) => p.tier === currentTier);
 
       if (plan?.allowAds || ['vip4', 'vip5', 'vip6', 'trial'].includes(currentTier)) {
-        const adsBySlot = pageType === 'freelancers' ? (u.freelancerAdsBySlot || [[], [], []]) : (u.establishmentAdsBySlot || [[], [], []]);
-        const linksBySlot = pageType === 'freelancers' ? (u.freelancerLinksBySlot || [[], [], []]) : (u.establishmentLinksBySlot || [[], [], []]);
+        const adsBySlot: string[][] = pageType === 'freelancers' ? (u.freelancerAdsBySlot || [[], [], []]) : (u.establishmentAdsBySlot || [[], [], []]);
+        const linksBySlot: string[][] = pageType === 'freelancers' ? (u.freelancerLinksBySlot || [[], [], []]) : (u.establishmentLinksBySlot || [[], [], []]);
         const rawSlots = pageType === 'freelancers' ? u.allowedFreelancerSlots : u.allowedEstablishmentSlots;
         const allowedSlots = (rawSlots && rawSlots.length > 0) ? rawSlots : [1, 2, 3];
 
         if (allowedSlots.includes(slot)) {
           const targetAds = adsBySlot[slotIndex] || [];
           const targetLinks = linksBySlot[slotIndex] || [];
-          targetAds.forEach((img, imgIndex) => {
+          targetAds.forEach((img: string, imgIndex: number) => {
             if (img && typeof img === 'string' && img.trim() !== '') {
               const link = targetLinks[imgIndex] || '';
               activeAds.push({ imageUrl: img, linkUrl: link });
