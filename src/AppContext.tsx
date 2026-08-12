@@ -23,7 +23,7 @@ export { useApp };
 const ADMIN_ID = '00000000-0000-0000-0000-000000000001';
 const STORAGE_KEY = 'freelaagora_current_user';
 
-// --- MAPEADORES ULTRA-SEGUROS CONTRA CRASHES ---
+// --- MAPEADORES ULTRA-SEGUROS SNOKE_CASE <-> CAMELCASE ---
 const mapJob = (raw: any, existingUsers: User[] = []): Job => {
   const estId = raw.establishment_id ?? raw.establishmentId ?? '';
   const est = existingUsers.find((u) => u.id === estId);
@@ -43,7 +43,7 @@ const mapJob = (raw: any, existingUsers: User[] = []): Job => {
   return {
     id: String(raw.id ?? ''),
     establishmentId: estId,
-    establishmentName: raw.establishment_name ?? raw.establishmentName ?? est?.name ?? 'Estabelecimento',
+    establishmentName: raw.establishment_name ?? raw.establishmentName ?? est?.name ?? '',
     establishmentPhoto: raw.establishment_photo ?? raw.establishmentPhoto ?? est?.photo ?? '',
     title: raw.title ?? '',
     description: raw.description ?? '',
@@ -81,9 +81,6 @@ const mapContract = (raw: any, existingUsers: User[] = []): Contract => {
     } catch (e) {
       history = [];
     }
-  }
-  if (history.length === 0) {
-    history = [{ status: raw.status ?? 'requested', at: raw.created_at ?? raw.createdAt ?? new Date().toISOString() }];
   }
 
   return {
@@ -123,6 +120,8 @@ const mapUser = (raw: any): User => {
     }
   }
 
+  const estVipTierValue = raw.est_vip_tier ?? raw.estVipTier ?? 'free';
+
   return {
     id: String(raw.id ?? ''),
     name: raw.name ?? '',
@@ -143,7 +142,7 @@ const mapUser = (raw: any): User => {
     completedShifts: Number(raw.completed_shifts ?? raw.completedShifts ?? 0),
     walletBalance: Number(raw.wallet_balance ?? raw.walletBalance ?? 0),
     vipTier: raw.vip_tier ?? raw.vipTier ?? 'free',
-    estVipTier: raw.est_vip_tier ?? raw.estVipTier ?? 'free',
+    estVipTier: estVipTierValue,
     trialEndsAt: raw.trial_ends_at ?? raw.trialEndsAt ?? null,
     categories,
     availability: typeof raw.availability === 'object' && raw.availability !== null ? raw.availability : emptyAvailability(),
@@ -203,7 +202,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [adminTab, setAdminTab] = useState('overview');
   const [adminMode, setAdminMode] = useState(true);
 
-  // 1. Carga Inicial
+  // 1. Carga Inicial dos Dados
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -221,7 +220,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, []);
 
-  // 2. Realtime Listener Global
+  // 2. Realtime Listener Global com Smart Merge (Preserva dados na tela)
   useEffect(() => {
     const channel = supabase
       .channel('realtime-global-updates')
@@ -230,25 +229,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'jobs' },
         (payload) => {
-          if (payload.eventType === 'INSERT') {
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             setDataState((prev) => {
               const item = mapJob(payload.new, prev.users);
-              const exists = prev.jobs.some((j) => j.id === item.id);
-              if (exists) {
-                return {
-                  ...prev,
-                  jobs: prev.jobs.map((j) => (j.id === item.id ? { ...j, ...item, applicants: item.applicants.length > 0 ? item.applicants : j.applicants } : j))
+              const existing = prev.jobs.find((j) => j.id === item.id);
+              if (existing) {
+                const merged: Job = {
+                  ...existing,
+                  ...item,
+                  establishmentName: item.establishmentName || existing.establishmentName,
+                  establishmentPhoto: item.establishmentPhoto || existing.establishmentPhoto,
+                  city: item.city || existing.city,
+                  state: item.state || existing.state,
+                  neighborhood: item.neighborhood || existing.neighborhood,
+                  applicants: Array.isArray(item.applicants) && item.applicants.length > 0 ? item.applicants : existing.applicants,
                 };
+                return { ...prev, jobs: prev.jobs.map((j) => (j.id === item.id ? merged : j)) };
               }
               return { ...prev, jobs: [item, ...prev.jobs] };
-            });
-          } else if (payload.eventType === 'UPDATE') {
-            setDataState((prev) => {
-              const item = mapJob(payload.new, prev.users);
-              return {
-                ...prev,
-                jobs: prev.jobs.map((j) => (j.id === item.id ? { ...j, ...item, establishmentName: item.establishmentName || j.establishmentName, establishmentPhoto: item.establishmentPhoto || j.establishmentPhoto, applicants: Array.isArray(item.applicants) ? item.applicants : j.applicants } : j))
-              };
             });
           } else if (payload.eventType === 'DELETE') {
             const deletedId = payload.old?.id;
@@ -261,12 +259,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'users' },
         (payload) => {
-          if (payload.eventType === 'INSERT') {
-            const item = mapUser(payload.new);
-            setDataState((prev) => (prev.users.some((u) => u.id === item.id) ? prev : { ...prev, users: [...prev.users, item] }));
-          } else if (payload.eventType === 'UPDATE') {
-            const item = mapUser(payload.new);
-            setDataState((prev) => ({ ...prev, users: prev.users.map((u) => (u.id === item.id ? { ...u, ...item } : u)) }));
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            setDataState((prev) => {
+              const item = mapUser(payload.new);
+              const existing = prev.users.find((u) => u.id === item.id);
+              if (existing) {
+                const merged: User = {
+                  ...existing,
+                  ...item,
+                  name: item.name || existing.name,
+                  email: item.email || existing.email,
+                  estVipTier: item.estVipTier !== 'free' ? item.estVipTier : (existing.estVipTier || 'free'),
+                  vipTier: item.vipTier !== 'free' ? item.vipTier : (existing.vipTier || 'free'),
+                  walletBalance: !isNaN(item.walletBalance) ? item.walletBalance : existing.walletBalance,
+                };
+                return { ...prev, users: prev.users.map((u) => (u.id === item.id ? merged : u)) };
+              }
+              return { ...prev, users: [...prev.users, item] };
+            });
           } else if (payload.eventType === 'DELETE') {
             const deletedId = payload.old?.id;
             if (deletedId) setDataState((prev) => ({ ...prev, users: prev.users.filter((u) => u.id !== deletedId) }));
@@ -278,15 +288,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'contracts' },
         (payload) => {
-          if (payload.eventType === 'INSERT') {
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             setDataState((prev) => {
               const item = mapContract(payload.new, prev.users);
-              return prev.contracts.some((c) => c.id === item.id) ? prev : { ...prev, contracts: [item, ...prev.contracts] };
-            });
-          } else if (payload.eventType === 'UPDATE') {
-            setDataState((prev) => {
-              const item = mapContract(payload.new, prev.users);
-              return { ...prev, contracts: prev.contracts.map((c) => (c.id === item.id ? { ...c, ...item } : c)) };
+              const existing = prev.contracts.find((c) => c.id === item.id);
+              if (existing) {
+                const mergedHistory = (Array.isArray(item.history) && item.history.length >= (existing.history?.length || 0))
+                  ? item.history
+                  : (existing.history || item.history);
+
+                const merged: Contract = {
+                  ...existing,
+                  ...item,
+                  establishmentName: item.establishmentName || existing.establishmentName,
+                  establishmentPhoto: item.establishmentPhoto || existing.establishmentPhoto,
+                  freelancerName: item.freelancerName || existing.freelancerName,
+                  freelancerPhoto: item.freelancerPhoto || existing.freelancerPhoto,
+                  freelancerPhone: item.freelancerPhone || existing.freelancerPhone,
+                  freelancerWhatsapp: item.freelancerWhatsapp || existing.freelancerWhatsapp,
+                  freelancerFee: item.freelancerFee > 0 ? item.freelancerFee : existing.freelancerFee,
+                  platformFeePercentage: (payload.new.platform_fee_percentage !== undefined && payload.new.platform_fee_percentage !== null) ? Number(payload.new.platform_fee_percentage) : existing.platformFeePercentage,
+                  platformFee: (payload.new.platform_fee !== undefined && payload.new.platform_fee !== null) ? Number(payload.new.platform_fee) : existing.platformFee,
+                  total: item.total > 0 ? item.total : existing.total,
+                  history: mergedHistory,
+                };
+                return { ...prev, contracts: prev.contracts.map((c) => (c.id === item.id ? merged : c)) };
+              }
+              return { ...prev, contracts: [item, ...prev.contracts] };
             });
           } else if (payload.eventType === 'DELETE') {
             const deletedId = payload.old?.id;
@@ -299,12 +327,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'notifications' },
         (payload) => {
-          if (payload.eventType === 'INSERT') {
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             const item = mapNotification(payload.new);
-            setDataState((prev) => (prev.notifications.some((n) => n.id === item.id) ? prev : { ...prev, notifications: [item, ...prev.notifications] }));
-          } else if (payload.eventType === 'UPDATE') {
-            const item = mapNotification(payload.new);
-            setDataState((prev) => ({ ...prev, notifications: prev.notifications.map((n) => (n.id === item.id ? { ...n, ...item } : n)) }));
+            setDataState((prev) => (prev.notifications.some((n) => n.id === item.id) ? { ...prev, notifications: prev.notifications.map((n) => (n.id === item.id ? { ...n, ...item } : n)) } : { ...prev, notifications: [item, ...prev.notifications] }));
           } else if (payload.eventType === 'DELETE') {
             const deletedId = payload.old?.id;
             if (deletedId) setDataState((prev) => ({ ...prev, notifications: prev.notifications.filter((n) => n.id !== deletedId) }));
@@ -316,12 +341,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'reviews' },
         (payload) => {
-          if (payload.eventType === 'INSERT') {
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             const item = mapReview(payload.new);
-            setDataState((prev) => (prev.reviews.some((r) => r.id === item.id) ? prev : { ...prev, reviews: [item, ...prev.reviews] }));
-          } else if (payload.eventType === 'UPDATE') {
-            const item = mapReview(payload.new);
-            setDataState((prev) => ({ ...prev, reviews: prev.reviews.map((r) => (r.id === item.id ? { ...r, ...item } : r)) }));
+            setDataState((prev) => (prev.reviews.some((r) => r.id === item.id) ? { ...prev, reviews: prev.reviews.map((r) => (r.id === item.id ? { ...r, ...item } : r)) } : { ...prev, reviews: [item, ...prev.reviews] }));
           } else if (payload.eventType === 'DELETE') {
             const deletedId = payload.old?.id;
             if (deletedId) setDataState((prev) => ({ ...prev, reviews: prev.reviews.filter((r) => r.id !== deletedId) }));
@@ -333,12 +355,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'wallet_transactions' },
         (payload) => {
-          if (payload.eventType === 'INSERT') {
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             const item = mapWalletTx(payload.new);
-            setDataState((prev) => (prev.walletTxs.some((t) => t.id === item.id) ? prev : { ...prev, walletTxs: [item, ...prev.walletTxs] }));
-          } else if (payload.eventType === 'UPDATE') {
-            const item = mapWalletTx(payload.new);
-            setDataState((prev) => ({ ...prev, walletTxs: prev.walletTxs.map((t) => (t.id === item.id ? { ...t, ...item } : t)) }));
+            setDataState((prev) => (prev.walletTxs.some((t) => t.id === item.id) ? { ...prev, walletTxs: prev.walletTxs.map((t) => (t.id === item.id ? { ...t, ...item } : t)) } : { ...prev, walletTxs: [item, ...prev.walletTxs] }));
           } else if (payload.eventType === 'DELETE') {
             const deletedId = payload.old?.id;
             if (deletedId) setDataState((prev) => ({ ...prev, walletTxs: prev.walletTxs.filter((t) => t.id !== deletedId) }));
@@ -461,7 +480,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       users: d.users.map((u) => (u.id === id ? { ...u, vipTier: tier, vipExpiresAt: expiry, walletBalance: Math.max(0, (u.walletBalance ?? 0) - price) } : u)),
       walletTxs: [...newTxs, ...d.walletTxs]
     }));
-    void dbUpdateUser(id, { vipTier: tier, vipExpiresAt: expiry }).catch(() => {});
+    void dbUpdateUser(id, { vipTier: tier, vipExpiresAt: expiry, estVipTier: user?.estVipTier }).catch(() => {});
     if (price > 0 && newTxs[0]) {
       void dbInsertWalletTx(newTxs[0]).catch(() => {});
       if (user) void dbUpdateWalletBalance(id, Math.max(0, (user.walletBalance ?? 0) - price)).catch(() => {});
@@ -479,12 +498,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const expiry = (tier === 'free' || tier === 'trial') ? undefined : new Date(Date.now() + (period === 'annual' ? 365 : period === 'semestral' ? 180 : 30) * 86400000).toISOString();
     const newTrialEndsAt = (tier !== 'free' && tier !== 'trial') ? null : user?.trialEndsAt;
     const newTxs: WalletTx[] = price > 0 ? [{ id: crypto.randomUUID(), userId: id, type: 'vip_charge_est', amount: -price, description: `Assinatura ${getEstPlan(tier, data.estVipPlans).label} (${period})`, date: new Date().toISOString() }] : [];
+    
     setData((d) => ({
       ...d,
       users: d.users.map((u) => (u.id === id ? { ...u, estVipTier: tier, estVipExpiresAt: expiry, trialEndsAt: newTrialEndsAt, walletBalance: Math.max(0, (u.walletBalance ?? 0) - price) } : u)),
       walletTxs: [...newTxs, ...d.walletTxs]
     }));
-    void dbUpdateUser(id, { estVipTier: tier, estVipExpiresAt: expiry, trialEndsAt: newTrialEndsAt }).catch(() => {});
+
+    void dbUpdateUser(id, { estVipTier: tier, est_vip_tier: tier, estVipExpiresAt: expiry, trialEndsAt: newTrialEndsAt } as any).catch(() => {});
+    
     if (price > 0 && newTxs[0]) {
       void dbInsertWalletTx(newTxs[0]).catch(() => {});
       if (user) void dbUpdateWalletBalance(id, Math.max(0, (user.walletBalance ?? 0) - price)).catch(() => {});
