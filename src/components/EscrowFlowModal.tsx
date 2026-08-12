@@ -9,7 +9,7 @@ import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { Avatar } from './ui/Avatar';
-import { formatCurrency, formatDateBR, contractStatusLabel, contractStepIndex, CONTRACT_STATUS_FLOW, downloadTaxReceipt, getIntermediationFeePercent } from '@/utils';
+import { formatCurrency, formatDateBR, contractStatusLabel, contractStepIndex, CONTRACT_STATUS_FLOW, downloadTaxReceipt, getIntermediationFeePercent, calculateFees } from '@/utils';
 import { ReviewModal } from './ReviewModal';
 import type { Contract } from '@/types';
 import { paymentService } from '@/services/paymentService';
@@ -38,13 +38,13 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
   const estUser = data?.users.find(u => u.id === contract.establishmentId);
   const balance = estUser?.walletBalance ?? 0;
 
-  // 2. Checagem dupla: Verifica o est_vip_tier e cruza com a tabela/lista de planos para obter o percentual de taxa real
-  const feePercent = estUser ? getIntermediationFeePercent(estUser, data?.estVipPlans, data?.vipPlans) : contract.platformFeePercentage;
+  // 2. Checagem dupla: Verifica o est_vip_tier e cruza com a tabela/lista de planos para obter o percentual real configurado no Admin
+  const defaultFee = data?.config?.defaultFeePercent ?? 15;
+  const feePercent = estUser ? getIntermediationFeePercent(estUser, data?.estVipPlans, data?.vipPlans, defaultFee) : contract.platformFeePercentage;
+  
+  // 3. Aplica o cálculo oficial de taxas da plataforma (respeitando rigorosamente a tabela configurada)
+  const { fee: calculatedFee, total: displayTotal } = calculateFees(contract.freelancerFee, feePercent);
   const isVipZero = feePercent === 0;
-
-  // Recalcula o valor da taxa e o total dinamicamente com base no plano verificado
-  const calculatedFee = Math.round(contract.freelancerFee * (feePercent / 100) * 100) / 100;
-  const displayTotal = Math.round((contract.freelancerFee + calculatedFee) * 100) / 100;
   const hasEnoughBalance = balance >= displayTotal;
 
   const handlePay = async () => {
@@ -81,7 +81,7 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
         billingType: payMethod === 'pix' ? 'PIX' : 'CREDIT_CARD',
         value: displayTotal,
         dueDate: new Date().toISOString().slice(0, 10),
-        description: `Escrow — ${contract.freelancerName} ${isVipZero ? '(Taxa Zero Aplicada)' : ''}`,
+        description: `Escrow — ${contract.freelancerName} ${isVipZero ? '(Taxa Configurada: 0%)' : ''}`,
         splits: [],
         externalReference: contract.id,
       });
@@ -170,9 +170,9 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
         {/* Cost breakdown */}
         <div className="mt-5 space-y-2 rounded-xl border border-neutral-200 p-4 dark:border-neutral-700">
           <Row label="Valor do freela" value={formatCurrency(contract.freelancerFee)} />
-          <Row label={`Taxa de intermediação (${feePercent}%)`} value={isVipZero ? 'Isento (Plano VIP)' : formatCurrency(calculatedFee)} />
+          <Row label={`Taxa de intermediação (${feePercent}%)`} value={calculatedFee === 0 ? 'Isento' : formatCurrency(calculatedFee)} />
           {isVipZero && (
-            <p className="text-[11px] text-success-600 dark:text-success-400 font-medium">🎉 Benefício VIP aplicado: Taxa de intermediação zerada com sucesso!</p>
+            <p className="text-[11px] text-success-600 dark:text-success-400 font-medium">🎉 Plano VIP aplicado: Taxa de intermediação configurada com sucesso!</p>
           )}
           <div className="border-t border-dashed border-neutral-200 pt-2 dark:border-neutral-700">
             <Row label="Total pago em garantia" value={formatCurrency(displayTotal)} bold />
