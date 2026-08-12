@@ -32,7 +32,7 @@ export function LandingPage({ onNavigateTerms }: { onNavigateTerms?: () => void 
         <main className="flex flex-1 flex-col items-center justify-center px-5 py-12 text-center sm:px-8">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium text-neutral-300 backdrop-blur">
             <Shield className="h-3.5 w-3.5 text-secondary-400" />
-            Pagamento seguro com garantia (escrow) via Cora
+            Pagamento seguro com garantia (escrow) e split automático via Asaas
           </div>
           <h1 className="font-display text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-6xl md:text-7xl">
             Precisa de alguém?<br />
@@ -242,7 +242,7 @@ function RegisterForm({ onClose, onSwitch, onNavigateTerms }: { onClose: () => v
           <>
             <Input label="CNPJ" value={cnpj} onChange={(e) => { setCnpj(maskCNPJ(e.target.value)); setError(''); }} placeholder="00.000.000/0000-00" hint="Validação algorítmica" />
             <Select label="Tipo de estabelecimento" value={establishmentType} onChange={(e) => setEstablishmentType(e.target.value)}>
-              {['Bar & Restaurante', 'Buffet & Eventos', 'Restaurante', 'Bar', 'Lanchonete', 'Padaria', 'Casa de Shows', 'Hotel'].map((t) => <option key={t} value={t}>{t}</option>)}
+              {['Bar & Restaurante', 'Buffet & Eventos', 'Restaurante', 'Bar', 'Lanchonete', 'Padaria', 'Casa de Shows', 'Hotel', 'Cafeteria', 'Pub', 'Churrascaria', 'Pizzaria', 'Outro'].map((t) => <option key={t} value={t}>{t}</option>)}
             </Select>
           </>
         )}
