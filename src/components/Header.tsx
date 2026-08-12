@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Moon, Sun, Bell, Wallet, LogOut, Shield, ChevronDown, LayoutGrid, Users, Store, Briefcase, Star, Crown, Receipt, Ticket, UserCog, CreditCard, Home } from 'lucide-react';
+import { Moon, Sun, Bell, Wallet, LogOut, Shield, ChevronDown, LayoutGrid, Users, Store, Briefcase, Star, Crown, Receipt, Ticket, UserCog, CreditCard } from 'lucide-react';
 import { useApp } from '@/AppContext';
 import { useTheme } from '@/hooks/useTheme';
 import { Avatar } from './ui/Avatar';
@@ -50,20 +50,6 @@ export function Header({ onNavigateHome, onNavigateVip }: { onNavigateHome?: () 
       <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
         <div className="flex items-center gap-3">
           <img src="/image.png" alt="FreelaAgora" className="h-16 w-auto max-w-[240px] object-contain sm:h-20 sm:max-w-[300px]" />
-          <button
-            onClick={() => {
-              if (onNavigateHome) {
-                onNavigateHome();
-              } else {
-                window.history.pushState({}, '', '/');
-                window.dispatchEvent(new Event('popstate'));
-              }
-            }}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
-          >
-            <Home className="h-4 w-4 text-primary-500" />
-            <span className="hidden sm:inline">Início</span>
-          </button>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
