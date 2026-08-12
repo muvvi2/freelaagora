@@ -38,6 +38,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [adminTab, setAdminTab] = useState('overview');
   const [adminMode, setAdminMode] = useState(true);
 
+  // 1. Carregamento Inicial do Banco
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -46,9 +47,60 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (!cancelled && dbData) {
           setDataState((prev) => ({ ...dbData, currentUserId: prev.currentUserId ?? dbData.currentUserId }));
         }
-      } catch (e) { console.warn("⚠️ Falha ao carregar do Supabase:", e); } finally { if (!cancelled) setLoaded(true); }
+      } catch (e) { 
+        console.warn("⚠️ Falha ao carregar do Supabase:", e); 
+      } opacity: { if (!cancelled) setLoaded(true); }
     })();
     return () => { cancelled = true; };
+  }, []);
+
+  // 2. Realtime Listener para Atualização Instantânea (Sem F5)
+  useEffect(() => {
+    const channel = supabase
+      .channel('realtime-app-updates')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'contracts' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newContract = payload.new as Contract;
+            setDataState((prev) => {
+              if (prev.contracts.some((c) => c.id === newContract.id)) return prev;
+              return { ...prev, contracts: [newContract, ...prev.contracts] };
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedContract = payload.new as Contract;
+            setDataState((prev) => ({
+              ...prev,
+              contracts: prev.contracts.map((c) => (c.id === updatedContract.id ? { ...c, ...updatedContract } : c)),
+            }));
+          } else if (payload.eventType === 'DELETE') {
+            const deletedId = payload.old.id;
+            setDataState((prev) => ({
+              ...prev,
+              contracts: prev.contracts.filter((c) => c.id !== deletedId),
+            }));
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newNotif = payload.new as AppNotification;
+            setDataState((prev) => {
+              if (prev.notifications.some((n) => n.id === newNotif.id)) return prev;
+              return { ...prev, notifications: [newNotif, ...prev.notifications] };
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   useEffect(() => {
@@ -334,19 +386,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const requestHire = useCallback((establishmentId: string, freelancerId: string, jobId: string | null, hours: number, freelancerFee: number): Contract => {
     const est = data?.users.find((u) => u.id === establishmentId);
     const fl = data?.users.find((u) => u.id === freelancerId);
-    const feePercent = est ? getIntermediationFeePercent(est, data.estVipPlans) : data?.config.defaultFeePercent ?? 15;
+
+    const defaultFee = data?.config?.defaultFeePercent ?? 15;
+    const feePercent = est ? getIntermediationFeePercent(est, data.estVipPlans, data.vipPlans, defaultFee) : defaultFee;
     const { fee, total } = calculateFees(freelancerFee, feePercent);
+
     const contract: Contract = {
-      id: crypto.randomUUID(), jobId, establishmentId, establishmentName: est?.name ?? '',
-      freelancerId, freelancerName: fl?.name ?? '', freelancerPhoto: fl?.photo ?? '',
-      freelancerPhone: fl?.phone ?? '', freelancerWhatsapp: fl?.whatsapp ?? '',
-      category: fl?.categories?.[0] ?? 'geral', date: new Date().toISOString(), hours,
-      freelancerFee, platformFeePercentage: feePercent, platformFee: fee, total,
-      status: 'requested', createdAt: new Date().toISOString(), history: [{ status: 'requested', at: new Date().toISOString() }],
+      id: crypto.randomUUID(), 
+      jobId, 
+      establishmentId, 
+      establishmentName: est?.name ?? '',
+      freelancerId, 
+      freelancerName: fl?.name ?? '', 
+      freelancerPhoto: fl?.photo ?? '',
+      freelancerPhone: fl?.phone ?? '', 
+      freelancerWhatsapp: fl?.whatsapp ?? '',
+      category: fl?.categories?.[0] ?? 'geral', 
+      date: new Date().toISOString(), 
+      hours,
+      freelancerFee, 
+      platformFeePercentage: feePercent, 
+      platformFee: fee, 
+      total,
+      status: 'requested', 
+      createdAt: new Date().toISOString(), 
+      history: [{ status: 'requested', at: new Date().toISOString() }],
     };
+
     const notifs: AppNotification[] = [
       { id: crypto.randomUUID(), userId: freelancerId, type: 'hire_request', title: 'Nova solicitação', body: `${est?.name} quer te contratar.`, read: false, date: new Date().toISOString(), contractId: contract.id },
     ];
+
     setData((d) => ({ ...d, contracts: [contract, ...d.contracts], notifications: [...notifs, ...d.notifications] }));
     void dbInsertContract(contract).catch(() => {});
     return contract;
@@ -356,16 +426,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!data) return;
     const contract = data.contracts.find((c) => c.id === contractId);
     if (!contract) return;
-    const { error } = await supabase.rpc('accept_contract', {
-      p_contract_id: contractId,
-      p_freelancer_id: contract.freelancerId
-    });
-    if (error) {
-      setData((d) => ({ ...d, contracts: d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'confirmed', history: [...ct.history, { status: 'confirmed', at: new Date().toISOString() }] } : ct) }));
-      void dbUpdateContractStatus(contractId, 'confirmed').catch(() => {});
-    } else {
-      setData((d) => ({ ...d, contracts: d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'confirmed', history: [...ct.history, { status: 'confirmed', at: new Date().toISOString() }] } : ct) }));
-    }
+
+    const updatedHistory = [...(contract.history || []), { status: 'confirmed' as ContractStatus, at: new Date().toISOString() }];
+
+    setData((d) => ({
+      ...d,
+      contracts: d.contracts.map((ct) => (ct.id === contractId ? { ...ct, status: 'confirmed', history: updatedHistory } : ct)),
+      notifications: [
+        { id: crypto.randomUUID(), userId: contract.establishmentId, type: 'hire_request', title: 'Disponibilidade Confirmada!', body: `${contract.freelancerName} confirmou a disponibilidade. Realize o pagamento em garantia para liberar o contato.`, read: false, date: new Date().toISOString(), contractId },
+        ...d.notifications
+      ]
+    }));
+
+    void dbUpdateContractStatus(contractId, 'confirmed').catch(() => {});
   }, [data, setData]);
 
   const payEscrow = useCallback((contractId: string, paymentMethod: 'wallet' | 'pix' | 'card' = 'wallet'): { ok: boolean; error?: string } => {
@@ -381,12 +454,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newBalance = paymentMethod === 'wallet' ? Math.max(0, est.walletBalance - c.total) : est.walletBalance;
     const invoiceId = c.coraInvoiceId ?? `inv-${crypto.randomUUID()}`;
     const estTx: WalletTx = { id: crypto.randomUUID(), userId: c.establishmentId, type: 'escrow_hold', amount: -c.total, description: `Escrow — ${c.freelancerName}`, contractId, date: new Date().toISOString() };
+    const updatedHistory = [...(c.history || []), { status: 'paid' as ContractStatus, at: new Date().toISOString() }];
 
     setData((d) => ({
       ...d,
       users: d.users.map(u => u.id === c.establishmentId ? { ...u, walletBalance: newBalance } : u),
-      contracts: d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'paid', coraInvoiceId: invoiceId, history: [...ct.history, { status: 'paid', at: new Date().toISOString() }] } : ct),
-      walletTxs: [estTx, ...d.walletTxs]
+      contracts: d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'paid', coraInvoiceId: invoiceId, history: updatedHistory } : ct),
+      walletTxs: [estTx, ...d.walletTxs],
+      notifications: [
+        { id: crypto.randomUUID(), userId: c.freelancerId, type: 'hire_request', title: 'Pagamento Realizado!', body: `O estabelecimento ${c.establishmentName} realizou o pagamento em garantia. Contato liberado!`, read: false, date: new Date().toISOString(), contractId },
+        ...d.notifications
+      ]
     }));
 
     void dbUpdateContractStatus(contractId, 'paid').catch(() => {});
@@ -402,9 +480,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const c = data.contracts.find(x => x.id === contractId);
     if (!c) return;
 
+    const updatedHistory = [...(c.history || []), { status: 'check_in_pending' as ContractStatus, at: new Date().toISOString(), note: 'Profissional registrou chegada, aguardando estabelecimento.' }];
+
     setData((d) => ({
       ...d,
-      contracts: d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'check_in_pending', history: [...ct.history, { status: 'check_in_pending', at: new Date().toISOString(), note: 'Profissional registrou chegada, aguardando estabelecimento.' }] } : ct),
+      contracts: d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'check_in_pending', history: updatedHistory } : ct),
       notifications: [
         { id: crypto.randomUUID(), userId: c.establishmentId, type: 'announcement', title: 'Chegada do Profissional', body: `${c.freelancerName} fez o check-in e aguarda sua confirmação de presença.`, read: false, date: new Date().toISOString(), contractId },
         ...d.notifications
@@ -418,9 +498,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const c = data.contracts.find(x => x.id === contractId);
     if (!c) return;
 
+    const updatedHistory = [...(c.history || []), { status: 'checked_in' as ContractStatus, at: new Date().toISOString(), note: 'Estabelecimento confirmou a presença.' }];
+
     setData((d) => ({
       ...d,
-      contracts: d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'checked_in', history: [...ct.history, { status: 'checked_in', at: new Date().toISOString(), note: 'Estabelecimento confirmou a presença.' }] } : ct),
+      contracts: d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'checked_in', history: updatedHistory } : ct),
       notifications: [
         { id: crypto.randomUUID(), userId: c.freelancerId, type: 'announcement', title: 'Check-in Confirmado!', body: `O estabelecimento ${c.establishmentName} confirmou sua presença. Bom trabalho!`, read: false, date: new Date().toISOString(), contractId },
         ...d.notifications
@@ -435,9 +517,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!c) return;
     const flRelease: WalletTx = { id: crypto.randomUUID(), userId: c.freelancerId, type: 'escrow_release', amount: c.freelancerFee, description: `Repasse — ${c.establishmentName}`, contractId, date: new Date().toISOString() };
     const adminFee: WalletTx = { id: crypto.randomUUID(), userId: ADMIN_ID, type: 'platform_fee', amount: c.platformFee, description: `Taxa (${c.platformFeePercentage}%)`, contractId, date: new Date().toISOString() };
+    const updatedHistory = [...(c.history || []), { status: 'completed' as ContractStatus, at: new Date().toISOString() }];
+
     setData((d) => ({
       ...d,
-      contracts: d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'completed', history: [...ct.history, { status: 'completed', at: new Date().toISOString() }] } : ct),
+      contracts: d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'completed', history: updatedHistory } : ct),
       walletTxs: [flRelease, adminFee, ...d.walletTxs]
     }));
     void dbUpdateContractStatus(contractId, 'completed').catch(() => {});
@@ -447,9 +531,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const cancelContract = useCallback((contractId: string) => {
     if (!data) return;
+    const c = data.contracts.find(x => x.id === contractId);
+    const updatedHistory = [...(c?.history || []), { status: 'cancelled' as ContractStatus, at: new Date().toISOString() }];
+
     setData((d) => ({
       ...d,
-      contracts: d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'cancelled', history: [...ct.history, { status: 'cancelled', at: new Date().toISOString() }] } : ct)
+      contracts: d.contracts.map((ct) => ct.id === contractId ? { ...ct, status: 'cancelled', history: updatedHistory } : ct)
     }));
     void dbUpdateContractStatus(contractId, 'cancelled').catch(() => {});
   }, [data, setData]);
