@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Fragment } from 'react';
 import { Search, SlidersHorizontal, Plus, Megaphone, Store, Users, FileText, Pencil, MapPin, Navigation, Crown, Globe, Calendar, Clock, Trash2, Pause, Play, CheckCircle2, Info } from 'lucide-react';
 import { useApp } from '@/AppContext';
 import { useToast } from './ui/Toast';
@@ -12,7 +12,7 @@ import { JobCard } from './JobCard';
 import { JobFormModal } from './JobFormModal';
 import { EscrowFlowModal } from './EscrowFlowModal';
 import { VipPanel } from './VipPanel';
-import { VipSquareWidget } from './VipSquareWidget';
+import { AdBanner } from './AdBanner';
 import { EstablishmentEditModal } from './EstablishmentEditModal';
 import { Modal } from './ui/Modal';
 import { CATEGORIES, MACRO_CATEGORIES } from '@/mockData';
@@ -197,10 +197,8 @@ export function ContractorView() {
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 space-y-6 text-neutral-900 dark:text-white">
       
-      {/* SLOT 1 NO TOPO ABSOLUTO (Hero Ad - Proporção 2:1) */}
-      <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
-        <VipSquareWidget pageType="establishments" slot={1} />
-      </div>
+      {/* SLOT 1 — Hero Ad (topo, proporção 2:1) */}
+      <AdBanner pageType="establishments" slot="top" />
 
       {/* CABEÇALHO DO ESTABELECIMENTO E STATS */}
       <div className="space-y-4">
@@ -307,14 +305,21 @@ export function ContractorView() {
         </div>
       </div>
 
-      {/* SLOT 2 (Banner Intermediário — logo abaixo dos filtros) */}
-      <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
-        <VipSquareWidget pageType="establishments" slot={2} />
-      </div>
+      {/* SLOT 2 — In-feed Ad (após filtros) */}
+      <AdBanner pageType="establishments" slot="center" />
 
-      {/* LISTAGEM DE PROFISSIONAIS */}
+      {/* LISTAGEM DE PROFISSIONAIS com anúncio in-feed após o 3º card */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {filtered.map((f) => <FreelancerCard key={f.id} freelancer={f} onHire={openDirectHireModal} onView={setViewing} distanceKm={distanceBetween(f.address, origin)} />)}
+        {filtered.map((f, idx) => (
+          <Fragment key={f.id}>
+            {idx === 3 && (
+              <div className="col-span-full my-2">
+                <AdBanner pageType="establishments" slot="center" />
+              </div>
+            )}
+            <FreelancerCard freelancer={f} onHire={openDirectHireModal} onView={setViewing} distanceKm={distanceBetween(f.address, origin)} />
+          </Fragment>
+        ))}
       </div>
       {filtered.length === 0 && (
         <div className="rounded-2xl border border-dashed border-neutral-300 py-12 text-center dark:border-neutral-700">
@@ -334,10 +339,8 @@ export function ContractorView() {
         </div>
       </div>
 
-      {/* SLOT 3 (Banner Inferior — rodapé da página) */}
-      <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
-        <VipSquareWidget pageType="establishments" slot={3} />
-      </div>
+      {/* SLOT 3 — Rodapé Ad (proporção 3.3:1) */}
+      <AdBanner pageType="establishments" slot="bottom" />
 
       {/* MODAL DE CONTRATAÇÃO DIRETA */}
       {directHireTarget && (
