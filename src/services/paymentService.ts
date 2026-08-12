@@ -174,6 +174,7 @@ class MultiPaymentProvider {
       customerName: input.customerName || 'Cliente Pagante',
       customerEmail: input.customerEmail || 'cliente@freelaagora.com',
       customerCpfCnpj: input.cpfCnpj || '',
+      splits: input.splits || [], // <--- Repassa o array de splits com a wallet do freelancer para a Edge Function
     });
     return {
       id: data.id as string,
@@ -184,7 +185,7 @@ class MultiPaymentProvider {
       invoiceUrl: data.invoiceUrl as string,
       bankSlipUrl: data.bankSlipUrl as string | undefined,
       pixQrCode: data.pixQrCode as string | undefined,
-      splits: [],
+      splits: data.splits || [],
     };
   }
 
