@@ -381,7 +381,7 @@ export function generateTaxReceipt(contract: {
   total: number;
 }): string {
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
-<title>Comprovante de Prestação de Contas — ${contract.id}</title>
+<title>Recibo de Intermediação — ${contract.id}</title>
 <style>
   @page { margin: 2cm; } body { font-family: Arial, sans-serif; color: #1a1a1a; max-width: 720px; margin: 0 auto; padding: 32px; }
   .header { display: flex; align-items: center; gap: 12px; border-bottom: 3px solid #ff7a14; padding-bottom: 16px; margin-bottom: 24px; }
@@ -394,30 +394,30 @@ export function generateTaxReceipt(contract: {
   th, td { padding: 10px 12px; text-align: left; font-size: 13px; border-bottom: 1px solid #e5e5e5; }
   th { background: #f8f8f8; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #666; }
   .total-row td { font-weight: 700; font-size: 14px; border-bottom: 2px solid #333; }
-  .disclaimer { font-size: 11px; color: #888; line-height: 1.5; border-top: 1px solid #e5e5e5; padding-top: 16px; }
-  .disclaimer strong { color: #555; }
+  .disclaimer { font-size: 11px; color: #666; line-height: 1.5; border-top: 1px solid #e5e5e5; padding-top: 16px; background: #fdf4f0; border-left: 3px solid #ff7a14; padding-left: 12px; }
+  .disclaimer strong { color: #333; }
   .transaction-id { font-family: monospace; font-size: 12px; background: #f4f4f4; padding: 2px 6px; border-radius: 4px; }
 </style></head><body>
-<div class="header"><div class="logo">🔥</div><div class="brand"><h1>FreelaAgora</h1><p>Comprovante de Prestação de Contas (Escrituração Fiscal)</p></div></div>
-<h2>Comprovante de Prestação de Contas</h2>
+<div class="header"><div class="logo">🔥</div><div class="brand"><h1>FreelaAgora</h1><p>Recibo de Intermediação de Negócios e Reserva de Garantia</p></div></div>
+<h2>Resumo da Intermediação e Repasse</h2>
 <div class="info-grid">
   <div><div class="label">ID da Transação</div><div class="value transaction-id">${contract.id}</div></div>
   <div><div class="label">Data do Serviço</div><div class="value">${formatDate(contract.date)}</div></div>
   <div><div class="label">Estabelecimento</div><div class="value">${contract.establishmentName}</div></div>
-  <div><div class="label">Prestador (Freelancer)</div><div class="value">${contract.freelancerName}</div></div>
+  <div><div class="label">Prestador Autônomo (Freelancer)</div><div class="value">${contract.freelancerName}</div></div>
   <div><div class="label">Horas Contratadas</div><div class="value">${contract.hours}h</div></div>
   <div><div class="label">Taxa de Intermediação Aplicada</div><div class="value">${contract.platformFeePercentage}%</div></div>
 </div>
 <table>
-  <thead><tr><th>Descrição</th><th style="text-align:right">Valor (R$)</th></tr></thead>
+  <thead><tr><th>Descrição do Movimento</th><th style="text-align:right">Valor (R$)</th></tr></thead>
   <tbody>
-    <tr><td>Valor Bruto da Diária do Freelancer</td><td style="text-align:right">${formatCurrency(contract.freelancerFee)}</td></tr>
-    <tr><td>Taxa de Intermediação da Plataforma (${contract.platformFeePercentage}%)</td><td style="text-align:right">${formatCurrency(contract.platformFee)}</td></tr>
-    <tr class="total-row"><td>Total Pago em Garantia</td><td style="text-align:right">${formatCurrency(contract.total)}</td></tr>
+    <tr><td>Valor Repassado ao Prestador (Via Split Payment)</td><td style="text-align:right">${formatCurrency(contract.freelancerFee)}</td></tr>
+    <tr><td>Taxa de Serviço da Plataforma FreelaAgora</td><td style="text-align:right">${formatCurrency(contract.platformFee)}</td></tr>
+    <tr class="total-row"><td>Valor Total Movimentado</td><td style="text-align:right">${formatCurrency(contract.total)}</td></tr>
   </tbody>
 </table>
 <div class="disclaimer">
-  Este documento serve como comprovante de movimentação financeira e intermediação de negócios privados para fins de escrituração contábil e declaração de ajuste fiscal.
+  <strong>Nota Informativa Legal:</strong> Este documento comprova o pagamento da taxa de serviço da plataforma FreelaAgora e a reserva/processamento do repasse financeiro direto ao prestador autônomo via split de pagamento. A obrigação fiscal sobre o valor total da prestação do serviço de diária cabe exclusivamente ao prestador autônomo contratado, conforme previsto nos Termos de Uso da plataforma.
   <br/><br/>
   Emitido em: ${formatDateTime(new Date().toISOString())} · FreelaAgora Tecnologia Ltda.
 </div>
