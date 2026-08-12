@@ -412,7 +412,7 @@ export function generateTaxReceipt(contract: {
   <thead><tr><th>Descrição do Movimento</th><th style="text-align:right">Valor (R$)</th></tr></thead>
   <tbody>
     <tr><td>Valor Repassado ao Prestador (Via Split Payment)</td><td style="text-align:right">${formatCurrency(contract.freelancerFee)}</td></tr>
-    <tr><td>Taxa de Serviço da Plataforma FreelaAgora</td><td style="text-align:right">${formatCurrency(contract.platformFee)}</td></tr>
+    <tr><td>Taxa de Serviço da Plataforma FreelaAgora (${contract.platformFeePercentage}%)</td><td style="text-align:right">${formatCurrency(contract.platformFee)}</td></tr>
     <tr class="total-row"><td>Valor Total Movimentado</td><td style="text-align:right">${formatCurrency(contract.total)}</td></tr>
   </tbody>
 </table>
