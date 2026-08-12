@@ -8,6 +8,7 @@ import { FreelancerView } from './components/FreelancerView';
 import { AdminView } from './components/AdminView';
 import { TermsPage } from './components/TermsPage';
 import { VipPanel } from './components/VipPanel';
+import { VipSquareWidget } from './components/VipSquareWidget';
 
 type Route = 'app' | 'terms' | 'vip' | 'estab' | 'freela';
 
@@ -82,8 +83,17 @@ function MainContent() {
     );
   }
 
+  // Identifica o tipo de página para o widget (estabelecimentos ou freelancers)
+  const pageType = currentUser.accountType === 'establishment' ? 'establishments' : 'freelancers';
+
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
+      
+      {/* ANÚNCIO NO TOPO (Slot 1) - Antes do Header */}
+      <div className="mx-auto max-w-[1400px] px-4 pt-3 sm:px-6">
+        <VipSquareWidget slot={1} pageType={pageType} />
+      </div>
+
       <Header 
         onNavigateHome={() => {
           const homePath = currentUser.accountType === 'establishment' ? '/estab' : '/freela';
