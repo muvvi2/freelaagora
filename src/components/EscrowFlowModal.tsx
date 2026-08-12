@@ -57,14 +57,18 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
 
     setProcessing(true);
     try {
-      const rawDocument = estUser?.cnpj || estUser?.cpf || estUser?.cpfCnpj || '';
+      const rawDocument = estUser?.cnpj || estUser?.cpf || estUser?.cpfCnpj || currentUser?.cnpj || currentUser?.cpf || '';
       const cleanDocument = rawDocument.replace(/\D/g, '');
+
+      if (!cleanDocument) {
+        throw new Error('É necessário preencher o CPF ou CNPJ no cadastro do estabelecimento para emitir a cobrança.');
+      }
 
       const result: any = await paymentService.createPaymentWithSplit({
         customer: contract.establishmentId,
-        customerName: estUser?.name || contract.establishmentName || 'Cliente',
-        customerEmail: estUser?.email || 'cliente@freelaagora.com',
-        customerCpfCnpj: cleanDocument || undefined,
+        customerName: estUser?.name || contract.establishmentName || currentUser?.name || 'Cliente',
+        customerEmail: estUser?.email || currentUser?.email || 'cliente@freelaagora.com',
+        cpfCnpj: cleanDocument, // Corrigido para cpfCnpj conforme esperado pela interface
         billingType: payMethod === 'pix' ? 'PIX' : 'CREDIT_CARD',
         value: contract.total,
         dueDate: new Date().toISOString().slice(0, 10),
@@ -98,7 +102,7 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
       }
     } catch (err: any) {
       console.error("Erro no pagamento:", err);
-      notify(err.message || 'Não foi possível iniciar este pagamento. O provedor de pagamentos ainda não está disponível.', 'error');
+      notify(err.message || 'Não foi possível iniciar este pagamento.', 'error');
     } finally {
       setProcessing(false);
     }
