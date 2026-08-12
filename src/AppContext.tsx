@@ -570,7 +570,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       walletTxs: [...newTxs, ...d.walletTxs]
     }));
 
-    // CORREÇÃO AQUI: Garante envio explícito de estVipTier e est_vip_tier para o Supabase
+    // CORREÇÃO: Envia tanto estVipTier quanto est_vip_tier para garantir atualização no banco
     void dbUpdateUser(id, { estVipTier: tier, est_vip_tier: tier, estVipExpiresAt: expiry, trialEndsAt: newTrialEndsAt } as any).catch((err) => {
       console.error("Erro ao atualizar VIP do estabelecimento no banco:", err);
     });
