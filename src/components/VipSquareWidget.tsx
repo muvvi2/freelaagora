@@ -46,12 +46,12 @@ export function VipSquareWidget({ pageType = 'freelancers', slot = 1 }: { pageTy
 
   const currentAd = activeAds[currentIndex % activeAds.length];
   
-  // Proporções exatas baseadas no Guia Técnico (Topo 2:1, Centro, etc)
+  // Controle rigoroso de proporção e altura máxima para evitar que o banner estique
   const sizeClass = slot === 1 
-    ? 'w-full aspect-[2/1] min-h-[180px] sm:min-h-[240px]' 
+    ? 'w-full aspect-[2/1] max-h-[220px] sm:max-h-[260px]' 
     : slot === 2 
-    ? 'w-full max-w-[380px] h-[250px]' 
-    : 'w-full aspect-[3.3:1] min-h-[120px]';
+    ? 'w-full max-w-[380px] h-[220px]' 
+    : 'w-full aspect-[3.3:1] max-h-[130px]';
 
   return (
     <a 
@@ -60,18 +60,18 @@ export function VipSquareWidget({ pageType = 'freelancers', slot = 1 }: { pageTy
       rel="noopener noreferrer" 
       className={`relative block overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-900 shadow-lg transition-transform hover:scale-[1.01] dark:border-neutral-800 ${sizeClass}`}
     >
-      {/* Imagem de Fundo com preenchimento perfeito */}
+      {/* Imagem de Fundo com object-cover para preenchimento perfeito sem distorção */}
       <img 
         src={currentAd.imageUrl} 
         alt="Anúncio Patrocinado" 
         className="absolute inset-0 w-full h-full object-cover opacity-90 transition-opacity duration-500" 
       />
       
-      {/* Gradiente escuro para legibilidade e destaque idêntico ao modelo */}
+      {/* Gradiente escuro para legibilidade e destaque premium */}
       <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/30 to-transparent" />
 
       {/* Selo discreto de Patrocinado */}
-      <div className="absolute top-3 right-3 z-10 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-medium tracking-wide text-neutral-300 backdrop-blur-md">
+      <div className="absolute top-2.5 right-2.5 z-10 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-medium tracking-wide text-neutral-300 backdrop-blur-md">
         Patrocinado
       </div>
     </a>
