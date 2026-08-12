@@ -380,6 +380,9 @@ export function generateTaxReceipt(contract: {
   platformFeePercentage: number;
   total: number;
 }): string {
+  const d = new Date(contract.date);
+  const dataCorreta = new Date(d.getTime() + d.getTimezoneOffset() * 60000).toLocaleDateString('pt-BR');
+
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
 <title>Recibo de Intermediação — ${contract.id}</title>
 <style>
@@ -402,7 +405,7 @@ export function generateTaxReceipt(contract: {
 <h2>Resumo da Intermediação e Repasse</h2>
 <div class="info-grid">
   <div><div class="label">ID da Transação</div><div class="value transaction-id">${contract.id}</div></div>
-  <div><div class="label">Data do Serviço</div><div class="value">${formatDate(contract.date)}</div></div>
+  <div><div class="label">Data do Serviço</div><div class="value">${dataCorreta}</div></div>
   <div><div class="label">Estabelecimento</div><div class="value">${contract.establishmentName}</div></div>
   <div><div class="label">Prestador Autônomo (Freelancer)</div><div class="value">${contract.freelancerName}</div></div>
   <div><div class="label">Horas Contratadas</div><div class="value">${contract.hours}h</div></div>
@@ -417,9 +420,9 @@ export function generateTaxReceipt(contract: {
   </tbody>
 </table>
 <div class="disclaimer">
-  <strong>Nota Informativa Legal:</strong> Este documento comprova o pagamento da taxa de serviço da plataforma FreelaAgora e a reserva/processamento do repasse financeiro direto ao prestador autônomo via split de pagamento. A obrigação fiscal sobre o valor total da prestação do serviço de diária cabe exclusivamente ao prestador autônomo contratado, conforme previsto nos Termos de Uso da plataforma.
+  <strong>Nota Informativa Legal:</strong> Este documento comprova o pagamento da taxa de serviço da plataforma FreelaAgora (${contract.platformFeePercentage}%) e a reserva/processamento do repasse financeiro direto ao prestador autônomo via split de pagamento. A obrigação fiscal sobre o valor total da prestação do serviço de diária cabe exclusivamente ao prestador autônomo contratado, conforme previsto nos Termos de Uso da plataforma.
   <br/><br/>
-  Emitido em: ${formatDateTime(new Date().toISOString())} · FreelaAgora Tecnologia Ltda.
+  Emitido em: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · FreelaAgora Tecnologia Ltda.
 </div>
 </body></html>`;
   return html;
