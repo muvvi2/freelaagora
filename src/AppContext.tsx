@@ -321,14 +321,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
             setDataState((prev) => {
               const item = mapContract(payload.new, prev.users);
               const existing = prev.contracts.find((c) => c.id === item.id);
+
               if (existing) {
-                const mergedHistory = (Array.isArray(item.history) && item.history.length >= (existing.history?.length || 0))
-                  ? item.history
-                  : (existing.history || item.history);
+                // Garante a fusão do histórico priorizando sempre o dado mais recente do payload
+                const mergedHistory = item.history && item.history.length > 0 ? item.history : (existing.history || []);
 
                 const merged: Contract = {
                   ...existing,
-                  ...item,
+                  ...item, // O item mapeado do payload.new deve sobrescrever o status imediatamente!
                   establishmentName: item.establishmentName || existing.establishmentName,
                   establishmentPhoto: item.establishmentPhoto || existing.establishmentPhoto,
                   freelancerName: item.freelancerName || existing.freelancerName,
