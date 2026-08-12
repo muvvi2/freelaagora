@@ -77,7 +77,7 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
         customer: contract.establishmentId,
         customerName: estUser?.name || contract.establishmentName || currentUser?.name || 'Cliente',
         customerEmail: estUser?.email || currentUser?.email || 'cliente@freelaagora.com',
-        customerCpfCnpj: cleanDocument,
+        customerCpfCnpj: cleanDocument || undefined,
         billingType: payMethod === 'pix' ? 'PIX' : 'CREDIT_CARD',
         value: displayTotal,
         dueDate: new Date().toISOString().slice(0, 10),
