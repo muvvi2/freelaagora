@@ -112,42 +112,10 @@ export function FreelancerView() {
 
       <div>
         {tab === 'opportunities' && (
-          <div className="grid gap-6 lg:grid-cols-[280px_1fr] items-start">
-            
-            {/* COLUNA 1: Convites / Contratos + SLOT 3 */}
-            <div className="flex flex-col justify-between h-full space-y-6">
-              <section className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
-                <h2 className="mb-4 flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white"><Inbox className="h-5 w-5 text-primary-500" /> Propostas e Contratos</h2>
-                {activeInvites.length > 0 ? (
-                  <div className="space-y-3">
-                    {activeInvites.map((c) => {
-                      const statusBadgeTone = c.status === 'confirmed' ? 'success' : c.status === 'paid' ? 'warning' : c.status === 'check_in_pending' ? 'warning' : c.status === 'checked_in' ? 'secondary' : 'warning';
-                      const statusLabel = c.status === 'requested' ? 'Pendente' : c.status === 'confirmed' ? 'Confirmado' : c.status === 'paid' ? 'Pago em Garantia' : c.status === 'check_in_pending' ? 'Aguardando Aprovação' : 'Check-in Realizado';
-                      return (
-                        <button key={c.id} onClick={() => setEscrowContract(c)} className="flex w-full items-center gap-3 rounded-xl border border-neutral-100 p-3 text-left transition hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-800">
-                          <Avatar src={c.freelancerPhoto} alt={c.freelancerName} size={40} />
-                          <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-neutral-900 dark:text-white">{c.establishmentName}</p><p className="text-xs text-neutral-400">{formatCurrency(c.freelancerFee)} · {c.category}</p></div>
-                          <Badge tone={statusBadgeTone}>{statusLabel}</Badge>
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="rounded-xl bg-neutral-50 p-6 text-center dark:bg-neutral-800/50">
-                    <Inbox className="mx-auto mb-2 h-8 w-8 text-neutral-300" />
-                    <p className="text-sm text-neutral-400">Nenhum convite ou contrato ativo no momento.</p>
-                  </div>
-                )}
-              </section>
+          <div className="space-y-6">
 
-              {/* SLOT 3: Rodapé esquerdo da página */}
-              <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm mt-auto">
-                <VipSquareWidget pageType="freelancers" slot={3} />
-              </div>
-            </div>
-
-            {/* COLUNA 2: Mural de Vagas + SLOT 2 */}
-            <section className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm space-y-4">
+            {/* BARRA DE FILTROS */}
+            <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-neutral-100 dark:border-neutral-800">
                 <h2 className="flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white">
                   <Megaphone className="h-5 w-5 text-secondary-500" /> Mural de Vagas
@@ -159,54 +127,62 @@ export function FreelancerView() {
                 </div>
               </div>
 
-              {/* Slider Escalável 0 a 100km */}
               <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5 dark:border-neutral-800 dark:bg-neutral-800/50">
                 <MapPin className="h-4 w-4 shrink-0 text-neutral-400" />
                 <span className="text-xs font-semibold text-neutral-500">Raio de Atuação:</span>
                 <input type="range" min={1} max={100} step={1} disabled={me.unlimitedKm} value={radiusKm} onChange={(e) => setRadiusKm(Number(e.target.value))} className={`flex-1 accent-primary-500 ${me.unlimitedKm ? 'opacity-40' : ''}`} />
                 <span className="w-16 text-right text-xs font-bold text-neutral-700 dark:text-neutral-300">{me.unlimitedKm ? 'Ilimitado' : `${radiusKm}km`}</span>
               </div>
+            </div>
 
-              {openJobs.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 justify-items-center md:justify-items-stretch">
-                  
-                  {openJobs[0] && (
-                    <div className="w-full max-w-[380px] justify-self-center">
-                      <JobCard job={openJobs[0]} variant="apply" />
-                    </div>
-                  )}
+            {/* SLOT 2 (Banner Intermediário) */}
+            <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
+              <VipSquareWidget pageType="freelancers" slot={2} />
+            </div>
 
-                  {openJobs[1] && (
-                    <div className="w-full max-w-[380px] justify-self-center">
-                      <JobCard job={openJobs[1]} variant="apply" />
-                    </div>
-                  )}
+            {/* LISTAGEM DE VAGAS */}
+            {openJobs.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {openJobs.map((j) => (
+                  <JobCard key={j.id} job={j} variant="apply" />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl bg-neutral-50 p-8 text-center dark:bg-neutral-800/50">
+                <Megaphone className="mx-auto mb-2 h-8 w-8 text-neutral-300" />
+                <p className="text-sm text-neutral-400">Nenhuma vaga aberta na sua região no momento.</p>
+              </div>
+            )}
 
-                  {/* SLOT 2 (In-feed Ad no Mural de Vagas) */}
-                  <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm justify-self-center self-center">
-                    <VipSquareWidget pageType="freelancers" slot={2} />
-                  </div>
-
-                  {openJobs[2] && (
-                    <div className="w-full max-w-[380px] justify-self-center">
-                      <JobCard job={openJobs[2]} variant="apply" />
-                    </div>
-                  )}
-
-                  {openJobs.slice(3).map((j) => (
-                    <div key={j.id} className="w-full max-w-[380px] justify-self-center">
-                      <JobCard job={j} variant="apply" />
-                    </div>
-                  ))}
-
+            {/* PROPOSTAS E CONTRATOS */}
+            <section className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
+              <h2 className="mb-4 flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white"><Inbox className="h-5 w-5 text-primary-500" /> Propostas e Contratos</h2>
+              {activeInvites.length > 0 ? (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {activeInvites.map((c) => {
+                    const statusBadgeTone = c.status === 'confirmed' ? 'success' : c.status === 'paid' ? 'warning' : c.status === 'check_in_pending' ? 'warning' : c.status === 'checked_in' ? 'secondary' : 'warning';
+                    const statusLabel = c.status === 'requested' ? 'Pendente' : c.status === 'confirmed' ? 'Confirmado' : c.status === 'paid' ? 'Pago em Garantia' : c.status === 'check_in_pending' ? 'Aguardando Aprovação' : 'Check-in Realizado';
+                    return (
+                      <button key={c.id} onClick={() => setEscrowContract(c)} className="flex w-full items-center gap-3 rounded-xl border border-neutral-100 p-3 text-left transition hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-800">
+                        <Avatar src={c.freelancerPhoto} alt={c.freelancerName} size={40} />
+                        <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-neutral-900 dark:text-white">{c.establishmentName}</p><p className="text-xs text-neutral-400">{formatCurrency(c.freelancerFee)} · {c.category}</p></div>
+                        <Badge tone={statusBadgeTone}>{statusLabel}</Badge>
+                      </button>
+                    );
+                  })}
                 </div>
               ) : (
-                <div className="rounded-xl bg-neutral-50 p-8 text-center dark:bg-neutral-800/50">
-                  <Megaphone className="mx-auto mb-2 h-8 w-8 text-neutral-300" />
-                  <p className="text-sm text-neutral-400">Nenhuma vaga aberta na sua região no momento.</p>
+                <div className="rounded-xl bg-neutral-50 p-6 text-center dark:bg-neutral-800/50">
+                  <Inbox className="mx-auto mb-2 h-8 w-8 text-neutral-300" />
+                  <p className="text-sm text-neutral-400">Nenhum convite ou contrato ativo no momento.</p>
                 </div>
               )}
             </section>
+
+            {/* SLOT 3 (Banner Inferior) */}
+            <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
+              <VipSquareWidget pageType="freelancers" slot={3} />
+            </div>
 
           </div>
         )}
