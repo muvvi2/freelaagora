@@ -743,6 +743,25 @@ export async function dbDeleteUser(id: string): Promise<void> {
   await supabase.from('users').delete().eq('id', id);
 }
 
+export async function dbFetchSingleUser(userId: string): Promise<User | null> {
+  const [userRes, flRes, esRes, catRes, availRes] = await Promise.all([
+    supabase.from('users').select('*').eq('id', userId).maybeSingle(),
+    supabase.from('freelancer_profiles').select('*').eq('user_id', userId).maybeSingle(),
+    supabase.from('establishment_profiles').select('*').eq('user_id', userId).maybeSingle(),
+    supabase.from('freelancer_categories').select('*').eq('freelancer_id', userId),
+    supabase.from('freelancer_availability').select('*').eq('freelancer_id', userId),
+  ]);
+  if (!userRes.data) return null;
+  const row = userRes.data as unknown as DbUser;
+  const flProfile = (flRes.data ?? null) as unknown as DbFreelancerProfile | null;
+  const esProfile = (esRes.data ?? null) as unknown as DbEstablishmentProfile | null;
+  const cats = (catRes.data ?? []) as unknown as DbFreelancerCategory[];
+  const availRows = (availRes.data ?? []) as unknown as DbFreelancerAvailability[];
+  const userCatIds = cats.map((c) => categoryIdToSlug(c.category_id));
+  const userAvail = mapAvailabilityRows(availRows, userId);
+  return mapDbUserToUser(row, flProfile, esProfile, userCatIds, userAvail.availability, userAvail.dateAvailability);
+}
+
 export async function dbInsertJob(job: Job): Promise<void> {
   const row = mapJobToDbRow(job);
   await supabase.from('jobs').insert(row as never);
