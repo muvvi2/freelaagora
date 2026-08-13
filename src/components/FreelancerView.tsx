@@ -109,7 +109,7 @@ export function FreelancerView() {
         {tab === 'opportunities' && (
           <div className="space-y-6">
 
-            {/* 1. SLOT TOPO (Antigo centro) — Posicionado logo abaixo das abas/perfil */}
+            {/* 1. SLOT TOPO — Posicionado logo abaixo das abas/perfil */}
             <AdBanner pageType="freelancers" slot="top" />
 
             {/* BARRA DE FILTROS */}
@@ -147,7 +147,7 @@ export function FreelancerView() {
               </div>
             )}
 
-            {/* 2. SLOT CENTRO (Antigo rodapé) — Posicionado logo abaixo do mural/listagem de vagas */}
+            {/* 2. SLOT CENTRO — Posicionado logo após a listagem de vagas */}
             <AdBanner pageType="freelancers" slot="center" />
 
             {/* PROPOSTAS E CONTRATOS */}
