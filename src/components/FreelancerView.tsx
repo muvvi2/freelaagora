@@ -109,7 +109,7 @@ export function FreelancerView() {
         {tab === 'opportunities' && (
           <div className="space-y-6">
 
-            {/* 1. SLOT TOPO — Posicionado logo abaixo das abas/perfil */}
+            {/* 1. SLOT TOPO (Antigo centro) — Posicionado logo abaixo das abas/perfil */}
             <AdBanner pageType="freelancers" slot="top" />
 
             {/* BARRA DE FILTROS */}
@@ -133,9 +133,6 @@ export function FreelancerView() {
               </div>
             </div>
 
-            {/* 2. SLOT CENTRO — Posicionado no meio do feed de vagas */}
-            <AdBanner pageType="freelancers" slot="center" />
-
             {/* LISTAGEM DE VAGAS */}
             {openJobs.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -149,6 +146,9 @@ export function FreelancerView() {
                 <p className="text-sm text-neutral-400">Nenhuma vaga aberta na sua região no momento.</p>
               </div>
             )}
+
+            {/* 2. SLOT CENTRO (Antigo rodapé) — Posicionado logo abaixo do mural/listagem de vagas */}
+            <AdBanner pageType="freelancers" slot="center" />
 
             {/* PROPOSTAS E CONTRATOS */}
             <section className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
