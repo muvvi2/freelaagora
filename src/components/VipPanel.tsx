@@ -89,22 +89,22 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
   const maxAdsPerSlot = currentEstTier === 'vip6' ? 5 : currentEstTier === 'vip5' ? 3 : currentEstTier === 'vip4' ? 1 : 3;
 
   const [freelancerAdsBySlot, setFreelancerAdsBySlot] = useState<string[][]>(() => {
-    const existing = currentUser?.freelancerAdsBySlot ?? currentUser?.freelancerAds ?? [[], [], []];
+    const existing = currentUser?.freelancerAdsBySlot ?? [[], [], []];
     return Array.from({ length: 3 }, (_, i) => Array.from({ length: maxAdsPerSlot }, (_, j) => Array.isArray(existing) && Array.isArray(existing[i]) ? existing[i][j] ?? '' : ''));
   });
 
   const [establishmentAdsBySlot, setEstablishmentAdsBySlot] = useState<string[][]>(() => {
-    const existing = currentUser?.establishmentAdsBySlot ?? currentUser?.establishmentAds ?? [[], [], []];
+    const existing = currentUser?.establishmentAdsBySlot ?? [[], [], []];
     return Array.from({ length: 3 }, (_, i) => Array.from({ length: maxAdsPerSlot }, (_, j) => Array.isArray(existing) && Array.isArray(existing[i]) ? existing[i][j] ?? '' : ''));
   });
 
   const [freelancerLinksBySlot, setFreelancerLinksBySlot] = useState<string[][]>(() => {
-    const existing = currentUser?.freelancerLinksBySlot ?? currentUser?.freelancerLinks ?? [[], [], []];
+    const existing = currentUser?.freelancerLinksBySlot ?? [[], [], []];
     return Array.from({ length: 3 }, (_, i) => Array.from({ length: maxAdsPerSlot }, (_, j) => Array.isArray(existing) && Array.isArray(existing[i]) ? existing[i][j] ?? '' : ''));
   });
 
   const [establishmentLinksBySlot, setEstablishmentLinksBySlot] = useState<string[][]>(() => {
-    const existing = currentUser?.establishmentLinksBySlot ?? currentUser?.establishmentLinks ?? [[], [], []];
+    const existing = currentUser?.establishmentLinksBySlot ?? [[], [], []];
     return Array.from({ length: 3 }, (_, i) => Array.from({ length: maxAdsPerSlot }, (_, j) => Array.isArray(existing) && Array.isArray(existing[i]) ? existing[i][j] ?? '' : ''));
   });
 
@@ -136,15 +136,19 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
       const base64Image = reader.result as string;
 
       if (type === 'freelancers') {
-        const updated = [...freelancerAdsBySlot];
-        if (!updated[slotIndex]) updated[slotIndex] = [];
-        updated[slotIndex][adIndex] = base64Image;
-        setFreelancerAdsBySlot(updated);
+        setFreelancerAdsBySlot(prev => {
+          const updated = prev.map((slotArr, sIdx) => sIdx === slotIndex ? [...slotArr] : [...slotArr]);
+          if (!updated[slotIndex]) updated[slotIndex] = [];
+          updated[slotIndex][adIndex] = base64Image;
+          return updated;
+        });
       } else {
-        const updated = [...establishmentAdsBySlot];
-        if (!updated[slotIndex]) updated[slotIndex] = [];
-        updated[slotIndex][adIndex] = base64Image;
-        setEstablishmentAdsBySlot(updated);
+        setEstablishmentAdsBySlot(prev => {
+          const updated = prev.map((slotArr, sIdx) => sIdx === slotIndex ? [...slotArr] : [...slotArr]);
+          if (!updated[slotIndex]) updated[slotIndex] = [];
+          updated[slotIndex][adIndex] = base64Image;
+          return updated;
+        });
       }
 
       notify(`Imagem carregada com sucesso no ${SLOT_NAMES[slotIndex]} (#${adIndex + 1})!`, 'success');
@@ -154,31 +158,35 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
 
   const handleLinkChange = (slotIndex: number, adIndex: number, type: 'freelancers' | 'establishments', value: string) => {
     if (type === 'freelancers') {
-      const updated = [...freelancerLinksBySlot];
-      if (!updated[slotIndex]) updated[slotIndex] = [];
-      updated[slotIndex][adIndex] = value;
-      setFreelancerLinksBySlot(updated);
+      setFreelancerLinksBySlot(prev => {
+        const updated = prev.map((slotArr, sIdx) => sIdx === slotIndex ? [...slotArr] : [...slotArr]);
+        if (!updated[slotIndex]) updated[slotIndex] = [];
+        updated[slotIndex][adIndex] = value;
+        return updated;
+      });
     } else {
-      const updated = [...establishmentLinksBySlot];
-      if (!updated[slotIndex]) updated[slotIndex] = [];
-      updated[slotIndex][adIndex] = value;
-      setEstablishmentLinksBySlot(updated);
+      setEstablishmentLinksBySlot(prev => {
+        const updated = prev.map((slotArr, sIdx) => sIdx === slotIndex ? [...slotArr] : [...slotArr]);
+        if (!updated[slotIndex]) updated[slotIndex] = [];
+        updated[slotIndex][adIndex] = value;
+        return updated;
+      });
     }
   };
 
   const handleRemoveAd = (slotIndex: number, adIndex: number, type: 'freelancers' | 'establishments') => {
     if (type === 'freelancers') {
-      const updated = [...freelancerAdsBySlot];
-      if (updated[slotIndex]) {
-        updated[slotIndex][adIndex] = '';
-        setFreelancerAdsBySlot(updated);
-      }
+      setFreelancerAdsBySlot(prev => {
+        const updated = prev.map((slotArr, sIdx) => sIdx === slotIndex ? [...slotArr] : [...slotArr]);
+        if (updated[slotIndex]) updated[slotIndex][adIndex] = '';
+        return updated;
+      });
     } else {
-      const updated = [...establishmentAdsBySlot];
-      if (updated[slotIndex]) {
-        updated[slotIndex][adIndex] = '';
-        setEstablishmentAdsBySlot(updated);
-      }
+      setEstablishmentAdsBySlot(prev => {
+        const updated = prev.map((slotArr, sIdx) => sIdx === slotIndex ? [...slotArr] : [...slotArr]);
+        if (updated[slotIndex]) updated[slotIndex][adIndex] = '';
+        return updated;
+      });
     }
     notify('Anúncio removido', 'info');
   };
@@ -395,7 +403,7 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
               return (
                 <div key={adIndex} className="p-2.5 border border-neutral-800 rounded-lg bg-neutral-900 flex flex-col justify-between space-y-2">
                   <div className="flex items-center justify-between text-[10px] font-bold text-neutral-400">
-                    <span className="text-amber-400">Anúncio #{adIndex + 1}</span>
+                    <span className="text-amber-400">Anúncio #{adIndex + 1} ({SLOT_NAMES[activeTab]})</span>
                     {adImg && (
                       <button 
                         type="button" 
@@ -692,7 +700,7 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
               </Button>
             </div>
             <p className="text-xs text-neutral-400">
-              Gerencie seus banners utilizando as abas. Envie imagens livremente e defina o limite do seu plano ({maxAdsPerSlot} anúncios por slot). Clique em <strong>Salvar Banners</strong> para atualizar.
+              Gerencie seus banners separadamente em cada aba (<strong>Topo da Página</strong>, <strong>Centro do Feed</strong> e <strong>Rodapé da Página</strong>). Cada posição é independente! Clique em <strong>Salvar Banners</strong> para atualizar.
             </p>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
