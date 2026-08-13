@@ -58,9 +58,6 @@ export function FreelancerView() {
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 space-y-6 text-neutral-900 dark:text-white">
       
-      {/* SLOT 1 — Hero Ad (topo, proporção 2:1) */}
-      <AdBanner pageType="freelancers" slot="top" />
-
       {/* PROFILE HEADER CARD COM ESTATÍSTICAS INTEGRADAS */}
       <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 sm:p-6 shadow-sm">
         {me.vipTier && me.vipTier !== 'free' && <div className="absolute right-4 top-4 z-10"><Badge tone="vip"><Crown className="h-3 w-3" /> {plan.label}</Badge></div>}
@@ -112,6 +109,9 @@ export function FreelancerView() {
         {tab === 'opportunities' && (
           <div className="space-y-6">
 
+            {/* 1. SLOT TOPO — Posicionado logo abaixo das abas/perfil */}
+            <AdBanner pageType="freelancers" slot="top" />
+
             {/* BARRA DE FILTROS */}
             <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-neutral-100 dark:border-neutral-800">
@@ -133,21 +133,14 @@ export function FreelancerView() {
               </div>
             </div>
 
-            {/* SLOT 2 — In-feed Ad (após filtros, antes da listagem) */}
+            {/* 2. SLOT CENTRO — Posicionado no meio do feed de vagas */}
             <AdBanner pageType="freelancers" slot="center" />
 
-            {/* LISTAGEM DE VAGAS com anúncio in-feed após o 3º card */}
+            {/* LISTAGEM DE VAGAS */}
             {openJobs.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {openJobs.map((j, idx) => (
-                  <Fragment key={j.id}>
-                    {idx === 3 && (
-                      <div className="col-span-full my-2">
-                        <AdBanner pageType="freelancers" slot="center" />
-                      </div>
-                    )}
-                    <JobCard job={j} variant="apply" />
-                  </Fragment>
+                {openJobs.map((j) => (
+                  <JobCard key={j.id} job={j} variant="apply" />
                 ))}
               </div>
             ) : (
@@ -182,7 +175,7 @@ export function FreelancerView() {
               )}
             </section>
 
-            {/* SLOT 3 — Rodapé Ad (proporção 3.3:1) */}
+            {/* 3. SLOT RODAPÉ — Posicionado rigorosamente abaixo de Propostas e Contratos */}
             <AdBanner pageType="freelancers" slot="bottom" />
 
           </div>
