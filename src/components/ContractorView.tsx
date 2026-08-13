@@ -197,7 +197,7 @@ export function ContractorView() {
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 space-y-6 text-neutral-900 dark:text-white">
       
-      {/* SLOT 1 — Hero Ad (topo, proporção 2:1) */}
+      {/* 1. SLOT TOPO — Posicionado no topo absoluto da página */}
       <AdBanner pageType="establishments" slot="top" />
 
       {/* CABEÇALHO DO ESTABELECIMENTO E STATS */}
@@ -305,7 +305,7 @@ export function ContractorView() {
         </div>
       </div>
 
-      {/* SLOT 2 — In-feed Ad (após filtros) */}
+      {/* 2. SLOT CENTRO — Posicionado logo após os filtros de busca */}
       <AdBanner pageType="establishments" slot="center" />
 
       {/* LISTAGEM DE PROFISSIONAIS com anúncio in-feed após o 3º card */}
@@ -339,7 +339,7 @@ export function ContractorView() {
         </div>
       </div>
 
-      {/* SLOT 3 — Rodapé Ad (proporção 3.3:1) */}
+      {/* 3. SLOT RODAPÉ — Posicionado rigorosamente abaixo de "Minhas Vagas" */}
       <AdBanner pageType="establishments" slot="bottom" />
 
       {/* MODAL DE CONTRATAÇÃO DIRETA */}
