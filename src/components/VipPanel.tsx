@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Crown, Check, Sparkles, ShieldCheck, Diamond, Star, Store, Percent, Ticket, QrCode, CreditCard, FileText, Wallet, AlertCircle, Copy, ArrowLeft, Users, Building2, Upload, Trash2, ImageIcon } from 'lucide-react';
+import { Crown, Check, Sparkles, ShieldCheck, Diamond, Star, Store, Percent, Ticket, QrCode, CreditCard, FileText, Wallet, AlertCircle, Copy, ArrowLeft, Users, Building2, Trash2, ImageIcon } from 'lucide-react';
 import { useApp } from '@/AppContext';
 import { supabase } from '@/lib/supabase';
 import { useToast } from './ui/Toast';
@@ -127,33 +127,22 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
     setAppliedCoupon(c.coupon); setCouponError(''); notify(`Cupom aplicado: ${c.coupon.discountPercentage}% de desconto!`);
   };
 
-  const handleFileChange = (slotIndex: number, adIndex: number, type: 'freelancers' | 'establishments') => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64Image = reader.result as string;
-
-      if (type === 'freelancers') {
-        setFreelancerAdsBySlot(prev => {
-          const updated = prev.map((slotArr, sIdx) => sIdx === slotIndex ? [...slotArr] : [...slotArr]);
-          if (!updated[slotIndex]) updated[slotIndex] = [];
-          updated[slotIndex][adIndex] = base64Image;
-          return updated;
-        });
-      } else {
-        setEstablishmentAdsBySlot(prev => {
-          const updated = prev.map((slotArr, sIdx) => sIdx === slotIndex ? [...slotArr] : [...slotArr]);
-          if (!updated[slotIndex]) updated[slotIndex] = [];
-          updated[slotIndex][adIndex] = base64Image;
-          return updated;
-        });
-      }
-
-      notify(`Imagem carregada com sucesso no ${SLOT_NAMES[slotIndex]} (#${adIndex + 1})!`, 'success');
-    };
-    reader.readAsDataURL(file);
+  const handleImageUrlChange = (slotIndex: number, adIndex: number, type: 'freelancers' | 'establishments', value: string) => {
+    if (type === 'freelancers') {
+      setFreelancerAdsBySlot(prev => {
+        const updated = prev.map((slotArr, sIdx) => sIdx === slotIndex ? [...slotArr] : [...slotArr]);
+        if (!updated[slotIndex]) updated[slotIndex] = [];
+        updated[slotIndex][adIndex] = value;
+        return updated;
+      });
+    } else {
+      setEstablishmentAdsBySlot(prev => {
+        const updated = prev.map((slotArr, sIdx) => sIdx === slotIndex ? [...slotArr] : [...slotArr]);
+        if (!updated[slotIndex]) updated[slotIndex] = [];
+        updated[slotIndex][adIndex] = value;
+        return updated;
+      });
+    }
   };
 
   const handleLinkChange = (slotIndex: number, adIndex: number, type: 'freelancers' | 'establishments', value: string) => {
@@ -415,40 +404,22 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
                     )}
                   </div>
 
-                  {adImg ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 bg-neutral-950 p-1.5 rounded border border-neutral-800">
-                        <img src={adImg} className="h-12 w-16 object-cover rounded border border-neutral-700 shrink-0 shadow-sm" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[10px] font-semibold text-success-400 truncate">Imagem carregada</p>
-                        </div>
-                      </div>
-                      <input 
-                        type="text" 
-                        value={adLink} 
-                        onChange={(e) => handleLinkChange(activeTab, adIndex, type, e.target.value)}
-                        placeholder="Link de redirecionamento (https://...)"
-                        className="w-full bg-neutral-950 border border-neutral-800 rounded px-2 py-1 text-[11px] text-white outline-none focus:border-amber-500"
-                      />
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <label className="cursor-pointer border border-dashed border-neutral-700 hover:border-amber-500 w-full h-14 flex items-center justify-center gap-1.5 rounded bg-neutral-950 transition text-xs text-neutral-400">
-                        <Upload className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-                        <div className="text-left">
-                          <p className="font-bold text-neutral-300 text-[10px] leading-tight">Carregar Imagem</p>
-                        </div>
-                        <input type="file" accept="image/*" className="hidden" onChange={handleFileChange(activeTab, adIndex, type)} />
-                      </label>
-                      <input 
-                        type="text" 
-                        value={adLink} 
-                        onChange={(e) => handleLinkChange(activeTab, adIndex, type, e.target.value)}
-                        placeholder="Link de redirecionamento (https://...)"
-                        className="w-full bg-neutral-950 border border-neutral-800 rounded px-2 py-1 text-[11px] text-white outline-none focus:border-amber-500"
-                      />
-                    </div>
-                  )}
+                  <div className="space-y-2">
+                    <input 
+                      type="text" 
+                      value={adImg} 
+                      onChange={(e) => handleImageUrlChange(activeTab, adIndex, type, e.target.value)}
+                      placeholder="URL da imagem do banner (https://...)"
+                      className="w-full bg-neutral-950 border border-neutral-800 rounded px-2 py-1 text-[11px] text-white outline-none focus:border-amber-500"
+                    />
+                    <input 
+                      type="text" 
+                      value={adLink} 
+                      onChange={(e) => handleLinkChange(activeTab, adIndex, type, e.target.value)}
+                      placeholder="Link de redirecionamento (https://...)"
+                      className="w-full bg-neutral-950 border border-neutral-800 rounded px-2 py-1 text-[11px] text-white outline-none focus:border-amber-500"
+                    />
+                  </div>
                 </div>
               );
             })}
@@ -702,7 +673,7 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
               </Button>
             </div>
             <p className="text-xs text-neutral-400">
-              Gerencie seus banners separadamente em cada aba (<strong>Topo da Página</strong>, <strong>Centro do Feed</strong> e <strong>Rodapé da Página</strong>). Cada posição é independente! Clique em <strong>Salvar Banners</strong> para atualizar.
+              Cole as URLs das imagens dos seus banners e os links de destino para cada posição. Clique em <strong>Salvar Banners</strong> para atualizar.
             </p>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
