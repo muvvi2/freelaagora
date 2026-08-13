@@ -678,6 +678,8 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
                     await updateUser(userId, {
                       allowedFreelancerSlots: selectedFreelancerSlots,
                       allowedEstablishmentSlots: selectedEstablishmentSlots,
+                      includeFreelancerAd: selectedFreelancerSlots.length > 0,
+                      includeEstablishmentAd: selectedEstablishmentSlots.length > 0,
                       freelancerAdsBySlot,
                       establishmentAdsBySlot,
                       freelancerLinksBySlot,
@@ -687,7 +689,7 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
                       freelancerLinks: freelancerLinksBySlot.flat(),
                       establishmentLinks: establishmentLinksBySlot.flat(),
                     });
-                    notify('Banners e links salvos com sucesso no sistema!', 'success');
+                    notify('Banners, posições e links salvos com sucesso no sistema!', 'success');
                   } catch (e) {
                     notify('Erro ao salvar os banners.', 'error');
                   } finally {
