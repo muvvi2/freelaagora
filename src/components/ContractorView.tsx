@@ -197,9 +197,6 @@ export function ContractorView() {
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 space-y-6 text-neutral-900 dark:text-white">
       
-      {/* 1. SLOT TOPO — Posicionado no topo absoluto da página */}
-      <AdBanner pageType="establishments" slot="top" />
-
       {/* CABEÇALHO DO ESTABELECIMENTO E STATS */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
@@ -248,6 +245,9 @@ export function ContractorView() {
           </div>
         </div>
       </div>
+
+      {/* 1. SLOT TOPO — Posicionado logo abaixo do cabeçalho/estatísticas */}
+      <AdBanner pageType="establishments" slot="top" />
 
       {/* BARRA DE PESQUISA E FILTROS */}
       <div className="space-y-3">
@@ -305,20 +305,10 @@ export function ContractorView() {
         </div>
       </div>
 
-      {/* 2. SLOT CENTRO — Posicionado logo após os filtros de busca */}
-      <AdBanner pageType="establishments" slot="center" />
-
-      {/* LISTAGEM DE PROFISSIONAIS com anúncio in-feed após o 3º card */}
+      {/* LISTAGEM DE PROFISSIONAIS */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {filtered.map((f, idx) => (
-          <Fragment key={f.id}>
-            {idx === 3 && (
-              <div className="col-span-full my-2">
-                <AdBanner pageType="establishments" slot="center" />
-              </div>
-            )}
-            <FreelancerCard freelancer={f} onHire={openDirectHireModal} onView={setViewing} distanceKm={distanceBetween(f.address, origin)} />
-          </Fragment>
+        {filtered.map((f) => (
+          <FreelancerCard key={f.id} freelancer={f} onHire={openDirectHireModal} onView={setViewing} distanceKm={distanceBetween(f.address, origin)} />
         ))}
       </div>
       {filtered.length === 0 && (
@@ -326,6 +316,9 @@ export function ContractorView() {
           <p className="text-neutral-400">Nenhum profissional encontrado com esses filtros.</p>
         </div>
       )}
+
+      {/* 2. SLOT CENTRO — Posicionado logo após a listagem de profissionais */}
+      <AdBanner pageType="establishments" slot="center" />
 
       {/* MINHAS VAGAS */}
       <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
@@ -339,7 +332,7 @@ export function ContractorView() {
         </div>
       </div>
 
-      {/* 3. SLOT RODAPÉ — Posicionado rigorosamente abaixo de "Minhas Vagas" */}
+      {/* 3. SLOT RODAPÉ — Posicionado rigorosamente no final, abaixo de "Minhas Vagas" */}
       <AdBanner pageType="establishments" slot="bottom" />
 
       {/* MODAL DE CONTRATAÇÃO DIRETA */}
