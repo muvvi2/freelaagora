@@ -20,11 +20,6 @@ const BILLING_OPTIONS: { id: BillingType; label: string; icon: typeof QrCode }[]
 ];
 
 const SLOT_NAMES = ["Topo da Página", "Centro do Feed", "Rodapé da Página"];
-const SLOT_DIMENSIONS = [
-  { width: 600, height: 900, label: "600x900 px" },
-  { width: 600, height: 500, label: "600x500 px" },
-  { width: 600, height: 200, label: "600x200 px" },
-];
 
 const tierIcon: Record<Tier, typeof Crown> = { 
   free: Sparkles, vip1: Star, vip2: ShieldCheck, vip3: Diamond, vip4: Crown, vip5: Crown, vip6: Crown 
@@ -138,33 +133,21 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      const img = new Image();
-      img.src = reader.result as string;
-      img.onload = () => {
-        const requiredWidth = SLOT_DIMENSIONS[slotIndex].width;
-        const requiredHeight = SLOT_DIMENSIONS[slotIndex].height;
+      const base64Image = reader.result as string;
 
-        if (img.width !== requiredWidth || img.height !== requiredHeight) {
-          notify(`Tamanho inválido! O ${SLOT_NAMES[slotIndex]} exige exatamente ${requiredWidth}x${requiredHeight} pixels. A imagem enviada tem ${img.width}x${img.height}px.`, 'error');
-          return;
-        }
+      if (type === 'freelancers') {
+        const updated = [...freelancerAdsBySlot];
+        if (!updated[slotIndex]) updated[slotIndex] = [];
+        updated[slotIndex][adIndex] = base64Image;
+        setFreelancerAdsBySlot(updated);
+      } else {
+        const updated = [...establishmentAdsBySlot];
+        if (!updated[slotIndex]) updated[slotIndex] = [];
+        updated[slotIndex][adIndex] = base64Image;
+        setEstablishmentAdsBySlot(updated);
+      }
 
-        const base64Image = reader.result as string;
-
-        if (type === 'freelancers') {
-          const updated = [...freelancerAdsBySlot];
-          if (!updated[slotIndex]) updated[slotIndex] = [];
-          updated[slotIndex][adIndex] = base64Image;
-          setFreelancerAdsBySlot(updated);
-        } else {
-          const updated = [...establishmentAdsBySlot];
-          if (!updated[slotIndex]) updated[slotIndex] = [];
-          updated[slotIndex][adIndex] = base64Image;
-          setEstablishmentAdsBySlot(updated);
-        }
-
-        notify(`Imagem carregada com sucesso no ${SLOT_NAMES[slotIndex]} (#${adIndex + 1})!`, 'success');
-      };
+      notify(`Imagem carregada com sucesso no ${SLOT_NAMES[slotIndex]} (#${adIndex + 1})!`, 'success');
     };
     reader.readAsDataURL(file);
   };
@@ -398,9 +381,6 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
                 }`}
               >
                 <span>{slotName}</span>
-                <span className="text-[9px] px-1.5 py-0.2 rounded bg-neutral-800 text-neutral-300">
-                  {SLOT_DIMENSIONS[idx].label}
-                </span>
               </button>
             );
           })}
@@ -433,7 +413,6 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
                         <img src={adImg} className="h-12 w-16 object-cover rounded border border-neutral-700 shrink-0 shadow-sm" />
                         <div className="flex-1 min-w-0">
                           <p className="text-[10px] font-semibold text-success-400 truncate">Imagem carregada</p>
-                          <p className="text-[9px] text-neutral-500">{SLOT_DIMENSIONS[activeTab].label}</p>
                         </div>
                       </div>
                       <input 
@@ -450,7 +429,6 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
                         <Upload className="h-3.5 w-3.5 text-amber-400 shrink-0" />
                         <div className="text-left">
                           <p className="font-bold text-neutral-300 text-[10px] leading-tight">Carregar Imagem</p>
-                          <p className="text-[9px] text-neutral-500">{SLOT_DIMENSIONS[activeTab].label}</p>
                         </div>
                         <input type="file" accept="image/*" className="hidden" onChange={handleFileChange(activeTab, adIndex, type)} />
                       </label>
@@ -714,7 +692,7 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
               </Button>
             </div>
             <p className="text-xs text-neutral-400">
-              Gerencie seus banners utilizando as abas. O sistema valida rigorosamente as dimensões exatas e respeita o limite do seu plano ({maxAdsPerSlot} anúncios por slot). Clique em <strong>Salvar Banners</strong> para atualizar.
+              Gerencie seus banners utilizando as abas. Envie imagens livremente e defina o limite do seu plano ({maxAdsPerSlot} anúncios por slot). Clique em <strong>Salvar Banners</strong> para atualizar.
             </p>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
