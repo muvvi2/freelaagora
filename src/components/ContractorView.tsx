@@ -12,7 +12,6 @@ import { JobCard } from './JobCard';
 import { JobFormModal } from './JobFormModal';
 import { EscrowFlowModal } from './EscrowFlowModal';
 import { VipPanel } from './VipPanel';
-import { AdBanner } from './AdBanner';
 import { EstablishmentEditModal } from './EstablishmentEditModal';
 import { Modal } from './ui/Modal';
 import { CATEGORIES, MACRO_CATEGORIES } from '@/mockData';
@@ -212,7 +211,7 @@ export function ContractorView() {
           </div>
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline" onClick={() => setEditEstablishment(true)}><Pencil className="h-4 w-4 mr-1" /> Editar Perfil</Button>
-            <Button size="sm" className="bg-gradient-to-r from-warning-500 to-warning-600 text-white shadow-md hover:from-warning-600 hover:to-warning-700" onClick={() => setViewVipPage(true)}><Crown className="h-4 w-4 mr-1" /> Plano VIP & Banners</Button>
+            <Button size="sm" className="bg-gradient-to-r from-warning-500 to-warning-600 text-white shadow-md hover:from-warning-600 hover:to-warning-700" onClick={() => setViewVipPage(true)}><Crown className="h-4 w-4 mr-1" /> Plano VIP</Button>
           </div>
         </div>
 
@@ -245,9 +244,6 @@ export function ContractorView() {
           </div>
         </div>
       </div>
-
-      {/* 1. SLOT TOPO — Posicionado logo abaixo do cabeçalho/estatísticas */}
-      <AdBanner pageType="establishments" slot="top" />
 
       {/* BARRA DE PESQUISA E FILTROS */}
       <div className="space-y-3">
@@ -317,9 +313,6 @@ export function ContractorView() {
         </div>
       )}
 
-      {/* 2. SLOT CENTRO — Posicionado logo após a listagem de profissionais */}
-      <AdBanner pageType="establishments" slot="center" />
-
       {/* MINHAS VAGAS */}
       <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
         <div className="mb-3 flex items-center justify-between">
@@ -331,9 +324,6 @@ export function ContractorView() {
           {myJobs.map((j) => <JobCard key={j.id} job={j} variant="manage" />)}
         </div>
       </div>
-
-      {/* 3. SLOT RODAPÉ — Posicionado rigorosamente no final, abaixo de "Minhas Vagas" */}
-      <AdBanner pageType="establishments" slot="bottom" />
 
       {/* MODAL DE CONTRATAÇÃO DIRETA */}
       {directHireTarget && (
