@@ -3,7 +3,7 @@ import {
   Users, Store, Briefcase, Percent, TrendingUp, Shield,
   RotateCcw, Trash2, Pencil, Megaphone, Wallet, Ban, CheckCircle2, Crown, AlertCircle,
   User as UserIcon, MapPin, Tags, Calendar, Save, Ticket, Terminal, RotateCcw as RefundIcon, Plus,
-  Search, Star, UserPlus, Eye, EyeOff, UserCog, Camera, Lock, DollarSign, MoreVertical, Image as ImageIcon,
+  Search, Star, UserPlus, Eye, EyeOff, UserCog, Camera, Lock, DollarSign, MoreVertical,
   Check, X
 } from 'lucide-react';
 import { useApp } from '@/AppContext';
@@ -590,9 +590,6 @@ function AdminVipModal({ user, open, onClose }: { user: User; open: boolean; onC
             <option key="vip1" value="vip1">VIP 1</option>,
             <option key="vip2" value="vip2">VIP 2</option>,
             <option key="vip3" value="vip3">VIP 3</option>,
-            <option key="vip4" value="vip4">VIP 4 (Com Anúncios)</option>,
-            <option key="vip5" value="vip5">VIP 5 (Com Anúncios)</option>,
-            <option key="vip6" value="vip6">VIP 6 (Com Anúncios)</option>,
           ] : [
             <option key="free" value="free">Free</option>,
             <option key="vip1" value="vip1">VIP 1</option>,
@@ -652,7 +649,7 @@ function AdminStat({ icon: Icon, label, value, tone }: { icon: typeof Users; lab
 function AdminCreateUserModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { adminCreateUser } = useApp();
   const { notify } = useToast();
-  const [accountType, setAccountType] = useState<AccountType>('freelancer');
+  const [accountType, setAccountType] = useState<'freelancer' | 'establishment'>('freelancer');
   const [name, setName] = useState('');
   const [nickname, setNickname] = useState('');
   const [email, setEmail] = useState('');
@@ -693,7 +690,7 @@ function AdminCreateUserModal({ open, onClose }: { open: boolean; onClose: () =>
       footer={<div className="flex gap-2"><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={create}><UserPlus className="h-4 w-4" /> Criar usuário</Button></div>}>
       <div className="space-y-4">
         <div className="flex gap-2 rounded-xl border border-neutral-200 bg-neutral-50 p-1 dark:border-neutral-700 dark:bg-neutral-800">
-          {(['freelancer', 'establishment'] as AccountType[]).map((t) => (
+          {(['freelancer', 'establishment'] as const).map((t) => (
             <button key={t} onClick={() => setAccountType(t)} className={`flex-1 rounded-lg py-2 text-sm font-semibold transition ${accountType === t ? 'bg-white text-primary-600 shadow-sm dark:bg-neutral-700 dark:text-primary-400' : 'text-neutral-500'}`}>{t === 'freelancer' ? 'Freelancer' : 'Estabelecimento'}</button>
           ))}
         </div>
@@ -718,7 +715,7 @@ function AdminCreateUserModal({ open, onClose }: { open: boolean; onClose: () =>
         <div className="border-t border-neutral-100 pt-4 dark:border-neutral-800">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-neutral-400">Endereço</p>
           <div className="grid gap-4 sm:grid-cols-3">
-            <Input label="CEP" value={cep} onChange={(e) => setCep(maskCEP(e.target.value))} />
+            <Input label="CEP" value={cep} onChange={(e) => setCep(e.target.value)} />
             <div className="sm:col-span-2"><Input label="Logradouro" value={street} onChange={(e) => setStreet(e.target.value)} /></div>
             <Input label="Número" value={number} onChange={(e) => setNumber(e.target.value)} />
             <Input label="Bairro" value={neighborhood} onChange={(e) => setNeighborhood(e.target.value)} />
@@ -795,7 +792,7 @@ function VipPlansTab({ vipPlans, estVipPlans, onUpdateVipPlan, onAddVipPlan, onR
     const tierNum = estVipPlans.length;
     const newTier = `vip${tierNum}` as EstTier;
     if (estVipPlans.some((p) => p.tier === newTier)) { notify('Já existe um plano com esse nível', 'warning'); return; }
-    onAddEstVipPlan({ tier: newTier, label: `VIP ${tierNum}`, prices: { monthly: 99.9, semestral: 499.9, annual: 899.9 }, intermediationFee: 5, maxActiveJobs: 5, allowAds: false, maxAds: 0, homeAdPrice: 30, freelancerAdPrice: 20, establishmentAdPrice: 20, features: ['Novo plano'] });
+    onAddEstVipPlan({ tier: newTier, label: `VIP ${tierNum}`, prices: { monthly: 99.9, semestral: 499.9, annual: 899.9 }, intermediationFee: 5, maxActiveJobs: 5, features: ['Novo plano'] });
     notify('Plano adicionado');
   };
 
@@ -850,7 +847,6 @@ function VipPlanEditor({ plan, onUpdate, onRemove, isEst }: {
           <Crown className={`h-4 w-4 ${getPlanTierColor(plan.tier)}`} />
           <span className="font-semibold text-neutral-900 dark:text-white">{plan.label}</span>
           <Badge tone={plan.tier === 'free' ? 'neutral' : 'vip'}>{plan.tier.toUpperCase()}</Badge>
-          {isEst && estPlan?.allowAds && <Badge tone="success"><ImageIcon className="h-3 w-3" /> Anúncios Ativos ({estPlan.maxAds ?? 0})</Badge>}
         </button>
         <div className="flex items-center gap-1.5">
           <Button size="sm" variant="ghost" onClick={() => setExpanded(!expanded)}><Pencil className="h-3.5 w-3.5" /></Button>
@@ -870,56 +866,6 @@ function VipPlanEditor({ plan, onUpdate, onRemove, isEst }: {
               </>
             )}
           </div>
-
-          {isEst && (
-            <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 dark:bg-amber-500/10 space-y-3">
-              <label className="flex cursor-pointer items-center justify-between">
-                <div>
-                  <p className="text-sm font-bold text-neutral-900 dark:text-white flex items-center gap-1.5">
-                    <ImageIcon className="h-4 w-4 text-amber-500" /> Permitir Anúncios / Propagandas (Páginas Freela e Estabelecimentos)
-                  </p>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                    Ao ativar, os estabelecimentos deste plano poderão cadastrar imagens de propaganda rotativas (600x900px) nas páginas de freelancers e estabelecimentos.
-                  </p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={estPlan?.allowAds ?? false}
-                  onChange={(e) => onUpdate({ allowAds: e.target.checked } as Partial<EstVipPlan>)}
-                  className="h-5 w-5 rounded border-neutral-300 text-amber-500 focus:ring-amber-400"
-                />
-              </label>
-
-              <div className="pt-2 border-t border-amber-500/20 space-y-3">
-                <Input
-                  label="Quantidade máxima de anúncios permitidos por slot"
-                  type="number"
-                  value={String(estPlan?.maxAds ?? 0)}
-                  onChange={(e) => onUpdate({ maxAds: Number(e.target.value) || 0 } as Partial<EstVipPlan>)}
-                />
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <Input
-                    label="Preço: Topo da Página (R$)"
-                    type="number"
-                    value={String((estPlan as any)?.priceSlot1 ?? 30)}
-                    onChange={(e) => onUpdate({ priceSlot1: Number(e.target.value) || 0 } as Partial<EstVipPlan>)}
-                  />
-                  <Input
-                    label="Preço: Centro do Feed (R$)"
-                    type="number"
-                    value={String((estPlan as any)?.priceSlot2 ?? 25)}
-                    onChange={(e) => onUpdate({ priceSlot2: Number(e.target.value) || 0 } as Partial<EstVipPlan>)}
-                  />
-                  <Input
-                    label="Preço: Rodapé da Página (R$)"
-                    type="number"
-                    value={String((estPlan as any)?.priceSlot3 ?? 20)}
-                    onChange={(e) => onUpdate({ priceSlot3: Number(e.target.value) || 0 } as Partial<EstVipPlan>)}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
 
           <div className="grid gap-3 sm:grid-cols-3">
             <Input label="Preço mensal (R$)" type="number" value={String(plan.prices.monthly)} onChange={(e) => onUpdate({ prices: { ...plan.prices, monthly: Number(e.target.value) || 0 } })} />
