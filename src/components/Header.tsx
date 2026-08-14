@@ -31,7 +31,6 @@ export function Header({ onNavigateHome, onNavigateVip }: { onNavigateHome?: () 
     { id: 'wallet', label: 'Carteiras', icon: Wallet },
     { id: 'coupons', label: 'Cupons', icon: Ticket },
     { id: 'audit', label: 'Auditoria', icon: Receipt },
-    { id: 'payments', label: 'Pagamentos', icon: CreditCard },
   ];
 
   useEffect(() => {
