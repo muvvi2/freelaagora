@@ -23,7 +23,7 @@ export { useApp };
 const ADMIN_ID = '00000000-0000-0000-0000-000000000001';
 const STORAGE_KEY = 'freelaagora_current_user';
 
-// --- MAPEADORES ULTRA-SEGUROS SNOKE_CASE <-> CAMELCASE ---
+// --- MAPEADORES ULTRA-SEGUROS SNEAKE_CASE <-> CAMELCASE ---
 const mapJob = (raw: any, existingUsers: User[] = []): Job => {
   const estId = raw.establishment_id ?? raw.establishmentId ?? '';
   const est = existingUsers.find((u) => u.id === estId);
@@ -325,12 +325,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
               const existing = prev.contracts.find((c) => c.id === item.id);
 
               if (existing) {
-                // Garante a fusão do histórico priorizando sempre o dado mais recente do payload
                 const mergedHistory = item.history && item.history.length > 0 ? item.history : (existing.history || []);
 
                 const merged: Contract = {
                   ...existing,
-                  ...item, // O item mapeado do payload.new deve sobrescrever o status imediatamente!
+                  ...item,
                   establishmentName: item.establishmentName || existing.establishmentName,
                   establishmentPhoto: item.establishmentPhoto || existing.establishmentPhoto,
                   freelancerName: item.freelancerName || existing.freelancerName,
@@ -570,7 +569,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       walletTxs: [...newTxs, ...d.walletTxs]
     }));
 
-    // CORREÇÃO: Envia tanto estVipTier quanto est_vip_tier para garantir atualização no banco
     void dbUpdateUser(id, { estVipTier: tier, est_vip_tier: tier, estVipExpiresAt: expiry, trialEndsAt: newTrialEndsAt } as any).catch((err) => {
       console.error("Erro ao atualizar VIP do estabelecimento no banco:", err);
     });
@@ -902,7 +900,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const est = data.users.find(u => u.id === c.establishmentId);
     const wasPaid = c.status === 'paid' || c.status === 'check_in_pending' || c.status === 'checked_in';
 
-    // Se o contrato já estava pago em garantia, estorna o valor integral para a carteira do estabelecimento
     const refundAmount = wasPaid ? c.total : 0;
     const newWalletBalance = (est?.walletBalance ?? 0) + refundAmount;
 
