@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Crown, Check, Sparkles, ShieldCheck, Diamond, Star, Store, Percent, Ticket, QrCode, CreditCard, FileText, Wallet, AlertCircle, Copy, ArrowLeft, Users, Building2, Trash2, ImageIcon } from 'lucide-react';
+import { Crown, Check, Sparkles, ShieldCheck, Diamond, Star, Store, Percent, Ticket, QrCode, CreditCard, FileText, Wallet, AlertCircle, Copy, ArrowLeft } from 'lucide-react';
 import { useApp } from '@/AppContext';
 import { supabase } from '@/lib/supabase';
 import { useToast } from './ui/Toast';
@@ -18,8 +18,6 @@ const BILLING_OPTIONS: { id: BillingType; label: string; icon: typeof QrCode }[]
   { id: 'BOLETO', label: 'Boleto', icon: FileText },
   { id: 'CREDIT_CARD', label: 'Cartão', icon: CreditCard },
 ];
-
-const SLOT_NAMES = ["Topo da Página", "Centro do Feed", "Rodapé da Página"];
 
 const tierIcon: Record<Tier, typeof Crown> = { 
   free: Sparkles, vip1: Star, vip2: ShieldCheck, vip3: Diamond, vip4: Crown, vip5: Crown, vip6: Crown 
@@ -57,7 +55,7 @@ const getTierColor = (tier: string) => {
 };
 
 export function VipPanel({ userId, accountType, onBack }: { userId: string; accountType: 'freelancer' | 'establishment'; onBack?: () => void }) {
-  const { currentUser, data, setVipTier, setEstVipTier, validateCoupon, applyCouponToPurchase, updateUser } = useApp();
+  const { currentUser, data, setVipTier, setEstVipTier, validateCoupon, applyCouponToPurchase } = useApp();
   const { notify } = useToast();
   const [period, setPeriod] = useState<Period>('monthly');
   const [confirmTier, setConfirmTier] = useState<Tier | null>(null);
@@ -67,13 +65,6 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
   const [couponError, setCouponError] = useState('');
   const [billingType, setBillingType] = useState<BillingType>('WALLET');
   const [pixData, setPixData] = useState<{ qrCode: string; payload: string } | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-
-  const [activeFreelaTab, setActiveFreelaTab] = useState<number>(0);
-  const [activeEstabTab, setActiveEstabTab] = useState<number>(0);
-
-  const [selectedFreelancerSlots, setSelectedFreelancerSlots] = useState<number[]>(currentUser?.allowedFreelancerSlots ?? []);
-  const [selectedEstablishmentSlots, setSelectedEstablishmentSlots] = useState<number[]>(currentUser?.allowedEstablishmentSlots ?? []);
 
   const currentTier: Tier = currentUser?.vipTier ?? 'free';
   const hasActiveVip = currentUser?.estVipTier && currentUser.estVipTier !== 'free' && currentUser.estVipTier !== 'trial';
@@ -85,28 +76,6 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
 
   const currentPlan = getPlan(currentTier, vipPlansList);
   const currentEstPlan = getEstPlan(currentEstTier, estVipPlansList);
-
-  const maxAdsPerSlot = currentEstTier === 'vip6' ? 5 : currentEstTier === 'vip5' ? 3 : currentEstTier === 'vip4' ? 1 : 3;
-
-  const [freelancerAdsBySlot, setFreelancerAdsBySlot] = useState<string[][]>(() => {
-    const existing = currentUser?.freelancerAdsBySlot ?? [[], [], []];
-    return Array.from({ length: 3 }, (_, i) => Array.from({ length: maxAdsPerSlot }, (_, j) => Array.isArray(existing) && Array.isArray(existing[i]) ? existing[i][j] ?? '' : ''));
-  });
-
-  const [establishmentAdsBySlot, setEstablishmentAdsBySlot] = useState<string[][]>(() => {
-    const existing = currentUser?.establishmentAdsBySlot ?? [[], [], []];
-    return Array.from({ length: 3 }, (_, i) => Array.from({ length: maxAdsPerSlot }, (_, j) => Array.isArray(existing) && Array.isArray(existing[i]) ? existing[i][j] ?? '' : ''));
-  });
-
-  const [freelancerLinksBySlot, setFreelancerLinksBySlot] = useState<string[][]>(() => {
-    const existing = currentUser?.freelancerLinksBySlot ?? [[], [], []];
-    return Array.from({ length: 3 }, (_, i) => Array.from({ length: maxAdsPerSlot }, (_, j) => Array.isArray(existing) && Array.isArray(existing[i]) ? existing[i][j] ?? '' : ''));
-  });
-
-  const [establishmentLinksBySlot, setEstablishmentLinksBySlot] = useState<string[][]>(() => {
-    const existing = currentUser?.establishmentLinksBySlot ?? [[], [], []];
-    return Array.from({ length: 3 }, (_, i) => Array.from({ length: maxAdsPerSlot }, (_, j) => Array.isArray(existing) && Array.isArray(existing[i]) ? existing[i][j] ?? '' : ''));
-  });
 
   useEffect(() => {
     let path = '/vip';
@@ -127,97 +96,12 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
     setAppliedCoupon(c.coupon); setCouponError(''); notify(`Cupom aplicado: ${c.coupon.discountPercentage}% de desconto!`);
   };
 
-  const handleImageUrlChange = (slotIndex: number, adIndex: number, type: 'freelancers' | 'establishments', value: string) => {
-    if (type === 'freelancers') {
-      setFreelancerAdsBySlot(prev => {
-        const updated = prev.map((slotArr, sIdx) => sIdx === slotIndex ? [...slotArr] : [...slotArr]);
-        if (!updated[slotIndex]) updated[slotIndex] = [];
-        updated[slotIndex][adIndex] = value;
-        return updated;
-      });
-    } else {
-      setEstablishmentAdsBySlot(prev => {
-        const updated = prev.map((slotArr, sIdx) => sIdx === slotIndex ? [...slotArr] : [...slotArr]);
-        if (!updated[slotIndex]) updated[slotIndex] = [];
-        updated[slotIndex][adIndex] = value;
-        return updated;
-      });
-    }
-  };
-
-  const handleLinkChange = (slotIndex: number, adIndex: number, type: 'freelancers' | 'establishments', value: string) => {
-    if (type === 'freelancers') {
-      setFreelancerLinksBySlot(prev => {
-        const updated = prev.map((slotArr, sIdx) => sIdx === slotIndex ? [...slotArr] : [...slotArr]);
-        if (!updated[slotIndex]) updated[slotIndex] = [];
-        updated[slotIndex][adIndex] = value;
-        return updated;
-      });
-    } else {
-      setEstablishmentLinksBySlot(prev => {
-        const updated = prev.map((slotArr, sIdx) => sIdx === slotIndex ? [...slotArr] : [...slotArr]);
-        if (!updated[slotIndex]) updated[slotIndex] = [];
-        updated[slotIndex][adIndex] = value;
-        return updated;
-      });
-    }
-  };
-
-  const handleRemoveAd = (slotIndex: number, adIndex: number, type: 'freelancers' | 'establishments') => {
-    if (type === 'freelancers') {
-      setFreelancerAdsBySlot(prev => {
-        const updated = prev.map((slotArr, sIdx) => sIdx === slotIndex ? [...slotArr] : [...slotArr]);
-        if (updated[slotIndex]) updated[slotIndex][adIndex] = '';
-        return updated;
-      });
-    } else {
-      setEstablishmentAdsBySlot(prev => {
-        const updated = prev.map((slotArr, sIdx) => sIdx === slotIndex ? [...slotArr] : [...slotArr]);
-        if (updated[slotIndex]) updated[slotIndex][adIndex] = '';
-        return updated;
-      });
-    }
-    notify('Anúncio removido', 'info');
-  };
-
   const calculateTotalPlanPrice = (planObj: any) => {
-    let basePrice = planObj.prices[period];
-    if (accountType === 'establishment' && planObj.allowAds) {
-      const referencePlan = estVipPlansList.find(p => p.allowAds) || estVipPlansList[0];
-      const slotPrices = [referencePlan?.priceSlot1 ?? 30, referencePlan?.priceSlot2 ?? 25, referencePlan?.priceSlot3 ?? 20];
-      const freelancerCost = selectedFreelancerSlots.reduce((sum, id) => sum + (slotPrices[id - 1] || 0), 0);
-      const estCost = selectedEstablishmentSlots.reduce((sum, id) => sum + (slotPrices[id - 1] || 0), 0);
-      
-      let adsTotal = freelancerCost + estCost;
-      const totalAdsCount = selectedFreelancerSlots.length + selectedEstablishmentSlots.length;
-      const hasFreelancerAds = selectedFreelancerSlots.length > 0;
-      const hasEstablishmentAds = selectedEstablishmentSlots.length > 0;
-
-      if (totalAdsCount >= 3 || (hasFreelancerAds && hasEstablishmentAds)) {
-        adsTotal *= 0.80;
-      } else if (totalAdsCount === 2) {
-        adsTotal *= 0.90;
-      }
-
-      basePrice += adsTotal;
-    }
-
+    const basePrice = planObj.prices[period];
     return appliedCoupon ? Math.round(basePrice * (1 - appliedCoupon.discountPercentage / 100) * 100) / 100 : basePrice;
   };
 
   const handleEstPlanClick = (plan: EstVipPlan) => {
-    if (plan.tier === 'trial') {
-      setConfirmEstTier(plan.tier);
-      return;
-    }
-    
-    if (plan.allowAds) {
-      const totalSelected = selectedFreelancerSlots.length + selectedEstablishmentSlots.length;
-      if (totalSelected === 0) {
-        notify('Este plano inclui anúncios. Por favor, selecione ao menos uma posição (slot) acima antes de prosseguir.', 'error');
-        return;
-      }
-    }
     setConfirmEstTier(plan.tier);
   };
 
@@ -225,22 +109,6 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
     const planObj = type === 'freelancer' ? getPlan(tier as Tier, vipPlansList) : getEstPlan(tier as EstTier, estVipPlansList);
     const finalPrice = calculateTotalPlanPrice(planObj);
     const userBalance = currentUser?.walletBalance ?? 0;
-
-    const adPermissionsConfig = {
-      includeHomeAd: false,
-      includeFreelancerAd: selectedFreelancerSlots.length > 0,
-      includeEstablishmentAd: selectedEstablishmentSlots.length > 0,
-      allowedFreelancerSlots: selectedFreelancerSlots,
-      allowedEstablishmentSlots: selectedEstablishmentSlots,
-      freelancerAdsBySlot,
-      establishmentAdsBySlot,
-      freelancerLinksBySlot,
-      establishmentLinksBySlot,
-      freelancerAds: freelancerAdsBySlot.flat(),
-      establishmentAds: establishmentAdsBySlot.flat(),
-      freelancerLinks: freelancerLinksBySlot.flat(),
-      establishmentLinks: establishmentLinksBySlot.flat(),
-    };
 
     if (billingType === 'WALLET') {
       if (finalPrice > 0 && userBalance < finalPrice) {
@@ -263,7 +131,6 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
         } else {
           setEstVipTier(userId, et, period);
         }
-        updateUser(userId, adPermissionsConfig);
         notify(`Plano ${getEstPlan(et, estVipPlansList).label} ativado com sucesso!`);
       }
       setConfirmTier(null);
@@ -341,94 +208,6 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
     setCouponCode('');
   };
 
-  const toggleSlotSelection = (page: 'freelancers' | 'establishments', slotNumber: number) => {
-    if (page === 'freelancers') {
-      setSelectedFreelancerSlots(prev => 
-        prev.includes(slotNumber) ? prev.filter(s => s !== slotNumber) : [...prev, slotNumber].sort()
-      );
-    } else {
-      setSelectedEstablishmentSlots(prev => 
-        prev.includes(slotNumber) ? prev.filter(s => s !== slotNumber) : [...prev, slotNumber].sort()
-      );
-    }
-  };
-
-  const referencePlan = estVipPlansList.find(p => p.allowAds) || estVipPlansList[0];
-  const slotPrices = [
-    referencePlan?.priceSlot1 ?? 30,
-    referencePlan?.priceSlot2 ?? 25,
-    referencePlan?.priceSlot3 ?? 20
-  ];
-
-  const renderCompactSlotManager = (adsBySlot: string[][], linksBySlot: string[][], type: 'freelancers' | 'establishments', activeTab: number, setActiveTab: (t: number) => void) => {
-    return (
-      <div className="space-y-3">
-        <div className="flex border-b border-neutral-800 gap-1 overflow-x-auto">
-          {SLOT_NAMES.map((slotName, idx) => {
-            const isActive = activeTab === idx;
-            return (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => setActiveTab(idx)}
-                className={`px-3 py-2 text-xs font-bold transition border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
-                  isActive 
-                    ? 'border-amber-500 text-amber-400 bg-neutral-900 rounded-t-lg' 
-                    : 'border-transparent text-neutral-400 hover:text-white'
-                }`}
-              >
-                <span>{slotName}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="p-3 rounded-xl border border-neutral-800 bg-neutral-950 space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {Array.from({ length: maxAdsPerSlot }).map((_, adIndex) => {
-              const adImg = adsBySlot[activeTab]?.[adIndex] || '';
-              const adLink = linksBySlot[activeTab]?.[adIndex] || '';
-
-              return (
-                <div key={adIndex} className="p-2.5 border border-neutral-800 rounded-lg bg-neutral-900 flex flex-col justify-between space-y-2">
-                  <div className="flex items-center justify-between text-[10px] font-bold text-neutral-400">
-                    <span className="text-amber-400">Anúncio #{adIndex + 1} ({SLOT_NAMES[activeTab]})</span>
-                    {adImg && (
-                      <button 
-                        type="button" 
-                        onClick={() => handleRemoveAd(activeTab, adIndex, type)}
-                        className="text-red-400 hover:text-red-300 flex items-center gap-0.5 text-[10px]"
-                      >
-                        <Trash2 className="h-3 w-3" /> Remover
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <input 
-                      type="text" 
-                      value={adImg} 
-                      onChange={(e) => handleImageUrlChange(activeTab, adIndex, type, e.target.value)}
-                      placeholder="URL da imagem do banner (https://...)"
-                      className="w-full bg-neutral-950 border border-neutral-800 rounded px-2 py-1 text-[11px] text-white outline-none focus:border-amber-500"
-                    />
-                    <input 
-                      type="text" 
-                      value={adLink} 
-                      onChange={(e) => handleLinkChange(activeTab, adIndex, type, e.target.value)}
-                      placeholder="Link de redirecionamento (https://...)"
-                      className="w-full bg-neutral-950 border border-neutral-800 rounded px-2 py-1 text-[11px] text-white outline-none focus:border-amber-500"
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 p-4 sm:p-8">
       <div className="mx-auto max-w-7xl space-y-8">
@@ -463,69 +242,6 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
             ))}
           </div>
         </div>
-
-        {accountType === 'establishment' && (
-          <div className="rounded-2xl border border-amber-500/30 bg-neutral-900 p-6 shadow-lg space-y-6">
-            <div>
-              <h3 className="font-display text-base font-bold text-white mb-1 flex items-center gap-2">
-                <Crown className="h-5 w-5 text-amber-400" /> Seleção de Posicionamento e Banners Rotativos
-              </h3>
-              <p className="text-xs text-neutral-400">
-                Os banners rotacionam automaticamente nas páginas a cada 4 segundos. Escolha em quais posições deseja aparecer. <span className="text-success-400 font-bold">Descontos: Ambas as páginas ou 3+ anúncios = 20% OFF | 2 anúncios na mesma página = 10% OFF!</span>
-              </p>
-            </div>
-
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-4 space-y-3">
-                <span className="text-xs font-bold text-white flex items-center gap-2">
-                  <Users className="h-4 w-4 text-amber-400" /> Página de Freelancers
-                </span>
-                <div className="grid grid-cols-3 gap-2">
-                  {[1, 2, 3].map((slotNum) => {
-                    const isSelected = selectedFreelancerSlots.includes(slotNum);
-                    return (
-                      <button
-                        key={slotNum}
-                        type="button"
-                        onClick={() => toggleSlotSelection('freelancers', slotNum)}
-                        className={`p-3 rounded-xl border text-xs font-bold transition flex flex-col items-center justify-center gap-1 text-center ${isSelected ? 'border-amber-500 bg-amber-500/20 text-amber-300' : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:border-neutral-700'}`}
-                      >
-                        <span className="font-bold text-[11px]">{SLOT_NAMES[slotNum - 1]}</span>
-                        <span className="text-[10px] font-normal text-neutral-400">
-                          {isSelected ? 'Selecionado' : formatCurrency(slotPrices[slotNum - 1])}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-4 space-y-3">
-                <span className="text-xs font-bold text-white flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-amber-400" /> Página de Estabelecimentos
-                </span>
-                <div className="grid grid-cols-3 gap-2">
-                  {[1, 2, 3].map((slotNum) => {
-                    const isSelected = selectedEstablishmentSlots.includes(slotNum);
-                    return (
-                      <button
-                        key={slotNum}
-                        type="button"
-                        onClick={() => toggleSlotSelection('establishments', slotNum)}
-                        className={`p-3 rounded-xl border text-xs font-bold transition flex flex-col items-center justify-center gap-1 text-center ${isSelected ? 'border-amber-500 bg-amber-500/20 text-amber-300' : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:border-neutral-700'}`}
-                      >
-                        <span className="font-bold text-[11px]">{SLOT_NAMES[slotNum - 1]}</span>
-                        <span className="text-[10px] font-normal text-neutral-400">
-                          {isSelected ? 'Selecionado' : formatCurrency(slotPrices[slotNum - 1])}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {accountType === 'freelancer' ? (
           <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
@@ -627,69 +343,6 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
                   </div>
                 );
               })}
-            </div>
-          </div>
-        )}
-
-        {accountType === 'establishment' && (
-          <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 shadow-lg space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <ImageIcon className="h-5 w-5 text-amber-400" />
-                <h3 className="font-display text-base font-bold text-white">Biblioteca de Imagens e Links dos Anúncios</h3>
-              </div>
-              <Button 
-                size="sm" 
-                variant="warning"
-                type="button"
-                disabled={isSaving}
-                onClick={async () => {
-                  setIsSaving(true);
-                  try {
-                    await updateUser(userId, {
-                      allowedFreelancerSlots: selectedFreelancerSlots,
-                      allowedEstablishmentSlots: selectedEstablishmentSlots,
-                      includeFreelancerAd: selectedFreelancerSlots.length > 0,
-                      includeEstablishmentAd: selectedEstablishmentSlots.length > 0,
-                      freelancerAdsBySlot,
-                      establishmentAdsBySlot,
-                      freelancerLinksBySlot,
-                      establishmentLinksBySlot,
-                      freelancerAds: freelancerAdsBySlot.flat(),
-                      establishmentAds: establishmentAdsBySlot.flat(),
-                      freelancerLinks: freelancerLinksBySlot.flat(),
-                      establishmentLinks: establishmentLinksBySlot.flat(),
-                    });
-                    notify('Banners, posições e links salvos com sucesso no sistema!', 'success');
-                  } catch (e) {
-                    notify('Erro ao salvar os banners.', 'error');
-                  } finally {
-                    setIsSaving(false);
-                  }
-                }}
-                className="gap-2"
-              >
-                {isSaving ? 'Salvando...' : <><Check className="h-4 w-4" /> Salvar Banners</>}
-              </Button>
-            </div>
-            <p className="text-xs text-neutral-400">
-              Cole as URLs das imagens dos seus banners e os links de destino para cada posição. Clique em <strong>Salvar Banners</strong> para atualizar.
-            </p>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="space-y-2 bg-neutral-950/40 p-4 rounded-xl border border-neutral-800/80">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2">
-                  <Users className="h-4 w-4" /> Página de Freelancers
-                </h4>
-                {renderCompactSlotManager(freelancerAdsBySlot, freelancerLinksBySlot, 'freelancers', activeFreelaTab, setActiveFreelaTab)}
-              </div>
-
-              <div className="space-y-2 bg-neutral-950/40 p-4 rounded-xl border border-neutral-800/80">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2">
-                  <Building2 className="h-4 w-4" /> Página de Estabelecimentos
-                </h4>
-                {renderCompactSlotManager(establishmentAdsBySlot, establishmentLinksBySlot, 'establishments', activeEstabTab, setActiveEstabTab)}
-              </div>
             </div>
           </div>
         )}
