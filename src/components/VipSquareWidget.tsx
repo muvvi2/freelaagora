@@ -1,79 +1,25 @@
-import { useState, useEffect } from 'react';
-import { useApp } from '@/AppContext';
+import { Crown } from 'lucide-react';
 
-export function VipSquareWidget({ pageType = 'freelancers', slot = 1 }: { pageType?: 'freelancers' | 'establishments'; slot: 1 | 2 | 3 }) {
-  const { data } = useApp();
-  const slotIndex = slot - 1; 
-  const activeAds: { imageUrl: string; linkUrl: string; title?: string }[] = [];
+export function VipSquareWidget({ pageType = 'freelancers' }: { pageType?: 'freelancers' | 'establishments' }) {
+  // Componente agora é estático. 
+  // Sem chamadas ao data.users ou logic de anúncios, economizando banda.
   
-  data.users.forEach((u) => {
-    if (u.accountType === 'establishment' && u.estVipTier && u.estVipTier !== 'free') {
-      const isOnTrial = u.trialEndsAt ? new Date(u.trialEndsAt) > new Date() : false;
-      const currentTier = isOnTrial ? 'trial' : u.estVipTier;
-      const plan = data.estVipPlans.find((p) => p.tier === currentTier);
-
-      if (plan?.allowAds || ['vip4', 'vip5', 'vip6', 'trial'].includes(currentTier)) {
-        const adsBySlot: string[][] = pageType === 'freelancers' ? (u.freelancerAdsBySlot || [[], [], []]) : (u.establishmentAdsBySlot || [[], [], []]);
-        const linksBySlot: string[][] = pageType === 'freelancers' ? (u.freelancerLinksBySlot || [[], [], []]) : (u.establishmentLinksBySlot || [[], [], []]);
-        const rawSlots = pageType === 'freelancers' ? u.allowedFreelancerSlots : u.allowedEstablishmentSlots;
-        const allowedSlots = (rawSlots && rawSlots.length > 0) ? rawSlots : [1, 2, 3];
-
-        if (allowedSlots.includes(slot)) {
-          const targetAds = adsBySlot[slotIndex] || [];
-          const targetLinks = linksBySlot[slotIndex] || [];
-          targetAds.forEach((img: string, imgIndex: number) => {
-            if (img && typeof img === 'string' && img.trim() !== '') {
-              const link = targetLinks[imgIndex] || '';
-              activeAds.push({ imageUrl: img, linkUrl: link });
-            }
-          });
-        }
-      }
-    }
-  });
-
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  useEffect(() => {
-    if (activeAds.length <= 1) return;
-    const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % activeAds.length);
-    }, 4000); 
-    return () => clearInterval(timer);
-  }, [activeAds.length]);
-
-  if (activeAds.length === 0) return null;
-
-  const currentAd = activeAds[currentIndex % activeAds.length];
-  
-  // Controle rigoroso de proporção e altura máxima para evitar que o banner estique
-  const sizeClass = slot === 1 
-    ? 'w-full aspect-[2/1] max-h-[220px] sm:max-h-[260px]' 
-    : slot === 2 
-    ? 'w-full max-w-[380px] h-[220px]' 
-    : 'w-full aspect-[3.3:1] max-h-[130px]';
-
   return (
-    <a 
-      href={currentAd.linkUrl || '#'} 
-      target="_blank" 
-      rel="noopener noreferrer" 
-      className={`relative block overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-900 shadow-lg transition-transform hover:scale-[1.01] dark:border-neutral-800 ${sizeClass}`}
-    >
-      {/* Imagem de Fundo com object-cover para preenchimento perfeito sem distorção */}
-      <img 
-        src={currentAd.imageUrl} 
-        alt="Anúncio Patrocinado" 
-        className="absolute inset-0 w-full h-full object-cover opacity-90 transition-opacity duration-500" 
-      />
-      
-      {/* Gradiente escuro para legibilidade e destaque premium */}
-      <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/30 to-transparent" />
-
-      {/* Selo discreto de Patrocinado */}
-      <div className="absolute top-2.5 right-2.5 z-10 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-medium tracking-wide text-neutral-300 backdrop-blur-md">
-        Patrocinado
+    <div className="relative block w-full aspect-[4/1] max-h-[160px] overflow-hidden rounded-2xl border border-primary-500/20 bg-gradient-to-r from-primary-900 to-primary-700 shadow-lg p-6 flex items-center justify-between">
+      <div>
+        <h3 className="font-display text-xl font-bold text-white flex items-center gap-2">
+          <Crown className="h-6 w-6 text-warning-400" />
+          Destaque seu perfil
+        </h3>
+        <p className="text-sm text-primary-100">
+          {pageType === 'freelancers' 
+            ? 'Aumente suas chances de ser contratado com o plano VIP.' 
+            : 'Ganhe visibilidade e reduza taxas com nossa assinatura empresarial.'}
+        </p>
       </div>
-    </a>
+      <div className="hidden sm:block">
+        <span className="text-white/50 font-bold text-4xl">VIP</span>
+      </div>
+    </div>
   );
 }
