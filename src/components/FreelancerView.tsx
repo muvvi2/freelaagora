@@ -55,7 +55,7 @@ export function FreelancerView() {
   const activeInvites = myContracts.filter((c) => ['requested', 'confirmed', 'paid', 'check_in_pending', 'checked_in'].includes(c.status));
 
   return (
-    <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 space-y-6 text-neutral-900 dark:text-white">
+    <div className="mx-auto max-w-[1150px] px-4 py-8 sm:px-8 space-y-6 text-neutral-900 dark:text-white">
       
       {/* PROFILE HEADER CARD COM ESTATÍSTICAS INTEGRADAS */}
       <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 sm:p-6 shadow-sm">
