@@ -99,10 +99,15 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
   const getPlanDetails = (planObj: any) => {
     const rawPrice = planObj.prices?.[period] ?? 0;
     
+    // Lê as propriedades de desconto considerando múltiplos padrões possíveis vindos do banco/admin
     let discountPercent = 0;
-    if (period === 'monthly') discountPercent = planObj.discountMonthlyPercent ?? 0;
-    else if (period === 'semestral') discountPercent = planObj.discountSemestralPercent ?? 0;
-    else if (period === 'annual') discountPercent = planObj.discountAnnualPercent ?? 0;
+    if (period === 'monthly') {
+      discountPercent = planObj.discountMonthlyPercent ?? planObj.discount_monthly_percent ?? 0;
+    } else if (period === 'semestral') {
+      discountPercent = planObj.discountSemestralPercent ?? planObj.discount_semestral_percent ?? 0;
+    } else if (period === 'annual') {
+      discountPercent = planObj.discountAnnualPercent ?? planObj.discount_annual_percent ?? 0;
+    }
 
     let originalPrice = rawPrice;
     let finalPrice = rawPrice;
@@ -118,7 +123,7 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
     return {
       originalPrice: Math.round(originalPrice * 100) / 100,
       finalPrice: Math.round(finalPrice * 100) / 100,
-      discountPercent: discountPercent
+      discountPercent: Number(discountPercent)
     };
   };
 
