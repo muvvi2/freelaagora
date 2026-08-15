@@ -55,7 +55,7 @@ export function FreelancerView() {
   const activeInvites = myContracts.filter((c) => ['requested', 'confirmed', 'paid', 'check_in_pending', 'checked_in'].includes(c.status));
 
   return (
-    <div className="mx-auto max-w-[1150px] px-4 py-8 sm:px-8 space-y-6 text-neutral-900 dark:text-white">
+    <div className="mx-auto max-w-[1250px] px-4 py-6 sm:px-6 space-y-5 text-neutral-900 dark:text-white">
       
       {/* PROFILE HEADER CARD COM ESTATÍSTICAS INTEGRADAS */}
       <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 sm:p-6 shadow-sm">
@@ -106,69 +106,73 @@ export function FreelancerView() {
 
       <div>
         {tab === 'opportunities' && (
-          <div className="space-y-6">
-
-            {/* 1. PROPOSTAS E CONTRATOS (NO TOPO, MAIS COMPACTO) */}
-            <section className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm space-y-3">
-              <h2 className="flex items-center gap-2 font-display text-sm font-bold text-neutral-900 dark:text-white uppercase tracking-wider">
-                <Inbox className="h-4 w-4 text-primary-500" /> Propostas e Contratos Recentes
-              </h2>
-              {activeInvites.length > 0 ? (
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {activeInvites.map((c) => {
-                    const statusBadgeTone = c.status === 'confirmed' ? 'success' : c.status === 'paid' ? 'warning' : c.status === 'check_in_pending' ? 'warning' : c.status === 'checked_in' ? 'secondary' : 'warning';
-                    const statusLabel = c.status === 'requested' ? 'Pendente' : c.status === 'confirmed' ? 'Confirmado' : c.status === 'paid' ? 'Pago em Garantia' : c.status === 'check_in_pending' ? 'Aguardando Aprovação' : 'Check-in Realizado';
-                    return (
-                      <button key={c.id} onClick={() => setEscrowContract(c)} className="flex w-full items-center gap-3 rounded-xl border border-neutral-100 p-3 text-left transition hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-800">
-                        <Avatar src={c.freelancerPhoto} alt={c.freelancerName} size={36} />
-                        <div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold text-neutral-900 dark:text-white">{c.establishmentName}</p><p className="text-[11px] text-neutral-400">{formatCurrency(c.freelancerFee)} · {c.category}</p></div>
-                        <Badge tone={statusBadgeTone}>{statusLabel}</Badge>
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="flex items-center justify-between rounded-xl border border-dashed border-neutral-200 bg-neutral-50/50 px-4 py-3 dark:border-neutral-800 dark:bg-neutral-800/30">
-                  <span className="text-xs text-neutral-400">Nenhum convite ou contrato ativo no momento.</span>
-                  <Inbox className="h-4 w-4 text-neutral-300" />
-                </div>
-              )}
-            </section>
-
-            {/* 2. BARRA DE FILTROS E MURAL DE VAGAS */}
-            <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm space-y-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-neutral-100 dark:border-neutral-800">
-                <h2 className="flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white">
-                  <Megaphone className="h-5 w-5 text-secondary-500" /> Mural de Vagas
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            {/* COLUNA 1: CONVITES DIRETOS / PROPOSTAS (Fica fixa na lateral esquerda em telas grandes) */}
+            <div className="lg:col-span-4 space-y-4">
+              <section className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm space-y-3">
+                <h2 className="flex items-center gap-2 font-display text-xs font-bold text-neutral-900 dark:text-white uppercase tracking-wider">
+                  <Inbox className="h-4 w-4 text-primary-500" /> Convites Diretos
                 </h2>
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-1.5 text-xs font-medium text-neutral-700 dark:text-neutral-300 cursor-pointer">
-                    <input type="checkbox" checked={me.unlimitedKm} onChange={(e) => updateUser(me.id, { unlimitedKm: e.target.checked })} className="h-3.5 w-3.5 rounded border-neutral-300 text-primary-600 focus:ring-primary-500" /> KM Livre
-                  </label>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5 dark:border-neutral-800 dark:bg-neutral-800/50">
-                <MapPin className="h-4 w-4 shrink-0 text-neutral-400" />
-                <span className="text-xs font-semibold text-neutral-500">Raio de Atuação:</span>
-                <input type="range" min={1} max={100} step={1} disabled={me.unlimitedKm} value={radiusKm} onChange={(e) => setRadiusKm(Number(e.target.value))} className={`flex-1 accent-primary-500 ${me.unlimitedKm ? 'opacity-40' : ''}`} />
-                <span className="w-16 text-right text-xs font-bold text-neutral-700 dark:text-neutral-300">{me.unlimitedKm ? 'Ilimitado' : `${radiusKm}km`}</span>
-              </div>
+                {activeInvites.length > 0 ? (
+                  <div className="space-y-2.5">
+                    {activeInvites.map((c) => {
+                      const statusBadgeTone = c.status === 'confirmed' ? 'success' : c.status === 'paid' ? 'warning' : c.status === 'check_in_pending' ? 'warning' : c.status === 'checked_in' ? 'secondary' : 'warning';
+                      const statusLabel = c.status === 'requested' ? 'Pendente' : c.status === 'confirmed' ? 'Confirmado' : c.status === 'paid' ? 'Pago em Garantia' : c.status === 'check_in_pending' ? 'Aguardando Aprovação' : 'Check-in Realizado';
+                      return (
+                        <button key={c.id} onClick={() => setEscrowContract(c)} className="flex w-full items-center gap-3 rounded-xl border border-neutral-100 p-3 text-left transition hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-800">
+                          <Avatar src={c.freelancerPhoto} alt={c.freelancerName} size={36} />
+                          <div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold text-neutral-900 dark:text-white">{c.establishmentName}</p><p className="text-[11px] text-neutral-400">{formatCurrency(c.freelancerFee)} · {c.category}</p></div>
+                          <Badge tone={statusBadgeTone}>{statusLabel}</Badge>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50/50 p-6 text-center dark:border-neutral-800 dark:bg-neutral-800/30">
+                    <Inbox className="mx-auto mb-2 h-6 w-6 text-neutral-300" />
+                    <p className="text-xs text-neutral-400">Nenhum convite direto no momento.</p>
+                  </div>
+                )}
+              </section>
             </div>
 
-            {/* LISTAGEM DE VAGAS */}
-            {openJobs.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {openJobs.map((j) => (
-                  <JobCard key={j.id} job={j} variant="apply" />
-                ))}
+            {/* COLUNA 2 E 3: MURAL DE VAGAS E FILTROS (Ocupa o restante da largura e vai preenchendo para baixo) */}
+            <div className="lg:col-span-8 space-y-4">
+              <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-neutral-100 dark:border-neutral-800">
+                  <h2 className="flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white">
+                    <Megaphone className="h-5 w-5 text-secondary-500" /> Mural de Vagas
+                  </h2>
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-1.5 text-xs font-medium text-neutral-700 dark:text-neutral-300 cursor-pointer">
+                      <input type="checkbox" checked={me.unlimitedKm} onChange={(e) => updateUser(me.id, { unlimitedKm: e.target.checked })} className="h-3.5 w-3.5 rounded border-neutral-300 text-primary-600 focus:ring-primary-500" /> KM Livre
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5 dark:border-neutral-800 dark:bg-neutral-800/50">
+                  <MapPin className="h-4 w-4 shrink-0 text-neutral-400" />
+                  <span className="text-xs font-semibold text-neutral-500">Raio de Atuação:</span>
+                  <input type="range" min={1} max={100} step={1} disabled={me.unlimitedKm} value={radiusKm} onChange={(e) => setRadiusKm(Number(e.target.value))} className={`flex-1 accent-primary-500 ${me.unlimitedKm ? 'opacity-40' : ''}`} />
+                  <span className="w-16 text-right text-xs font-bold text-neutral-700 dark:text-neutral-300">{me.unlimitedKm ? 'Ilimitado' : `${radiusKm}km`}</span>
+                </div>
               </div>
-            ) : (
-              <div className="rounded-xl bg-neutral-50 p-8 text-center dark:bg-neutral-800/50">
-                <Megaphone className="mx-auto mb-2 h-8 w-8 text-neutral-300" />
-                <p className="text-sm text-neutral-400">Nenhuma vaga aberta na sua região no momento.</p>
-              </div>
-            )}
+
+              {/* LISTAGEM DE VAGAS EM GRID */}
+              {openJobs.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {openJobs.map((j) => (
+                    <JobCard key={j.id} job={j} variant="apply" />
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl bg-neutral-50 p-8 text-center dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-800">
+                  <Megaphone className="mx-auto mb-2 h-8 w-8 text-neutral-300" />
+                  <p className="text-sm text-neutral-400">Nenhuma vaga aberta na sua região no momento.</p>
+                </div>
+              )}
+            </div>
 
           </div>
         )}
