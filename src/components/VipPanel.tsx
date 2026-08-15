@@ -96,11 +96,10 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
     setAppliedCoupon(c.coupon); setCouponError(''); notify(`Cupom aplicado: ${c.coupon.discountPercentage}% de desconto!`);
   };
 
-  const calculateTotalPlanPrice = (planObj: any) => {
+  // Cálculo corrigido: pega o preço cadastrado no período e aplica a porcentagem de desconto do admin
+  const getPlanDetails = (planObj: any) => {
     const rawPrice = planObj.prices?.[period] ?? 0;
-    let basePrice = rawPrice;
-
-    // Lê a porcentagem configurada diretamente no plano específico
+    
     let discountPercent = 0;
     if (period === 'monthly') {
       discountPercent = planObj.discountMonthlyPercent ?? 0;
@@ -110,11 +109,20 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
       discountPercent = planObj.discountAnnualPercent ?? 0;
     }
 
+    let finalPrice = rawPrice;
     if (discountPercent > 0) {
-      basePrice = rawPrice * (1 - discountPercent / 100);
+      finalPrice = rawPrice * (1 - discountPercent / 100);
     }
 
-    return appliedCoupon ? Math.round(basePrice * (1 - appliedCoupon.discountPercentage / 100) * 100) / 100 : Math.round(basePrice * 100) / 100;
+    if (appliedCoupon) {
+      finalPrice = finalPrice * (1 - appliedCoupon.discountPercentage / 100);
+    }
+
+    return {
+      originalPrice: rawPrice,
+      finalPrice: Math.round(finalPrice * 100) / 100,
+      discountPercent
+    };
   };
 
   const handleEstPlanClick = (plan: EstVipPlan) => {
@@ -123,7 +131,8 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
 
   const handleProceedPayment = async (tier: Tier | EstTier, type: 'freelancer' | 'establishment') => {
     const planObj = type === 'freelancer' ? getPlan(tier as Tier, vipPlansList) : getEstPlan(tier as EstTier, estVipPlansList);
-    const finalPrice = calculateTotalPlanPrice(planObj);
+    const details = getPlanDetails(planObj);
+    const finalPrice = details.finalPrice;
     const userBalance = currentUser?.walletBalance ?? 0;
 
     if (billingType === 'WALLET') {
@@ -275,16 +284,15 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
             {vipPlansList.map((plan) => {
               const Icon = tierIcon[plan.tier]; 
               const active = currentTier === plan.tier; 
-              const finalPlanPrice = calculateTotalPlanPrice(plan);
-              const planDiscount = period === 'monthly' ? plan.discountMonthlyPercent : period === 'semestral' ? plan.discountSemestralPercent : plan.discountAnnualPercent;
+              const details = getPlanDetails(plan);
 
               return (
                 <div key={plan.tier} className={`relative flex flex-col justify-between rounded-2xl border-2 bg-neutral-900 p-6 transition shadow-xl ${tierTone[plan.tier]} ${active ? 'ring-2 ring-primary-500 bg-neutral-900/90' : 'hover:border-neutral-700'}`}>
                   {active && <div className="absolute -top-3.5 left-5"><Badge tone="primary">Plano Ativo</Badge></div>}
-                  {(planDiscount ?? 0) > 0 && (
+                  {details.discountPercent > 0 && (
                     <div className="absolute -top-3.5 right-5">
                       <span className="inline-flex items-center rounded-full bg-success-500 px-2.5 py-0.5 text-[10px] font-extrabold text-white shadow-sm">
-                        -{planDiscount}% OFF
+                        -{details.discountPercent}% OFF
                       </span>
                     </div>
                   )}
@@ -300,9 +308,16 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
                     </div>
                     <div className="my-5">
                       <span className="font-display text-4xl font-extrabold text-white">
-                        {finalPlanPrice === 0 ? 'Grátis' : <>{(planDiscount ?? 0) > 0 || appliedCoupon ? <span className="mr-2 text-base text-neutral-500 line-through">{formatCurrency(plan.prices[period])}</span> : null}{formatCurrency(finalPlanPrice)}</>}
+                        {details.finalPrice === 0 ? 'Grátis' : (
+                          <>
+                            {details.discountPercent > 0 || appliedCoupon ? (
+                              <span className="mr-2 text-base text-neutral-500 line-through">{formatCurrency(details.originalPrice)}</span>
+                            ) : null}
+                            {formatCurrency(details.finalPrice)}
+                          </>
+                        )}
                       </span>
-                      {finalPlanPrice > 0 && <span className="text-xs font-medium text-neutral-400">/{periodLabel(period).toLowerCase()}</span>}
+                      {details.finalPrice > 0 && <span className="text-xs font-medium text-neutral-400">/{periodLabel(period).toLowerCase()}</span>}
                     </div>
                     <ul className="space-y-3 border-t border-neutral-800 pt-5">
                       {plan.features.map((f) => (
@@ -336,17 +351,16 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
             <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
               {estVipPlansList.map((plan) => {
                 const active = currentEstTier === plan.tier; 
-                const finalPlanPrice = calculateTotalPlanPrice(plan);
+                const details = getPlanDetails(plan);
                 const feeDisplay = plan.feePercent ?? (plan as any).intermediationFee ?? 15;
-                const planDiscount = period === 'monthly' ? plan.discountMonthlyPercent : period === 'semestral' ? plan.discountSemestralPercent : plan.discountAnnualPercent;
 
                 return (
                   <div key={plan.tier} className={`relative flex flex-col justify-between rounded-2xl border-2 bg-neutral-900 p-6 transition shadow-xl ${estTierTone[plan.tier]} ${active ? 'ring-2 ring-primary-500 bg-neutral-900/90' : 'hover:border-neutral-700'}`}>
                     {active && <div className="absolute -top-3.5 left-5"><Badge tone="primary">Plano Ativo</Badge></div>}
-                    {(planDiscount ?? 0) > 0 && (
+                    {details.discountPercent > 0 && (
                       <div className="absolute -top-3.5 right-5">
                         <span className="inline-flex items-center rounded-full bg-success-500 px-2.5 py-0.5 text-[10px] font-extrabold text-white shadow-sm">
-                          -{planDiscount}% OFF
+                          -{details.discountPercent}% OFF
                         </span>
                       </div>
                     )}
@@ -363,9 +377,16 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
 
                       <div className="my-5">
                         <span className="font-display text-4xl font-extrabold text-white">
-                          {finalPlanPrice === 0 ? 'Grátis' : <>{(planDiscount ?? 0) > 0 || appliedCoupon ? <span className="mr-2 text-base text-neutral-500 line-through">{formatCurrency(plan.prices[period])}</span> : null}{formatCurrency(finalPlanPrice)}</>}
+                          {details.finalPrice === 0 ? 'Grátis' : (
+                            <>
+                              {details.discountPercent > 0 || appliedCoupon ? (
+                                <span className="mr-2 text-base text-neutral-500 line-through">{formatCurrency(details.originalPrice)}</span>
+                              ) : null}
+                              {formatCurrency(details.finalPrice)}
+                            </>
+                          )}
                         </span>
-                        {finalPlanPrice > 0 && <span className="text-xs font-medium text-neutral-400">/{periodLabel(period).toLowerCase()}</span>}
+                        {details.finalPrice > 0 && <span className="text-xs font-medium text-neutral-400">/{periodLabel(period).toLowerCase()}</span>}
                       </div>
 
                       <ul className="space-y-3 border-t border-neutral-800 pt-5">
@@ -394,14 +415,14 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
 
         <Modal open={!!confirmTier} onClose={() => setConfirmTier(null)} title="Confirmar assinatura" size="sm"
           footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={() => setConfirmTier(null)}>Cancelar</Button><Button variant="warning" fullWidth onClick={() => confirmTier && handleProceedPayment(confirmTier, 'freelancer')}><Check className="h-4 w-4" /> Confirmar</Button></div>}>
-          {confirmTier && <div className="space-y-3"><div className="flex items-center gap-3 rounded-xl bg-warning-50 p-3 dark:bg-warning-500/10"><Crown className="h-8 w-8 text-warning-500" /><div><p className="font-bold text-neutral-900 dark:text-white">{getPlan(confirmTier, vipPlansList).label} — {periodLabel(period)}</p><p className="text-xs text-neutral-400">Total: {formatCurrency(calculateTotalPlanPrice(getPlan(confirmTier, vipPlansList)))}</p></div></div>
+          {confirmTier && <div className="space-y-3"><div className="flex items-center gap-3 rounded-xl bg-warning-50 p-3 dark:bg-warning-500/10"><Crown className="h-8 w-8 text-warning-500" /><div><p className="font-bold text-neutral-900 dark:text-white">{getPlan(confirmTier, vipPlansList).label} — {periodLabel(period)}</p><p className="text-xs text-neutral-400">Total: {formatCurrency(getPlanDetails(getPlan(confirmTier, vipPlansList)).finalPrice)}</p></div></div>
           <BillingTypeSelector billingType={billingType} setBillingType={setBillingType} paymentReady={paymentReady} providerLabel={providerInfo.label} />
           <p className="text-sm text-neutral-600 dark:text-neutral-300">{billingType === 'WALLET' ? 'Ao confirmar, o valor será debitado da sua carteira e seu plano será ativado imediatamente.' : `Ao confirmar, você será direcionado ao pagamento via ${providerInfo.label}.`}</p></div>}
         </Modal>
 
         <Modal open={!!confirmEstTier} onClose={() => setConfirmEstTier(null)} title="Confirmar assinatura empresarial" size="sm"
           footer={<div className="flex gap-2"><Button variant="ghost" fullWidth onClick={() => setConfirmEstTier(null)}>Cancelar</Button><Button variant="warning" fullWidth onClick={() => confirmEstTier && handleProceedPayment(confirmEstTier, 'establishment')}><Check className="h-4 w-4" /> Confirmar</Button></div>}>
-          {confirmEstTier && <div className="space-y-3"><div className="flex items-center gap-3 rounded-xl bg-warning-50 p-3 dark:bg-warning-500/10"><Store className="h-8 w-8 text-warning-500" /><div><p className="font-bold text-neutral-900 dark:text-white">{getEstPlan(confirmEstTier, estVipPlansList).label} — {periodLabel(period)}</p><p className="text-xs text-neutral-400">Total: {formatCurrency(calculateTotalPlanPrice(getEstPlan(confirmEstTier, estVipPlansList)))} · Taxa: {getEstPlan(confirmEstTier, estVipPlansList).feePercent ?? (getEstPlan(confirmEstTier, estVipPlansList) as any).intermediationFee}%</p></div></div>
+          {confirmEstTier && <div className="space-y-3"><div className="flex items-center gap-3 rounded-xl bg-warning-50 p-3 dark:bg-warning-500/10"><Store className="h-8 w-8 text-warning-500" /><div><p className="font-bold text-neutral-900 dark:text-white">{getEstPlan(confirmEstTier, estVipPlansList).label} — {periodLabel(period)}</p><p className="text-xs text-neutral-400">Total: {formatCurrency(getPlanDetails(getEstPlan(confirmEstTier, estVipPlansList)).finalPrice)} · Taxa: {getEstPlan(confirmEstTier, estVipPlansList).feePercent ?? (getEstPlan(confirmEstTier, estVipPlansList) as any).intermediationFee}%</p></div></div>
           <BillingTypeSelector billingType={billingType} setBillingType={setBillingType} paymentReady={paymentReady} providerLabel={providerInfo.label} />
           <p className="text-sm text-neutral-600 dark:text-neutral-300">{billingType === 'WALLET' ? 'Ao confirmar, o valor será debitado da sua carteira e sua nova taxa de intermediação será aplicada nas próximas contratações.' : `Ao confirmar, você será direcionado ao pagamento via ${providerInfo.label}.`}</p></div>}
         </Modal>
