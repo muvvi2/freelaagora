@@ -20,8 +20,8 @@ export interface AppContextValue {
   deleteEntity: (id: string) => void;
   banUser: (id: string) => void;
   unbanUser: (id: string) => void;
-  setVipTier: (id: string, tier: Tier, period?: Period) => void;
-  setEstVipTier: (id: string, tier: EstTier, period?: Period) => void;
+  setVipTier: (id: string, tier: Tier, period?: Period) => { ok: boolean; error?: string };
+  setEstVipTier: (id: string, tier: EstTier, period?: Period) => { ok: boolean; error?: string };
   setTermsAcceptance: (id: string, acceptance: TermsAcceptance) => void;
 
   setAvailability: (userId: string, av: WeekAvailability) => void;
@@ -30,16 +30,17 @@ export interface AppContextValue {
 
   toggleCategory: (userId: string, categoryId: string) => { ok: boolean; error?: string };
 
-  addJob: (j: Job) => void;
+  addJob: (j: Job) => { ok: boolean; error?: string };
   updateJob: (id: string, patch: Partial<Job>) => void;
   deleteJob: (id: string) => void;
   pauseJob: (id: string) => void;
   applyToJob: (jobId: string, freelancerId: string) => void;
 
   requestHire: (establishmentId: string, freelancerId: string, jobId: string | null, hours: number, freelancerFee: number) => Contract;
-  confirmAvailability: (contractId: string) => void;
-  payEscrow: (contractId: string) => void;
-  checkInFreelancer: (contractId: string) => void;
+  confirmAvailability: (contractId: string) => Promise<void>;
+  payEscrow: (contractId: string, paymentMethod?: 'wallet' | 'pix' | 'card') => { ok: boolean; error?: string };
+  requestCheckIn: (contractId: string) => void;
+  confirmCheckIn: (contractId: string) => void;
   finishService: (contractId: string) => void;
   cancelContract: (contractId: string) => void;
 
@@ -64,7 +65,7 @@ export interface AppContextValue {
   resetData: () => void;
 
   coupons: Coupon[];
-  validateCoupon: (code: string) => Coupon | null;
+  validateCoupon: (code: string) => { coupon?: Coupon; error?: string };
   addCoupon: (coupon: Omit<Coupon, 'id' | 'createdAt'>) => void;
   toggleCoupon: (id: string) => void;
   deleteCoupon: (id: string) => void;
@@ -73,8 +74,8 @@ export interface AppContextValue {
   auditLogs: AdminAuditLog[];
   logAdminAction: (action: string, targetUserId?: string) => void;
 
-  adminCreateUser: (user: Omit<User, 'id' | 'createdAt' | 'walletBalance' | 'rating' | 'reviewsCount' | 'completedShifts'> & Partial<User>) => { ok: boolean; error?: string };
-  adminCreateAdmin: (user: { name: string; email: string; password: string; adminRole: 'super' | 'regular'; photo?: string }) => { ok: boolean; error?: string };
+  adminCreateUser: (user: any) => Promise<{ ok: boolean; error?: string }>;
+  adminCreateAdmin: (user: { name: string; email: string; password: string; adminRole: 'super' | 'regular'; photo?: string }) => Promise<{ ok: boolean; error?: string }>;
   removeAdmin: (id: string) => void;
   adjustWallet: (userId: string, amount: number, description: string) => void;
   deleteReview: (reviewId: string) => void;
