@@ -493,6 +493,45 @@ function AdminEditAdminModal({ adminUser, open, onClose, onSave }: { adminUser: 
   );
 }
 
+function AdminCreateAdminModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { adminCreateAdmin } = useApp();
+  const { notify } = useToast();
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [adminRole, setAdminRole] = useState<'super' | 'regular'>('regular');
+
+  const create = async () => {
+    if (!name.trim() || !email.trim() || !password.trim()) { notify('Preencha todos os campos', 'warning'); return; }
+    await adminCreateAdmin({
+      name: name.trim(),
+      email: email.trim(),
+      password,
+      adminRole,
+      accountType: 'freelancer',
+      address: { city: 'São Paulo', state: 'SP', street: '', number: '', neighborhood: '', cep: '' }
+    });
+    notify('Administrador criado com sucesso!');
+    onClose();
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Novo Administrador / Moderador" size="sm"
+      footer={<div className="flex gap-2"><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={create}><UserPlus className="h-4 w-4" /> Criar</Button></div>}>
+      <div className="space-y-4">
+        <div className="flex gap-1.5 rounded-xl border border-neutral-200 bg-neutral-50 p-1 dark:border-neutral-700 dark:bg-neutral-800">
+          {(['regular', 'super'] as const).map((r) => (
+            <button key={r} onClick={() => setAdminRole(r)} className={`flex-1 rounded-lg py-2 text-sm font-semibold transition ${adminRole === r ? 'bg-white text-primary-600 shadow-sm dark:bg-neutral-700 dark:text-primary-400' : 'text-neutral-500'}`}>{r === 'super' ? 'Super Admin' : 'Moderador'}</button>
+          ))}
+        </div>
+        <Input label="Nome" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome completo" />
+        <Input label="E-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@freelaagora.com" />
+        <Input label="Senha" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="******" />
+      </div>
+    </Modal>
+  );
+}
+
 export function AdminProfileModal({ open, onClose, admin, onSave }: { open: boolean; onClose: () => void; admin: User; onSave: (id: string, patch: Partial<User>) => void }) {
   const { notify } = useToast();
   const [email, setEmail] = useState(admin.email);
@@ -829,7 +868,7 @@ function VipPlansTab({ vipPlans, estVipPlans, onUpdateVipPlan, onAddVipPlan, onR
         </div>
       )}
 
-      <p className="text-xs text-neutral-400">Alterações nos preços, taxas e limites são aplicadas imediatamente e sincronizadas com o Supabase.</p>
+      <p className="text-xs text-neutral-400">Alterações nos preços, taxas, descontos e limites são aplicadas imediatamente e sincronizadas com o Supabase.</p>
     </div>
   );
 }
@@ -843,7 +882,6 @@ function VipPlanEditor({ plan, onUpdate, onRemove, isEst }: {
   const { notify } = useToast();
   const [expanded, setExpanded] = useState(false);
   const canDelete = plan.tier !== 'free' && plan.tier !== 'trial';
-  const estPlan = isEst ? (plan as EstVipPlan) : null;
 
   return (
     <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
@@ -878,18 +916,25 @@ function VipPlanEditor({ plan, onUpdate, onRemove, isEst }: {
             <Input label="Preço anual (R$)" type="number" value={String(plan.prices.annual)} onChange={(e) => onUpdate({ prices: { ...plan.prices, annual: Number(e.target.value) || 0 } })} />
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 bg-neutral-50 dark:bg-neutral-800/40 p-3 rounded-xl border border-neutral-200 dark:border-neutral-700">
+          <div className="grid gap-3 sm:grid-cols-3 bg-neutral-50 dark:bg-neutral-800/40 p-3 rounded-xl border border-neutral-200 dark:border-neutral-700">
+            <Input 
+              label="Desconto Mensal (%)" 
+              type="number" 
+              value={String((plan as any).discountMonthlyPercent ?? 0)} 
+              onChange={(e) => onUpdate({ discountMonthlyPercent: Number(e.target.value) || 0 } as any)} 
+              placeholder="Ex: 5"
+            />
             <Input 
               label="Desconto Semestral (%)" 
               type="number" 
-              value={String((plan as EstVipPlan).discountSemestralPercent ?? 0)} 
+              value={String((plan as any).discountSemestralPercent ?? 0)} 
               onChange={(e) => onUpdate({ discountSemestralPercent: Number(e.target.value) || 0 } as any)} 
               placeholder="Ex: 10"
             />
             <Input 
               label="Desconto Anual (%)" 
               type="number" 
-              value={String((plan as EstVipPlan).discountAnnualPercent ?? 0)} 
+              value={String((plan as any).discountAnnualPercent ?? 0)} 
               onChange={(e) => onUpdate({ discountAnnualPercent: Number(e.target.value) || 0 } as any)} 
               placeholder="Ex: 20"
             />
