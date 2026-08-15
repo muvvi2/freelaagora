@@ -174,7 +174,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, []);
 
-  // 2. Realtime Listener Robusto com Canais Individuais e Confirmação de Status
+  // 2. Realtime Listener Global Completo (Todas as tabelas do sistema)
   useEffect(() => {
     const refetchUser = (userId: string) => {
       if (!userId) return;
@@ -197,9 +197,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
 
     const channel = supabase
-      .channel('public-db-changes')
+      .channel('global-complete-sync')
 
-      // --- VAGAS (JOBS) ---
+      // --- VAGAS ---
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, (payload) => {
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
           setDataState((prev) => {
@@ -207,44 +207,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const existing = prev.jobs.find((j) => j.id === newRow.id);
             const item = mapJobRealtime(newRow, prev.users, existing);
             if (existing) {
-              return { 
-                ...prev, 
-                jobs: prev.jobs.map((j) => (j.id === item.id ? { ...existing, ...item, applicants: existing.applicants } : j)) 
-              };
+              return { ...prev, jobs: prev.jobs.map((j) => (j.id === item.id ? { ...existing, ...item, applicants: existing.applicants } : j)) };
             }
             return { ...prev, jobs: [item, ...prev.jobs] };
           });
         } else if (payload.eventType === 'DELETE') {
           const id = (payload.old as any)?.id;
-          if (id) {
-            setDataState((prev) => ({ ...prev, jobs: prev.jobs.filter((j) => j.id !== id) }));
-          }
+          if (id) setDataState((prev) => ({ ...prev, jobs: prev.jobs.filter((j) => j.id !== id) }));
         }
       })
 
-      // --- CANDIDATURAS (JOB_APPLICANTS) ---
+      // --- CANDIDATURAS ---
       .on('postgres_changes', { event: '*', schema: 'public', table: 'job_applicants' }, (payload) => {
         const raw = (payload.new ?? payload.old) as any;
         const jobId = raw?.job_id ?? raw?.jobId;
         const freelancerId = raw?.freelancer_id ?? raw?.freelancerId;
         if (payload.eventType === 'DELETE') {
           if (jobId && freelancerId) {
-            setDataState((prev) => ({ 
-              ...prev, 
-              jobs: prev.jobs.map((j) => j.id === jobId ? { ...j, applicants: j.applicants.filter((a) => a !== freelancerId) } : j) 
-            }));
+            setDataState((prev) => ({ ...prev, jobs: prev.jobs.map((j) => j.id === jobId ? { ...j, applicants: j.applicants.filter((a) => a !== freelancerId) } : j) }));
           }
           return;
         }
         if (jobId && freelancerId) {
-          setDataState((prev) => ({ 
-            ...prev, 
-            jobs: prev.jobs.map((j) => j.id === jobId ? { ...j, applicants: Array.from(new Set([...(j.applicants || []), freelancerId])) } : j) 
-          }));
+          setDataState((prev) => ({ ...prev, jobs: prev.jobs.map((j) => j.id === jobId ? { ...j, applicants: Array.from(new Set([...(j.applicants || []), freelancerId])) } : j) }));
         }
       })
 
-      // --- USUÁRIOS (USERS) ---
+      // --- USUÁRIOS E PERFIS ---
       .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload) => {
         if (payload.eventType === 'DELETE') {
           const id = (payload.old as any)?.id;
@@ -254,8 +243,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const userId = (payload.new as any)?.id;
         if (userId) refetchUser(userId);
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'freelancer_profiles' }, (payload) => {
+        const userId = (payload.new as any)?.user_id ?? (payload.old as any)?.user_id;
+        if (userId) refetchUser(userId);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'establishment_profiles' }, (payload) => {
+        const userId = (payload.new as any)?.user_id ?? (payload.old as any)?.user_id;
+        if (userId) refetchUser(userId);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'freelancer_categories' }, (payload) => {
+        const userId = (payload.new as any)?.freelancer_id ?? (payload.old as any)?.freelancer_id;
+        if (userId) refetchUser(userId);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'freelancer_availability' }, (payload) => {
+        const userId = (payload.new as any)?.freelancer_id ?? (payload.old as any)?.freelancer_id;
+        if (userId) refetchUser(userId);
+      })
 
-      // --- CONTRATOS (CONTRACTS) ---
+      // --- CONTRATOS ---
       .on('postgres_changes', { event: '*', schema: 'public', table: 'contracts' }, (payload) => {
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
           setDataState((prev) => {
@@ -263,10 +268,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const existing = prev.contracts.find((c) => c.id === newRow.id);
             const item = mapContractRealtime(newRow, prev.users, existing);
             if (existing) {
-              return { 
-                ...prev, 
-                contracts: prev.contracts.map((c) => (c.id === item.id ? { ...existing, ...item, history: existing.history } : c)) 
-              };
+              return { ...prev, contracts: prev.contracts.map((c) => (c.id === item.id ? { ...existing, ...item, history: existing.history } : c)) };
             }
             return { ...prev, contracts: [item, ...prev.contracts] };
           });
@@ -274,6 +276,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const id = (payload.old as any)?.id;
           if (id) setDataState((prev) => ({ ...prev, contracts: prev.contracts.filter((c) => c.id !== id) }));
         }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'contract_events' }, (payload) => {
+        const raw = payload.new as any;
+        const contractId = raw?.contract_id ?? raw?.contractId;
+        if (!contractId) return;
+        const rawStatus = raw?.status ?? 'requested';
+        const status: ContractStatus = ['requested', 'confirmed', 'paid', 'check_in_pending', 'checked_in', 'completed', 'cancelled'].includes(rawStatus) ? rawStatus : 'requested';
+        const event = { status, at: raw?.created_at ?? raw?.at ?? new Date().toISOString(), note: raw?.note ?? undefined };
+        setDataState((prev) => ({
+          ...prev,
+          contracts: prev.contracts.map((c) => c.id === contractId ? { ...c, status, history: [...(c.history || []), event] } : c),
+        }));
       })
 
       // --- NOTIFICAÇÕES ---
@@ -289,7 +303,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       })
 
-      // --- TRANSAÇÕES DA CARTEIRA ---
+      // --- AVALIAÇÕES ---
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'contract_reviews' }, (payload) => {
+        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          const item = mapReviewRealtime(payload.new as any, data?.users ?? []);
+          setDataState((prev) => (prev.reviews.some((r) => r.id === item.id)
+            ? { ...prev, reviews: prev.reviews.map((r) => (r.id === item.id ? { ...r, ...item } : r)) }
+            : { ...prev, reviews: [item, ...prev.reviews] }));
+        } else if (payload.eventType === 'DELETE') {
+          const id = (payload.old as any)?.id;
+          if (id) setDataState((prev) => ({ ...prev, reviews: prev.reviews.filter((r) => r.id !== id) }));
+        }
+      })
+
+      // --- CARTEIRA E TRANSAÇÕES ---
       .on('postgres_changes', { event: '*', schema: 'public', table: 'wallet_transactions' }, (payload) => {
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
           const item = mapWalletTxRealtime(payload.new as any);
@@ -302,12 +329,116 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       })
 
+      // --- CUPONS ---
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'discount_coupons' }, (payload) => {
+        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          const item = mapCouponRealtime(payload.new as any);
+          setDataState((prev) => (prev.coupons.some((c) => c.id === item.id)
+            ? { ...prev, coupons: prev.coupons.map((c) => (c.id === item.id ? { ...c, ...item } : c)) }
+            : { ...prev, coupons: [item, ...prev.coupons] }));
+        } else if (payload.eventType === 'DELETE') {
+          const id = (payload.old as any)?.id;
+          if (id) setDataState((prev) => ({ ...prev, coupons: prev.coupons.filter((c) => c.id !== String(id)) }));
+        }
+      })
+
+      // --- LOGS DE AUDITORIA ---
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_audit_logs' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const item = mapAuditLogRealtime(payload.new as any);
+          setDataState((prev) => ({ ...prev, adminAuditLogs: [item, ...prev.adminAuditLogs] }));
+        }
+      })
+
+      // --- PLANOS VIP (FREELANCER) ---
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'vip_plans_freelancer' }, (payload) => {
+        const raw = (payload.new ?? payload.old) as any;
+        const tier = raw?.tier;
+        if (!tier) return;
+        if (payload.eventType === 'DELETE') {
+          setDataState((prev) => ({ ...prev, vipPlans: prev.vipPlans.filter((p) => p.tier !== tier) }));
+          return;
+        }
+        const updatedPlan = {
+          tier: raw.tier,
+          label: raw.label ?? '',
+          priceMonthly: Number(raw.price_monthly ?? raw.priceMonthly ?? 0),
+          priceSemestral: Number(raw.price_semestral ?? raw.priceSemestral ?? 0),
+          priceAnnual: Number(raw.price_annual ?? raw.priceAnnual ?? 0),
+          maxCategories: Number(raw.max_categories ?? raw.maxCategories ?? 1),
+          prices: {
+            monthly: Number(raw.price_monthly ?? raw.priceMonthly ?? 0),
+            semestral: Number(raw.price_semestral ?? raw.priceSemestral ?? 0),
+            annual: Number(raw.price_annual ?? raw.priceAnnual ?? 0),
+          },
+          features: Array.isArray(raw.features) ? raw.features : [],
+        };
+        setDataState((prev) => {
+          const exists = prev.vipPlans.some((p) => p.tier === tier);
+          if (exists) {
+            return { ...prev, vipPlans: prev.vipPlans.map((p) => p.tier === tier ? { ...p, ...updatedPlan } : p) };
+          }
+          return { ...prev, vipPlans: [...prev.vipPlans, updatedPlan] };
+        });
+      })
+
+      // --- PLANOS VIP (ESTABELECIMENTO) ---
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'vip_plans_establishment' }, (payload) => {
+        const raw = (payload.new ?? payload.old) as any;
+        const tier = raw?.tier;
+        if (!tier) return;
+        if (payload.eventType === 'DELETE') {
+          setDataState((prev) => ({ ...prev, estVipPlans: prev.estVipPlans.filter((p) => p.tier !== tier) }));
+          return;
+        }
+        const updatedEstPlan = {
+          tier: raw.tier,
+          label: raw.label ?? '',
+          priceMonthly: Number(raw.price_monthly ?? raw.priceMonthly ?? 0),
+          priceSemestral: Number(raw.price_semestral ?? raw.priceSemestral ?? 0),
+          priceAnnual: Number(raw.price_annual ?? raw.priceAnnual ?? 0),
+          prices: {
+            monthly: Number(raw.price_monthly ?? raw.priceMonthly ?? 0),
+            semestral: Number(raw.price_semestral ?? raw.priceSemestral ?? 0),
+            annual: Number(raw.price_annual ?? raw.priceAnnual ?? 0),
+          },
+          features: Array.isArray(raw.features) ? raw.features : [],
+        };
+        setDataState((prev) => {
+          const exists = prev.estVipPlans.some((p) => p.tier === tier);
+          if (exists) {
+            return { ...prev, estVipPlans: prev.estVipPlans.map((p) => p.tier === tier ? { ...p, ...updatedEstPlan } : p) };
+          }
+          return { ...prev, estVipPlans: [...prev.estVipPlans, updatedEstPlan] };
+        });
+      })
+
+      // --- CONFIGURAÇÕES GLOBAIS E DE PAGAMENTO ---
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'platform_config' }, (payload) => {
+        if (payload.new) {
+          setDataState((prev) => ({ ...prev, config: { defaultFeePercent: Number((payload.new as any).default_fee_percent ?? 15) } }));
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_settings' }, (payload) => {
+        if (payload.new) {
+          const ps = payload.new as any;
+          const configs: Partial<Record<string, PaymentProviderConfig>> = {};
+          if (ps.configs) {
+            for (const [key, val] of Object.entries(ps.configs)) {
+              if (val && typeof val === 'object') {
+                const v = val as { apiKey?: string; env?: string };
+                configs[key as PaymentProviderId] = { apiKey: v.apiKey ?? '', env: (v.env as 'sandbox' | 'production') ?? 'sandbox' };
+              }
+            }
+          }
+          const settings: PaymentSettings = { activeProvider: ps.active_provider ?? 'asaas', configs };
+          setDataState((prev) => ({ ...prev, paymentSettings: settings }));
+        }
+      })
+
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log("🟢 Canal Realtime conectado com sucesso ao Supabase!");
-        }
-        if (status === 'CHANNEL_ERROR') {
-          console.error("🔴 Erro de conexão no canal Realtime do Supabase.");
+          console.log("🟢 Canal Realtime global sincronizado com sucesso!");
         }
       });
 
