@@ -52,26 +52,42 @@ export function emptyAddress(): Address {
 }
 
 // --- Freelancer VIP ---
-export function getPlan(tier: Tier, plans?: VipPlan[]) {
+export function getPlan(tier: Tier, plans?: VipPlan[]): VipPlan {
   const arr = plans ?? VIP_PLANS;
-  return arr.find((p) => p.tier === tier) ?? arr[0];
+  const found = arr.find((p) => p.tier === tier) ?? arr[0];
+  return {
+    ...found,
+    discountMonthlyPercent: (found as any).discountMonthlyPercent ?? (found as any).discount_monthly_percent ?? 0,
+    discountSemestralPercent: (found as any).discountSemestralPercent ?? (found as any).discount_semestral_percent ?? 0,
+    discountAnnualPercent: (found as any).discountAnnualPercent ?? (found as any).discount_annual_percent ?? 0,
+  };
 }
+
 export function planPrice(tier: Tier, period: Period, plans?: VipPlan[]): number {
   return getPlan(tier, plans).prices[period];
 }
+
 export function periodLabel(p: Period): string {
   return p === 'monthly' ? 'Mensal' : p === 'semestral' ? 'Semestral' : 'Anual';
 }
+
 export function canSelectCategories(tier: Tier, currentCount: number, plans?: VipPlan[]): boolean {
   const max = getPlan(tier, plans).maxCategories;
   return currentCount < max;
 }
 
 // --- Establishment VIP ---
-export function getEstPlan(tier: EstTier, plans?: EstVipPlan[]) {
+export function getEstPlan(tier: EstTier, plans?: EstVipPlan[]): EstVipPlan {
   const arr = plans ?? EST_VIP_PLANS;
-  return arr.find((p) => p.tier === tier) ?? arr[0];
+  const found = arr.find((p) => p.tier === tier) ?? arr[0];
+  return {
+    ...found,
+    discountMonthlyPercent: (found as any).discountMonthlyPercent ?? (found as any).discount_monthly_percent ?? 0,
+    discountSemestralPercent: (found as any).discountSemestralPercent ?? (found as any).discount_semestral_percent ?? 0,
+    discountAnnualPercent: (found as any).discountAnnualPercent ?? (found as any).discount_annual_percent ?? 0,
+  };
 }
+
 export function estPlanPrice(tier: EstTier, period: Period, plans?: EstVipPlan[]): number {
   return getEstPlan(tier, plans).prices[period];
 }
