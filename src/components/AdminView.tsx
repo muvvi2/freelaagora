@@ -32,7 +32,7 @@ const getPlanTierColor = (tier: string) => {
 };
 
 export function AdminView() {
-  const { data, currentUser, isSuperAdmin, overrideContractStatus, forceRefund, resetData, banUser, unbanUser, deleteEntity, adminWalletTxs, coupons, addCoupon, toggleCoupon, deleteCoupon, auditLogs, deleteReview, broadcastNotification, deleteJob, updateJob, updateVipPlan, addVipPlan, removeVipPlan, updateEstVipPlan, addEstVipPlan, removeEstVipPlan, adminTab: tab, adminRemoveAdmin, adminUpdateAdmin, adminUpdateUser } = useApp();
+  const { data, currentUser, isSuperAdmin, overrideContractStatus, forceRefund, resetData, banUser, unbanUser, deleteEntity, adminWalletTxs, coupons, addCoupon, toggleCoupon, deleteCoupon, auditLogs, deleteReview, broadcastNotification, deleteJob, updateJob, updateVipPlan, addVipPlan, removeVipPlan, updateEstVipPlan, addEstVipPlan, removeEstVipPlan, adminTab: tab, setAdminTab, adminRemoveAdmin, adminUpdateAdmin, adminUpdateUser } = useApp();
   const { notify } = useToast();
   const [confirmReset, setConfirmReset] = useState(false);
   const [escrowContract, setEscrowContract] = useState<Contract | null>(null);
@@ -83,13 +83,22 @@ export function AdminView() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
-      <div className="mb-5 flex items-center gap-2">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-900 dark:bg-neutral-100"><Shield className="h-5 w-5 text-white dark:text-neutral-900" /></div>
-        <div>
-          <h1 className="font-display text-xl font-extrabold text-neutral-900 dark:text-white">Painel do {isSuperAdmin ? 'Super Admin' : 'Administrador'}</h1>
-          <p className="text-sm text-neutral-400">{isSuperAdmin ? 'Acesso total: taxas, escrow, usuários, carteiras e admins' : 'Gestão de usuários, vagas e avaliações'}</p>
+      <div className="mb-5 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-900 dark:bg-neutral-100"><Shield className="h-5 w-5 text-white dark:text-neutral-900" /></div>
+          <div>
+            <h1 className="font-display text-xl font-extrabold text-neutral-900 dark:text-white">Painel do {isSuperAdmin ? 'Super Admin' : 'Administrador'}</h1>
+            <p className="text-sm text-neutral-400">{isSuperAdmin ? 'Acesso total: taxas, escrow, usuários, carteiras e admins' : 'Gestão de usuários, vagas e avaliações'}</p>
+          </div>
         </div>
-        {isSuperAdmin && <Badge tone="vip"><Crown className="h-3 w-3" /> Super Admin</Badge>}
+        {isSuperAdmin && (
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => setAdminTab('admins')}>
+              <UserCog className="h-4 w-4" /> Gerenciar Admins
+            </Button>
+            <Badge tone="vip"><Crown className="h-3 w-3" /> Super Admin</Badge>
+          </div>
+        )}
       </div>
 
       {tab === 'overview' && (
@@ -952,33 +961,39 @@ function VipPlanEditor({ plan, onUpdate, onRemove, isEst }: {
 
 function AdminsTab({ admins, currentAdminId, onRemove, onEdit, onAdd }: { admins: User[]; currentAdminId: string; onRemove: (id: string) => void; onEdit: (adminUser: User) => void; onAdd: () => void }) {
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-neutral-400">{admins.length} administrador(es) ativo(s)</p>
-        <Button size="sm" onClick={onAdd}><UserPlus className="h-4 w-4" /> Novo Admin</Button>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+        <div>
+          <h3 className="font-display font-bold text-neutral-900 dark:text-white">Controle de Administradores e Moderadores</h3>
+          <p className="text-xs text-neutral-400">Gerencie os acessos de Super Admin e Moderadores da plataforma.</p>
+        </div>
+        <Button onClick={onAdd}><UserPlus className="h-4 w-4" /> Adicionar Admin / Mod</Button>
       </div>
-      {admins.map((a) => (
-        <div key={a.id} className="flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
-          <div className="flex items-center gap-3">
-            <Avatar src={a.photo} alt={a.name} size={44} ring={a.adminRole === 'super' ? 'vip' : 'neutral'} />
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="font-semibold text-neutral-900 dark:text-white">{a.name}</p>
-                {a.adminRole === 'super' ? <Badge tone="vip"><Crown className="h-3 w-3" /> Super Admin</Badge> : <Badge tone="primary">Moderador</Badge>}
+
+      <div className="space-y-3">
+        {admins.map((a) => (
+          <div key={a.id} className="flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
+            <div className="flex items-center gap-3">
+              <Avatar src={a.photo} alt={a.name} size={44} ring={a.adminRole === 'super' ? 'vip' : 'neutral'} />
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-neutral-900 dark:text-white">{a.name}</p>
+                  {a.adminRole === 'super' ? <Badge tone="vip"><Crown className="h-3 w-3" /> Super Admin</Badge> : <Badge tone="primary">Moderador</Badge>}
+                </div>
+                <p className="text-xs text-neutral-400">{a.email}</p>
               </div>
-              <p className="text-xs text-neutral-400">{a.email}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={() => onEdit(a)}><Pencil className="h-3.5 w-3.5" /> Editar</Button>
+              {a.id !== currentAdminId && (
+                <Button size="sm" variant="ghost" className="text-error-500" onClick={() => { if (confirm(`Remover ${a.name} como administrador?`)) { onRemove(a.id); } }}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={() => onEdit(a)}><Pencil className="h-3.5 w-3.5" /> Editar</Button>
-            {a.id !== currentAdminId && (
-              <Button size="sm" variant="ghost" className="text-error-500" onClick={() => { if (confirm(`Remover ${a.name} como administrador?`)) { onRemove(a.id); } }}>
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            )}
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
