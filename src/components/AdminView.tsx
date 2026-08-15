@@ -58,11 +58,29 @@ export function AdminView() {
     const completedRepasses = data.contracts.filter((c) => c.status === 'completed').reduce((a, c) => a + c.freelancerFee, 0);
     const flSubRevenue = data.walletTxs.filter((t) => t.type === 'vip_charge').reduce((a, t) => a + Math.abs(t.amount), 0);
     const esSubRevenue = data.walletTxs.filter((t) => t.type === 'vip_charge_est').reduce((a, t) => a + Math.abs(t.amount), 0);
-    const fee15 = data.contracts.filter((c) => c.platformFeePercentage === 15.0 && c.status === 'completed').reduce((a, c) => a + c.platformFee, 0);
-    const fee7_5 = data.contracts.filter((c) => c.platformFeePercentage === 7.5 && c.status === 'completed').reduce((a, c) => a + c.platformFee, 0);
-    const fee5 = data.contracts.filter((c) => c.platformFeePercentage === 5.0 && c.status === 'completed').reduce((a, c) => a + c.platformFee, 0);
-    const fee0 = data.contracts.filter((c) => c.platformFeePercentage === 0 && c.status === 'completed').length;
-    return { escrowTotal, feesCollected, completedRepasses, flSubRevenue, esSubRevenue, fee15, fee7_5, fee5, fee0 };
+
+    // Agrupamento dinâmico baseado nos percentuais reais salvos nos contratos (vinculados aos planos VIP do admin)
+    const completedContracts = data.contracts.filter((c) => c.status === 'completed');
+    const feeBreakdownMap: Record<number, { totalFee: number; count: number }> = {};
+    
+    completedContracts.forEach((c) => {
+      const pct = c.platformFeePercentage ?? 0;
+      if (!feeBreakdownMap[pct]) {
+        feeBreakdownMap[pct] = { totalFee: 0, count: 0 };
+      }
+      feeBreakdownMap[pct].totalFee += c.platformFee;
+      feeBreakdownMap[pct].count += 1;
+    });
+
+    return { 
+      escrowTotal, 
+      feesCollected, 
+      completedRepasses, 
+      flSubRevenue, 
+      esSubRevenue, 
+      feeBreakdownMap,
+      completedCount: completedContracts.length
+    };
   }, [data]);
 
   const freelancers = data.users.filter((u) => u.accountType === 'freelancer' && !u.isAdmin);
@@ -105,7 +123,7 @@ export function AdminView() {
         <div className="space-y-5">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <FinancialCard icon={Wallet} label="Volume em Escrow" value={formatCurrency(stats.escrowTotal)} tone="warning" desc="Retido em garantia" />
-            <FinancialCard icon={Percent} label="Taxas de Intermediação" value={formatCurrency(stats.feesCollected)} tone="primary" desc="15% + 7,5% + 5% combinadas" />
+            <FinancialCard icon={Percent} label="Taxas de Intermediação" value={formatCurrency(stats.feesCollected)} tone="primary" desc="Total arrecadado de taxas" />
             <FinancialCard icon={CheckCircle2} label="Repasses Concluídos" value={formatCurrency(stats.completedRepasses)} tone="success" desc="Liberações para freelancers" />
           </div>
 
@@ -117,12 +135,25 @@ export function AdminView() {
               <RevenueRow icon={Percent} label="Taxas de Intermediação" value={formatCurrency(stats.feesCollected)} tone="success" />
             </div>
             <div className="mt-4 border-t border-neutral-100 pt-4 dark:border-neutral-800">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-400">Detalhamento por faixa de taxa</p>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-400">Detalhamento por faixa de taxa (Dinâmico dos Planos VIP)</p>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <FeeBreakdown label="Taxa 15,0% (Gratuito)" value={formatCurrency(stats.fee15)} tone="error" />
-                <FeeBreakdown label="Taxa 7,5% (VIP 1)" value={formatCurrency(stats.fee7_5)} tone="warning" />
-                <FeeBreakdown label="Taxa 5,0% (VIP 2)" value={formatCurrency(stats.fee5)} tone="primary" />
-                <FeeBreakdown label="Isento 0% (VIP 3)" value={`${stats.fee0} contrato(s)`} tone="success" />
+                {Object.keys(stats.feeBreakdownMap).length === 0 ? (
+                  <p className="text-xs text-neutral-400 col-span-full">Nenhum contrato concluído para exibir detalhamento.</p>
+                ) : (
+                  Object.entries(stats.feeBreakdownMap).map(([pctStr, info]) => {
+                    const pct = Number(pctStr);
+                    const tone = pct === 0 ? 'success' : pct <= 5 ? 'primary' : pct <= 10 ? 'warning' : 'error';
+                    const label = pct === 0 ? 'Isento 0%' : `Taxa ${pct.toFixed(1).replace('.', ',')}%`;
+                    return (
+                      <FeeBreakdown 
+                        key={pct} 
+                        label={`${label} · ${info.count} contrato(s)`} 
+                        value={formatCurrency(info.totalFee)} 
+                        tone={tone as any} 
+                      />
+                    );
+                  })
+                )}
               </div>
             </div>
           </div>
