@@ -108,7 +108,34 @@ export function FreelancerView() {
         {tab === 'opportunities' && (
           <div className="space-y-6">
 
-            {/* BARRA DE FILTROS */}
+            {/* 1. PROPOSTAS E CONTRATOS (NO TOPO, MAIS COMPACTO) */}
+            <section className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm space-y-3">
+              <h2 className="flex items-center gap-2 font-display text-sm font-bold text-neutral-900 dark:text-white uppercase tracking-wider">
+                <Inbox className="h-4 w-4 text-primary-500" /> Propostas e Contratos Recentes
+              </h2>
+              {activeInvites.length > 0 ? (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {activeInvites.map((c) => {
+                    const statusBadgeTone = c.status === 'confirmed' ? 'success' : c.status === 'paid' ? 'warning' : c.status === 'check_in_pending' ? 'warning' : c.status === 'checked_in' ? 'secondary' : 'warning';
+                    const statusLabel = c.status === 'requested' ? 'Pendente' : c.status === 'confirmed' ? 'Confirmado' : c.status === 'paid' ? 'Pago em Garantia' : c.status === 'check_in_pending' ? 'Aguardando Aprovação' : 'Check-in Realizado';
+                    return (
+                      <button key={c.id} onClick={() => setEscrowContract(c)} className="flex w-full items-center gap-3 rounded-xl border border-neutral-100 p-3 text-left transition hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-800">
+                        <Avatar src={c.freelancerPhoto} alt={c.freelancerName} size={36} />
+                        <div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold text-neutral-900 dark:text-white">{c.establishmentName}</p><p className="text-[11px] text-neutral-400">{formatCurrency(c.freelancerFee)} · {c.category}</p></div>
+                        <Badge tone={statusBadgeTone}>{statusLabel}</Badge>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex items-center justify-between rounded-xl border border-dashed border-neutral-200 bg-neutral-50/50 px-4 py-3 dark:border-neutral-800 dark:bg-neutral-800/30">
+                  <span className="text-xs text-neutral-400">Nenhum convite ou contrato ativo no momento.</span>
+                  <Inbox className="h-4 w-4 text-neutral-300" />
+                </div>
+              )}
+            </section>
+
+            {/* 2. BARRA DE FILTROS E MURAL DE VAGAS */}
             <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-neutral-100 dark:border-neutral-800">
                 <h2 className="flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white">
@@ -142,31 +169,6 @@ export function FreelancerView() {
                 <p className="text-sm text-neutral-400">Nenhuma vaga aberta na sua região no momento.</p>
               </div>
             )}
-
-            {/* PROPOSTAS E CONTRATOS */}
-            <section className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
-              <h2 className="mb-4 flex items-center gap-2 font-display font-bold text-neutral-900 dark:text-white"><Inbox className="h-5 w-5 text-primary-500" /> Propostas e Contratos</h2>
-              {activeInvites.length > 0 ? (
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {activeInvites.map((c) => {
-                    const statusBadgeTone = c.status === 'confirmed' ? 'success' : c.status === 'paid' ? 'warning' : c.status === 'check_in_pending' ? 'warning' : c.status === 'checked_in' ? 'secondary' : 'warning';
-                    const statusLabel = c.status === 'requested' ? 'Pendente' : c.status === 'confirmed' ? 'Confirmado' : c.status === 'paid' ? 'Pago em Garantia' : c.status === 'check_in_pending' ? 'Aguardando Aprovação' : 'Check-in Realizado';
-                    return (
-                      <button key={c.id} onClick={() => setEscrowContract(c)} className="flex w-full items-center gap-3 rounded-xl border border-neutral-100 p-3 text-left transition hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-800">
-                        <Avatar src={c.freelancerPhoto} alt={c.freelancerName} size={40} />
-                        <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-neutral-900 dark:text-white">{c.establishmentName}</p><p className="text-xs text-neutral-400">{formatCurrency(c.freelancerFee)} · {c.category}</p></div>
-                        <Badge tone={statusBadgeTone}>{statusLabel}</Badge>
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="rounded-xl bg-neutral-50 p-6 text-center dark:bg-neutral-800/50">
-                  <Inbox className="mx-auto mb-2 h-8 w-8 text-neutral-300" />
-                  <p className="text-sm text-neutral-400">Nenhum convite ou contrato ativo no momento.</p>
-                </div>
-              )}
-            </section>
 
           </div>
         )}
