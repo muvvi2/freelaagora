@@ -23,7 +23,43 @@ export { useApp };
 const ADMIN_ID = '00000000-0000-0000-0000-000000000001';
 const STORAGE_KEY = 'freelaagora_current_user';
 
-// --- MAPEADORES REALTIME SEGUROS (DB <-> App) ---
+// --- MAPEADORES DE PLANOS COM SUPORTE A DESCONTO ---
+const mapVipPlan = (raw: any): VipPlan => ({
+  tier: raw.tier,
+  label: raw.label ?? '',
+  priceMonthly: Number(raw.price_monthly ?? raw.priceMonthly ?? 0),
+  priceSemestral: Number(raw.price_semestral ?? raw.priceSemestral ?? 0),
+  priceAnnual: Number(raw.price_annual ?? raw.priceAnnual ?? 0),
+  maxCategories: Number(raw.max_categories ?? raw.maxCategories ?? 1),
+  prices: {
+    monthly: Number(raw.price_monthly ?? raw.priceMonthly ?? 0),
+    semestral: Number(raw.price_semestral ?? raw.priceSemestral ?? 0),
+    annual: Number(raw.price_annual ?? raw.priceAnnual ?? 0),
+  },
+  discountMonthlyPercent: Number(raw.discount_monthly_percent ?? raw.discountMonthlyPercent ?? 0),
+  discountSemestralPercent: Number(raw.discount_semestral_percent ?? raw.discountSemestralPercent ?? 0),
+  discountAnnualPercent: Number(raw.discount_annual_percent ?? raw.discountAnnualPercent ?? 0),
+  features: Array.isArray(raw.features) ? raw.features : [],
+});
+
+const mapEstVipPlan = (raw: any): EstVipPlan => ({
+  tier: raw.tier,
+  label: raw.label ?? '',
+  priceMonthly: Number(raw.price_monthly ?? raw.priceMonthly ?? 0),
+  priceSemestral: Number(raw.price_semestral ?? raw.priceSemestral ?? 0),
+  priceAnnual: Number(raw.price_annual ?? raw.priceAnnual ?? 0),
+  feePercent: Number(raw.fee_percent ?? raw.feePercent ?? raw.intermediationFee ?? 15),
+  prices: {
+    monthly: Number(raw.price_monthly ?? raw.priceMonthly ?? 0),
+    semestral: Number(raw.price_semestral ?? raw.priceSemestral ?? 0),
+    annual: Number(raw.price_annual ?? raw.priceAnnual ?? 0),
+  },
+  discountMonthlyPercent: Number(raw.discount_monthly_percent ?? raw.discountMonthlyPercent ?? 0),
+  discountSemestralPercent: Number(raw.discount_semestral_percent ?? raw.discountSemestralPercent ?? 0),
+  discountAnnualPercent: Number(raw.discount_annual_percent ?? raw.discountAnnualPercent ?? 0),
+  features: Array.isArray(raw.features) ? raw.features : [],
+});
+
 const mapJobRealtime = (raw: any, existingUsers: User[] = [], existingJob?: Job): Job => {
   const estId = raw.establishment_id ?? raw.establishmentId ?? '';
   const est = existingUsers.find((u) => u.id === estId);
@@ -163,7 +199,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       try {
         const dbData = await loadAllData();
         if (!cancelled && dbData) {
-          setDataState((prev) => ({ ...dbData, currentUserId: prev.currentUserId ?? dbData.currentUserId }));
+          // Garante que os planos carregados venham mapeados com os campos de desconto
+          const mappedVipPlans = (dbData.vipPlans ?? initialData.vipPlans).map(mapVipPlan);
+          const mappedEstPlans = (dbData.estVipPlans ?? initialData.estVipPlans).map(mapEstVipPlan);
+          setDataState((prev) => ({ 
+            ...dbData, 
+            vipPlans: mappedVipPlans,
+            estVipPlans: mappedEstPlans,
+            currentUserId: prev.currentUserId ?? dbData.currentUserId 
+          }));
         }
       } catch (e) { 
         console.warn("⚠️ Falha ao carregar do Supabase:", e); 
@@ -359,20 +403,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setDataState((prev) => ({ ...prev, vipPlans: prev.vipPlans.filter((p) => p.tier !== tier) }));
           return;
         }
-        const updatedPlan = {
-          tier: raw.tier,
-          label: raw.label ?? '',
-          priceMonthly: Number(raw.price_monthly ?? raw.priceMonthly ?? 0),
-          priceSemestral: Number(raw.price_semestral ?? raw.priceSemestral ?? 0),
-          priceAnnual: Number(raw.price_annual ?? raw.priceAnnual ?? 0),
-          maxCategories: Number(raw.max_categories ?? raw.maxCategories ?? 1),
-          prices: {
-            monthly: Number(raw.price_monthly ?? raw.priceMonthly ?? 0),
-            semestral: Number(raw.price_semestral ?? raw.priceSemestral ?? 0),
-            annual: Number(raw.price_annual ?? raw.priceAnnual ?? 0),
-          },
-          features: Array.isArray(raw.features) ? raw.features : [],
-        };
+        const updatedPlan = mapVipPlan(raw);
         setDataState((prev) => {
           const exists = prev.vipPlans.some((p) => p.tier === tier);
           if (exists) {
@@ -391,19 +422,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setDataState((prev) => ({ ...prev, estVipPlans: prev.estVipPlans.filter((p) => p.tier !== tier) }));
           return;
         }
-        const updatedEstPlan = {
-          tier: raw.tier,
-          label: raw.label ?? '',
-          priceMonthly: Number(raw.price_monthly ?? raw.priceMonthly ?? 0),
-          priceSemestral: Number(raw.price_semestral ?? raw.priceSemestral ?? 0),
-          priceAnnual: Number(raw.price_annual ?? raw.priceAnnual ?? 0),
-          prices: {
-            monthly: Number(raw.price_monthly ?? raw.priceMonthly ?? 0),
-            semestral: Number(raw.price_semestral ?? raw.priceSemestral ?? 0),
-            annual: Number(raw.price_annual ?? raw.priceAnnual ?? 0),
-          },
-          features: Array.isArray(raw.features) ? raw.features : [],
-        };
+        const updatedEstPlan = mapEstVipPlan(raw);
         setDataState((prev) => {
           const exists = prev.estVipPlans.some((p) => p.tier === tier);
           if (exists) {
@@ -549,9 +568,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const rawPrice = plan.prices[period] ?? 0;
     
     let discount = 0;
-    if (period === 'monthly') discount = (plan as any).discountMonthlyPercent ?? 0;
-    else if (period === 'semestral') discount = (plan as any).discountSemestralPercent ?? 0;
-    else if (period === 'annual') discount = (plan as any).discountAnnualPercent ?? 0;
+    if (period === 'monthly') discount = plan.discountMonthlyPercent ?? 0;
+    else if (period === 'semestral') discount = plan.discountSemestralPercent ?? 0;
+    else if (period === 'annual') discount = plan.discountAnnualPercent ?? 0;
 
     const price = discount > 0 ? rawPrice * (1 - discount / 100) : rawPrice;
 
@@ -580,9 +599,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const rawPrice = plan.prices[period] ?? 0;
 
     let discount = 0;
-    if (period === 'monthly') discount = (plan as any).discountMonthlyPercent ?? 0;
-    else if (period === 'semestral') discount = (plan as any).discountSemestralPercent ?? 0;
-    else if (period === 'annual') discount = (plan as any).discountAnnualPercent ?? 0;
+    if (period === 'monthly') discount = plan.discountMonthlyPercent ?? 0;
+    else if (period === 'semestral') discount = plan.discountSemestralPercent ?? 0;
+    else if (period === 'annual') discount = plan.discountAnnualPercent ?? 0;
 
     const price = discount > 0 ? rawPrice * (1 - discount / 100) : rawPrice;
 
@@ -1047,15 +1066,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (accountType === 'freelancer') {
       const plan = getPlan(tier as Tier, data.vipPlans);
       originalPrice = plan?.prices?.[period] ?? 0;
-      if (period === 'monthly') discount = (plan as any).discountMonthlyPercent ?? 0;
-      else if (period === 'semestral') discount = (plan as any).discountSemestralPercent ?? 0;
-      else if (period === 'annual') discount = (plan as any).discountAnnualPercent ?? 0;
+      if (period === 'monthly') discount = plan.discountMonthlyPercent ?? 0;
+      else if (period === 'semestral') discount = plan.discountSemestralPercent ?? 0;
+      else if (period === 'annual') discount = plan.discountAnnualPercent ?? 0;
     } else {
       const plan = getEstPlan(tier as EstTier, data.estVipPlans);
       originalPrice = plan?.prices?.[period] ?? 0;
-      if (period === 'monthly') discount = (plan as any).discountMonthlyPercent ?? 0;
-      else if (period === 'semestral') discount = (plan as any).discountSemestralPercent ?? 0;
-      else if (period === 'annual') discount = (plan as any).discountAnnualPercent ?? 0;
+      if (period === 'monthly') discount = plan.discountMonthlyPercent ?? 0;
+      else if (period === 'semestral') discount = plan.discountSemestralPercent ?? 0;
+      else if (period === 'annual') discount = plan.discountAnnualPercent ?? 0;
     }
 
     const priceAfterAdminDiscount = discount > 0 ? originalPrice * (1 - discount / 100) : originalPrice;
