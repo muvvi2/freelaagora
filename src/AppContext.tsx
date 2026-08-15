@@ -1018,6 +1018,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     coupons, validateCoupon, addCoupon, toggleCoupon, deleteCoupon, applyCouponToPurchase,
     auditLogs, logAdminAction, adminCreateUser, adminCreateAdmin, removeAdmin: adminRemoveAdmin, adjustWallet, deleteReview, broadcastNotification,
     updateVipPlan, addVipPlan, removeVipPlan, updateEstVipPlan, addEstVipPlan, removeEstVipPlan,
+    defaultFeePercent: data?.config?.defaultFeePercent ?? 15,
   }), [
     data, currentUser, isAdmin, isSuperAdmin, login, register, logout, updateUser, adminUpdateUser, deleteEntity, banUser, unbanUser, setVipTier, setEstVipTier, setTermsAcceptance,
     setAvailability, toggleAvailabilitySlot, toggleDateShift, toggleCategory, addJob, updateJob, deleteJob, pauseJob, applyToJob,
