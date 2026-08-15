@@ -150,6 +150,8 @@ export interface EstVipPlan {
   priceSlot3?: number;
   features: string[];
   prices: Record<Period, number>;
+  discountSemestralPercent?: number;
+  discountAnnualPercent?: number;
 }
 
 export type JobStatus = 'active' | 'paused' | 'closed';
