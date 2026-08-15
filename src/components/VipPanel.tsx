@@ -97,8 +97,21 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
   };
 
   const calculateTotalPlanPrice = (planObj: any) => {
-    const basePrice = planObj.prices[period];
-    return appliedCoupon ? Math.round(basePrice * (1 - appliedCoupon.discountPercentage / 100) * 100) / 100 : basePrice;
+    const rawPrice = planObj.prices[period];
+    let basePrice = rawPrice;
+
+    // Se o preço base não foi customizado para o período e há porcentagem de desconto do admin cadastrada:
+    if (period === 'semestral' && (planObj.discountSemestralPercent ?? 0) > 0) {
+      const monthlyPrice = planObj.prices.monthly || (rawPrice / 6);
+      const totalWithoutDiscount = monthlyPrice * 6;
+      basePrice = totalWithoutDiscount * (1 - planObj.discountSemestralPercent / 100);
+    } else if (period === 'annual' && (planObj.discountAnnualPercent ?? 0) > 0) {
+      const monthlyPrice = planObj.prices.monthly || (rawPrice / 12);
+      const totalWithoutDiscount = monthlyPrice * 12;
+      basePrice = totalWithoutDiscount * (1 - planObj.discountAnnualPercent / 100);
+    }
+
+    return appliedCoupon ? Math.round(basePrice * (1 - appliedCoupon.discountPercentage / 100) * 100) / 100 : Math.round(basePrice * 100) / 100;
   };
 
   const handleEstPlanClick = (plan: EstVipPlan) => {
@@ -230,18 +243,31 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
             </div>
           </div>
 
-          <div className="flex gap-1.5 rounded-xl border border-neutral-800 bg-neutral-900 p-1.5 shadow-inner">
-            {(['monthly', 'semestral', 'annual'] as Period[]).map((p) => (
-              <button 
-                key={p} 
-                onClick={() => setPeriod(p)} 
-                className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition ${period === p ? 'bg-primary-600 text-white shadow-md' : 'text-neutral-400 hover:text-white'}`}
-              >
-                {periodLabel(p)} {p !== 'monthly' && <span className="block text-[10px] text-success-400 font-bold uppercase tracking-wider">economize</span>}
-              </button>
-            ))}
+          <div className="flex flex-col sm:flex-row items-center gap-3">
+            <div className="flex gap-1.5 rounded-xl border border-neutral-800 bg-neutral-900 p-1.5 shadow-inner w-full sm:w-auto">
+              {(['monthly', 'semestral', 'annual'] as Period[]).map((p) => {
+                const discountTag = p === 'semestral' ? estVipPlansList[1]?.discountSemestralPercent : p === 'annual' ? estVipPlansList[1]?.discountAnnualPercent : 0;
+                return (
+                  <button 
+                    key={p} 
+                    onClick={() => setPeriod(p)} 
+                    className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition relative ${period === p ? 'bg-primary-600 text-white shadow-md' : 'text-neutral-400 hover:text-white'}`}
+                  >
+                    {periodLabel(p)} 
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
+
+        {/* Tag informativa de desconto ativo no período selecionado */}
+        {period !== 'monthly' && (
+          <div className="flex items-center gap-2 rounded-xl bg-primary-500/10 border border-primary-500/30 px-4 py-2 text-xs text-primary-300">
+            <Sparkles className="h-4 w-4 text-primary-400" />
+            <span>Exibindo valores para o plano <strong>{periodLabel(period)}</strong> com descontos promocionais aplicados automaticamente.</span>
+          </div>
+        )}
 
         {accountType === 'freelancer' ? (
           <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
@@ -249,9 +275,18 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
               const Icon = tierIcon[plan.tier]; 
               const active = currentTier === plan.tier; 
               const finalPlanPrice = calculateTotalPlanPrice(plan);
+              const planDiscount = period === 'semestral' ? plan.discountSemestralPercent : period === 'annual' ? plan.discountAnnualPercent : 0;
+
               return (
                 <div key={plan.tier} className={`relative flex flex-col justify-between rounded-2xl border-2 bg-neutral-900 p-6 transition shadow-xl ${tierTone[plan.tier]} ${active ? 'ring-2 ring-primary-500 bg-neutral-900/90' : 'hover:border-neutral-700'}`}>
                   {active && <div className="absolute -top-3.5 left-5"><Badge tone="primary">Plano Ativo</Badge></div>}
+                  {period !== 'monthly' && (planDiscount ?? 0) > 0 && (
+                    <div className="absolute -top-3.5 right-5">
+                      <span className="inline-flex items-center rounded-full bg-success-500 px-2.5 py-0.5 text-[10px] font-extrabold text-white shadow-sm">
+                        -{planDiscount}% OFF
+                      </span>
+                    </div>
+                  )}
                   <div>
                     <div className="mb-4 flex items-center gap-3">
                       <div className="p-2.5 rounded-xl bg-neutral-800 border border-neutral-700">
@@ -302,9 +337,18 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
                 const active = currentEstTier === plan.tier; 
                 const finalPlanPrice = calculateTotalPlanPrice(plan);
                 const feeDisplay = plan.feePercent ?? (plan as any).intermediationFee ?? 15;
+                const planDiscount = period === 'semestral' ? plan.discountSemestralPercent : period === 'annual' ? plan.discountAnnualPercent : 0;
+
                 return (
                   <div key={plan.tier} className={`relative flex flex-col justify-between rounded-2xl border-2 bg-neutral-900 p-6 transition shadow-xl ${estTierTone[plan.tier]} ${active ? 'ring-2 ring-primary-500 bg-neutral-900/90' : 'hover:border-neutral-700'}`}>
                     {active && <div className="absolute -top-3.5 left-5"><Badge tone="primary">Plano Ativo</Badge></div>}
+                    {period !== 'monthly' && (planDiscount ?? 0) > 0 && (
+                      <div className="absolute -top-3.5 right-5">
+                        <span className="inline-flex items-center rounded-full bg-success-500 px-2.5 py-0.5 text-[10px] font-extrabold text-white shadow-sm">
+                          -{planDiscount}% OFF
+                        </span>
+                      </div>
+                    )}
                     <div>
                       <div className="mb-4 flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
