@@ -545,12 +545,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setVipTier = useCallback((id: string, tier: Tier, period: Period = 'monthly'): { ok: boolean; error?: string } => {
     if (!data) return { ok: false, error: 'Sistema carregando.' };
     const user = data.users.find(u => u.id === id);
-    const price = getPlan(tier, data.vipPlans).prices[period];
+    const plan = getPlan(tier, data.vipPlans);
+    const rawPrice = plan.prices[period] ?? 0;
+    
+    let discount = 0;
+    if (period === 'monthly') discount = (plan as any).discountMonthlyPercent ?? 0;
+    else if (period === 'semestral') discount = (plan as any).discountSemestralPercent ?? 0;
+    else if (period === 'annual') discount = (plan as any).discountAnnualPercent ?? 0;
+
+    const price = discount > 0 ? rawPrice * (1 - discount / 100) : rawPrice;
+
     if (tier !== 'free' && price > 0 && (user?.walletBalance ?? 0) < price) {
       return { ok: false, error: 'Saldo insuficiente na carteira.' };
     }
     const expiry = tier === 'free' ? undefined : new Date(Date.now() + (period === 'annual' ? 365 : period === 'semestral' ? 180 : 30) * 86400000).toISOString();
-    const newTxs: WalletTx[] = price > 0 ? [{ id: crypto.randomUUID(), userId: id, type: 'vip_charge', amount: -price, description: `Assinatura ${getPlan(tier, data.vipPlans).label} (${period})`, date: new Date().toISOString() }] : [];
+    const newTxs: WalletTx[] = price > 0 ? [{ id: crypto.randomUUID(), userId: id, type: 'vip_charge', amount: -price, description: `Assinatura ${plan.label} (${period})`, date: new Date().toISOString() }] : [];
     setData((d) => ({
       ...d,
       users: d.users.map((u) => (u.id === id ? { ...u, vipTier: tier, vipExpiresAt: expiry, walletBalance: Math.max(0, (u.walletBalance ?? 0) - price) } : u)),
@@ -567,13 +576,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setEstVipTier = useCallback((id: string, tier: EstTier, period: Period = 'monthly'): { ok: boolean; error?: string } => {
     if (!data) return { ok: false, error: 'Sistema carregando.' };
     const user = data.users.find(u => u.id === id);
-    const price = getEstPlan(tier, data.estVipPlans).prices[period];
+    const plan = getEstPlan(tier, data.estVipPlans);
+    const rawPrice = plan.prices[period] ?? 0;
+
+    let discount = 0;
+    if (period === 'monthly') discount = (plan as any).discountMonthlyPercent ?? 0;
+    else if (period === 'semestral') discount = (plan as any).discountSemestralPercent ?? 0;
+    else if (period === 'annual') discount = (plan as any).discountAnnualPercent ?? 0;
+
+    const price = discount > 0 ? rawPrice * (1 - discount / 100) : rawPrice;
+
     if (tier !== 'free' && tier !== 'trial' && price > 0 && (user?.walletBalance ?? 0) < price) {
       return { ok: false, error: 'Saldo insuficiente na carteira.' };
     }
     const expiry = (tier === 'free' || tier === 'trial') ? undefined : new Date(Date.now() + (period === 'annual' ? 365 : period === 'semestral' ? 180 : 30) * 86400000).toISOString();
     const newTrialEndsAt = (tier !== 'free' && tier !== 'trial') ? undefined : user?.trialEndsAt;
-    const newTxs: WalletTx[] = price > 0 ? [{ id: crypto.randomUUID(), userId: id, type: 'vip_charge_est', amount: -price, description: `Assinatura ${getEstPlan(tier, data.estVipPlans).label} (${period})`, date: new Date().toISOString() }] : [];
+    const newTxs: WalletTx[] = price > 0 ? [{ id: crypto.randomUUID(), userId: id, type: 'vip_charge_est', amount: -price, description: `Assinatura ${plan.label} (${period})`, date: new Date().toISOString() }] : [];
     
     setData((d) => ({
       ...d,
@@ -1021,8 +1039,72 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [setData]);
 
   const applyCouponToPurchase = useCallback((userId: string, tier: Tier | EstTier, period: Period, coupon: Coupon, accountType: 'freelancer' | 'establishment') => {
-    return { ok: true, discountedPrice: 0 };
-  }, []);
+    if (!data) return { ok: false, error: 'Sistema carregando.' };
+    
+    let originalPrice = 0;
+    let discount = 0;
+
+    if (accountType === 'freelancer') {
+      const plan = getPlan(tier as Tier, data.vipPlans);
+      originalPrice = plan?.prices?.[period] ?? 0;
+      if (period === 'monthly') discount = (plan as any).discountMonthlyPercent ?? 0;
+      else if (period === 'semestral') discount = (plan as any).discountSemestralPercent ?? 0;
+      else if (period === 'annual') discount = (plan as any).discountAnnualPercent ?? 0;
+    } else {
+      const plan = getEstPlan(tier as EstTier, data.estVipPlans);
+      originalPrice = plan?.prices?.[period] ?? 0;
+      if (period === 'monthly') discount = (plan as any).discountMonthlyPercent ?? 0;
+      else if (period === 'semestral') discount = (plan as any).discountSemestralPercent ?? 0;
+      else if (period === 'annual') discount = (plan as any).discountAnnualPercent ?? 0;
+    }
+
+    const priceAfterAdminDiscount = discount > 0 ? originalPrice * (1 - discount / 100) : originalPrice;
+    const finalPrice = priceAfterAdminDiscount * (1 - coupon.discountPercentage / 100);
+    const roundedPrice = Math.round(finalPrice * 100) / 100;
+
+    const user = data.users.find(u => u.id === userId);
+    if ((user?.walletBalance ?? 0) < roundedPrice) {
+      return { ok: false, error: 'Saldo insuficiente na carteira.' };
+    }
+
+    const expiry = tier === 'free' ? undefined : new Date(Date.now() + (period === 'annual' ? 365 : period === 'semestral' ? 180 : 30) * 86400000).toISOString();
+    const planLabel = accountType === 'freelancer' ? getPlan(tier as Tier, data.vipPlans).label : getEstPlan(tier as EstTier, data.estVipPlans).label;
+    
+    const newTx: WalletTx = {
+      id: crypto.randomUUID(),
+      userId,
+      type: accountType === 'freelancer' ? 'vip_charge' : 'vip_charge_est',
+      amount: -roundedPrice,
+      description: `Assinatura ${planLabel} (${period}) c/ Cupom ${coupon.code}`,
+      date: new Date().toISOString()
+    };
+
+    setData((d) => ({
+      ...d,
+      users: d.users.map((u) => {
+        if (u.id !== userId) return u;
+        if (accountType === 'freelancer') {
+          return { ...u, vipTier: tier as Tier, vipExpiresAt: expiry, walletBalance: Math.max(0, (u.walletBalance ?? 0) - roundedPrice) };
+        } else {
+          return { ...u, estVipTier: tier as EstTier, estVipExpiresAt: expiry, walletBalance: Math.max(0, (u.walletBalance ?? 0) - roundedPrice) };
+        }
+      }),
+      walletTxs: [newTx, ...d.walletTxs]
+    }));
+
+    if (accountType === 'freelancer') {
+      void dbUpdateUser(userId, { vipTier: tier as Tier, vipExpiresAt: expiry }).catch(() => {});
+    } else {
+      void dbUpdateUser(userId, { estVipTier: tier as EstTier, est_vip_tier: tier as EstTier, estVipExpiresAt: expiry }).catch(() => {});
+    }
+
+    if (roundedPrice > 0) {
+      void dbInsertWalletTx(newTx).catch(() => {});
+      if (user) void dbUpdateWalletBalance(userId, Math.max(0, (user.walletBalance ?? 0) - roundedPrice)).catch(() => {});
+    }
+
+    return { ok: true, discountedPrice: roundedPrice };
+  }, [data, setData]);
 
   const auditLogs = useMemo(() => data?.adminAuditLogs ?? [], [data?.adminAuditLogs]);
   const logAdminAction = useCallback((action: string, targetUserId?: string) => {
