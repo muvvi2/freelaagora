@@ -97,18 +97,21 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
   };
 
   const calculateTotalPlanPrice = (planObj: any) => {
-    const rawPrice = planObj.prices[period];
+    const rawPrice = planObj.prices?.[period] ?? 0;
     let basePrice = rawPrice;
 
-    // Se o preço base não foi customizado para o período e há porcentagem de desconto do admin cadastrada:
-    if (period === 'semestral' && (planObj.discountSemestralPercent ?? 0) > 0) {
-      const monthlyPrice = planObj.prices.monthly || (rawPrice / 6);
-      const totalWithoutDiscount = monthlyPrice * 6;
-      basePrice = totalWithoutDiscount * (1 - planObj.discountSemestralPercent / 100);
-    } else if (period === 'annual' && (planObj.discountAnnualPercent ?? 0) > 0) {
-      const monthlyPrice = planObj.prices.monthly || (rawPrice / 12);
-      const totalWithoutDiscount = monthlyPrice * 12;
-      basePrice = totalWithoutDiscount * (1 - planObj.discountAnnualPercent / 100);
+    // Lê a porcentagem configurada diretamente no plano específico
+    let discountPercent = 0;
+    if (period === 'monthly') {
+      discountPercent = planObj.discountMonthlyPercent ?? 0;
+    } else if (period === 'semestral') {
+      discountPercent = planObj.discountSemestralPercent ?? 0;
+    } else if (period === 'annual') {
+      discountPercent = planObj.discountAnnualPercent ?? 0;
+    }
+
+    if (discountPercent > 0) {
+      basePrice = rawPrice * (1 - discountPercent / 100);
     }
 
     return appliedCoupon ? Math.round(basePrice * (1 - appliedCoupon.discountPercentage / 100) * 100) / 100 : Math.round(basePrice * 100) / 100;
@@ -246,7 +249,6 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
           <div className="flex flex-col sm:flex-row items-center gap-3">
             <div className="flex gap-1.5 rounded-xl border border-neutral-800 bg-neutral-900 p-1.5 shadow-inner w-full sm:w-auto">
               {(['monthly', 'semestral', 'annual'] as Period[]).map((p) => {
-                const discountTag = p === 'semestral' ? estVipPlansList[1]?.discountSemestralPercent : p === 'annual' ? estVipPlansList[1]?.discountAnnualPercent : 0;
                 return (
                   <button 
                     key={p} 
@@ -261,11 +263,10 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
           </div>
         </div>
 
-        {/* Tag informativa de desconto ativo no período selecionado */}
         {period !== 'monthly' && (
           <div className="flex items-center gap-2 rounded-xl bg-primary-500/10 border border-primary-500/30 px-4 py-2 text-xs text-primary-300">
             <Sparkles className="h-4 w-4 text-primary-400" />
-            <span>Exibindo valores para o plano <strong>{periodLabel(period)}</strong> com descontos promocionais aplicados automaticamente.</span>
+            <span>Exibindo valores para o plano <strong>{periodLabel(period)}</strong> com os descontos configurados pelo administrador aplicados.</span>
           </div>
         )}
 
@@ -275,12 +276,12 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
               const Icon = tierIcon[plan.tier]; 
               const active = currentTier === plan.tier; 
               const finalPlanPrice = calculateTotalPlanPrice(plan);
-              const planDiscount = period === 'semestral' ? plan.discountSemestralPercent : period === 'annual' ? plan.discountAnnualPercent : 0;
+              const planDiscount = period === 'monthly' ? plan.discountMonthlyPercent : period === 'semestral' ? plan.discountSemestralPercent : plan.discountAnnualPercent;
 
               return (
                 <div key={plan.tier} className={`relative flex flex-col justify-between rounded-2xl border-2 bg-neutral-900 p-6 transition shadow-xl ${tierTone[plan.tier]} ${active ? 'ring-2 ring-primary-500 bg-neutral-900/90' : 'hover:border-neutral-700'}`}>
                   {active && <div className="absolute -top-3.5 left-5"><Badge tone="primary">Plano Ativo</Badge></div>}
-                  {period !== 'monthly' && (planDiscount ?? 0) > 0 && (
+                  {(planDiscount ?? 0) > 0 && (
                     <div className="absolute -top-3.5 right-5">
                       <span className="inline-flex items-center rounded-full bg-success-500 px-2.5 py-0.5 text-[10px] font-extrabold text-white shadow-sm">
                         -{planDiscount}% OFF
@@ -299,7 +300,7 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
                     </div>
                     <div className="my-5">
                       <span className="font-display text-4xl font-extrabold text-white">
-                        {finalPlanPrice === 0 ? 'Grátis' : <>{appliedCoupon && <span className="mr-2 text-base text-neutral-500 line-through">{formatCurrency(plan.prices[period])}</span>}{formatCurrency(finalPlanPrice)}</>}
+                        {finalPlanPrice === 0 ? 'Grátis' : <>{(planDiscount ?? 0) > 0 || appliedCoupon ? <span className="mr-2 text-base text-neutral-500 line-through">{formatCurrency(plan.prices[period])}</span> : null}{formatCurrency(finalPlanPrice)}</>}
                       </span>
                       {finalPlanPrice > 0 && <span className="text-xs font-medium text-neutral-400">/{periodLabel(period).toLowerCase()}</span>}
                     </div>
@@ -337,12 +338,12 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
                 const active = currentEstTier === plan.tier; 
                 const finalPlanPrice = calculateTotalPlanPrice(plan);
                 const feeDisplay = plan.feePercent ?? (plan as any).intermediationFee ?? 15;
-                const planDiscount = period === 'semestral' ? plan.discountSemestralPercent : period === 'annual' ? plan.discountAnnualPercent : 0;
+                const planDiscount = period === 'monthly' ? plan.discountMonthlyPercent : period === 'semestral' ? plan.discountSemestralPercent : plan.discountAnnualPercent;
 
                 return (
                   <div key={plan.tier} className={`relative flex flex-col justify-between rounded-2xl border-2 bg-neutral-900 p-6 transition shadow-xl ${estTierTone[plan.tier]} ${active ? 'ring-2 ring-primary-500 bg-neutral-900/90' : 'hover:border-neutral-700'}`}>
                     {active && <div className="absolute -top-3.5 left-5"><Badge tone="primary">Plano Ativo</Badge></div>}
-                    {period !== 'monthly' && (planDiscount ?? 0) > 0 && (
+                    {(planDiscount ?? 0) > 0 && (
                       <div className="absolute -top-3.5 right-5">
                         <span className="inline-flex items-center rounded-full bg-success-500 px-2.5 py-0.5 text-[10px] font-extrabold text-white shadow-sm">
                           -{planDiscount}% OFF
@@ -362,7 +363,7 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
 
                       <div className="my-5">
                         <span className="font-display text-4xl font-extrabold text-white">
-                          {finalPlanPrice === 0 ? 'Grátis' : <>{appliedCoupon && <span className="mr-2 text-base text-neutral-500 line-through">{formatCurrency(plan.prices[period])}</span>}{formatCurrency(finalPlanPrice)}</>}
+                          {finalPlanPrice === 0 ? 'Grátis' : <>{(planDiscount ?? 0) > 0 || appliedCoupon ? <span className="mr-2 text-base text-neutral-500 line-through">{formatCurrency(plan.prices[period])}</span> : null}{formatCurrency(finalPlanPrice)}</>}
                         </span>
                         {finalPlanPrice > 0 && <span className="text-xs font-medium text-neutral-400">/{periodLabel(period).toLowerCase()}</span>}
                       </div>
