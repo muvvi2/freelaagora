@@ -7,8 +7,26 @@
  */
 
 import type { PaymentProviderId, PaymentProviderConfig, PaymentSettings } from '@/types';
-import { PAYMENT_PROVIDERS } from '@/types';
 import { supabase } from '@/lib/supabase';
+
+export interface PaymentProviderInfo {
+  id: PaymentProviderId;
+  label: string;
+  docsUrl: string;
+  signupUrl: string;
+  supportsPix: boolean;
+  supportsBoleto: boolean;
+  supportsCard: boolean;
+  supportsSplit: boolean;
+}
+
+export const PAYMENT_PROVIDERS: PaymentProviderInfo[] = [
+  { id: 'asaas', label: 'Asaas', docsUrl: 'https://docs.asaas.com/', signupUrl: 'https://www.asaas.com/r/FREELAAGORA', supportsPix: true, supportsBoleto: true, supportsCard: true, supportsSplit: true },
+  { id: 'mercadopago', label: 'Mercado Pago', docsUrl: 'https://www.mercadopago.com.br/developers/pt/', signupUrl: 'https://www.mercadopago.com.br/', supportsPix: true, supportsBoleto: true, supportsCard: true, supportsSplit: true },
+  { id: 'pagseguro', label: 'PagSeguro', docsUrl: 'https://dev.pagseguro.uol.com.br/', signupUrl: 'https://pagseguro.uol.com.br/', supportsPix: true, supportsBoleto: true, supportsCard: true, supportsSplit: false },
+  { id: 'stone', label: 'Stone (Ton)', docsUrl: 'https://docs.ton.com.br/', signupUrl: 'https://ton.com.br/', supportsPix: true, supportsBoleto: false, supportsCard: true, supportsSplit: true },
+  { id: 'inter', label: 'Banco Inter', docsUrl: 'https://developers.bancointer.com.br/', signupUrl: 'https://www.bancointer.com.br/', supportsPix: true, supportsBoleto: true, supportsCard: false, supportsSplit: false },
+];
 
 export interface SplitReceiver {
   walletId: string;
@@ -174,7 +192,7 @@ class MultiPaymentProvider {
       customerName: input.customerName || 'Cliente Pagante',
       customerEmail: input.customerEmail || 'cliente@freelaagora.com',
       customerCpfCnpj: input.cpfCnpj || '',
-      splits: input.splits || [], // <--- Repassa o array de splits com a wallet do freelancer para a Edge Function
+      splits: input.splits || [],
     });
     return {
       id: data.id as string,
