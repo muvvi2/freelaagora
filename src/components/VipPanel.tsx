@@ -306,18 +306,13 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
                         <p className="text-xs uppercase tracking-wider text-neutral-400">{plan.tier}</p>
                       </div>
                     </div>
-                    <div className="my-5">
+                    <div className="my-5 flex flex-col gap-1">
+                      {details.discountPercent > 0 && details.finalPrice !== details.originalPrice ? (
+                        <span className="text-xs sm:text-sm text-neutral-300 line-through font-semibold">{formatCurrency(details.originalPrice)}</span>
+                      ) : null}
                       <span className="font-display text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                        {details.finalPrice === 0 ? 'Grátis' : (
-                          <>
-                            {details.discountPercent > 0 && details.finalPrice !== details.originalPrice ? (
-                              <span className="mr-2 text-xs sm:text-sm text-neutral-500 line-through">{formatCurrency(details.originalPrice)}</span>
-                            ) : null}
-                            {formatCurrency(details.finalPrice)}
-                          </>
-                        )}
+                        {details.finalPrice === 0 ? 'Grátis' : formatCurrency(details.finalPrice)}
                       </span>
-                      {details.finalPrice > 0 && <span className="text-xs font-medium text-neutral-400">/{periodLabel(period).toLowerCase()}</span>}
                     </div>
                     <ul className="space-y-3 border-t border-neutral-800 pt-5">
                       {plan.features.map((f) => (
@@ -375,18 +370,13 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
                         </span>
                       </div>
 
-                      <div className="my-5">
+                      <div className="my-5 flex flex-col gap-1">
+                        {details.discountPercent > 0 && details.finalPrice !== details.originalPrice ? (
+                          <span className="text-xs sm:text-sm text-neutral-300 line-through font-semibold">{formatCurrency(details.originalPrice)}</span>
+                        ) : null}
                         <span className="font-display text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                          {details.finalPrice === 0 ? 'Grátis' : (
-                            <>
-                              {details.discountPercent > 0 && details.finalPrice !== details.originalPrice ? (
-                                <span className="mr-2 text-xs sm:text-sm text-neutral-500 line-through">{formatCurrency(details.originalPrice)}</span>
-                              ) : null}
-                              {formatCurrency(details.finalPrice)}
-                            </>
-                          )}
+                          {details.finalPrice === 0 ? 'Grátis' : formatCurrency(details.finalPrice)}
                         </span>
-                        {details.finalPrice > 0 && <span className="text-xs font-medium text-neutral-400">/{periodLabel(period).toLowerCase()}</span>}
                       </div>
 
                       <ul className="space-y-3 border-t border-neutral-800 pt-5">
@@ -467,7 +457,7 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
 }
 
 function BillingTypeSelector({ billingType, setBillingType, paymentReady, providerLabel }: { billingType: BillingType; setBillingType: (b: BillingType) => void; paymentReady: boolean; providerLabel: string }) {
-  const finalOptions = paymentReady ? BILLING_OPTIONS : BILLING_OPTIONS.filter((o) => o.id === 'WALLET');
+  const finalOptions = paymentReady ? BILLOS_OPTIONS ?? BILLING_OPTIONS : BILLING_OPTIONS.filter((o) => o.id === 'WALLET');
   return (
     <div>
       <label className="mb-1.5 block text-xs font-semibold text-neutral-500">Forma de pagamento</label>
