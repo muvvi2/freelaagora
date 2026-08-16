@@ -369,7 +369,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       })
 
-      // 17. reviews (segunda tabela de avaliações do banco)
+      // 17. reviews
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, (payload) => {
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
           setDataState((prev) => {
@@ -897,10 +897,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     void dbUpdateContractStatus(contractId, 'checked_in').catch(() => {});
   }, [data, setData]);
 
-  const finishService = useCallback((contractId: string) => {
-    if (!data) return;
+  const finishService = useCallback((contractId: string): { ok: boolean; error?: string } => {
+    if (!data) return { ok: false, error: 'Sistema carregando.' };
     const c = data.contracts.find((x) => x.id === contractId);
-    if (!c) return;
+    if (!c) return { ok: false, error: 'Contrato não encontrado.' };
+
+    // 🛡️ TRAVA DE TEMPO DO TURNO: Proíbe finalizar antes de cumprir a carga horária contratada a partir do check-in
+    const checkedInEvent = (c.history || []).reverse().find(h => h.status === 'checked_in');
+    if (checkedInEvent && c.hours) {
+      const checkInTime = new Date(checkedInEvent.at).getTime();
+      const requiredHoursMs = c.hours * 3600 * 1000;
+      const elapsedTime = Date.now() - checkInTime;
+
+      if (elapsedTime < requiredHoursMs) {
+        const remainingMinutes = Math.ceil((requiredHoursMs - elapsedTime) / 60000);
+        const remainingHours = (remainingMinutes / 60).toFixed(1);
+        return { ok: false, error: `O serviço só poderá ser finalizado após o término das ${c.hours}h contratadas. Faltam aprox. ${remainingHours}h.` };
+      }
+    }
+
     const flRelease: WalletTx = { id: crypto.randomUUID(), userId: c.freelancerId, type: 'escrow_release', amount: c.freelancerFee, description: `Repasse — ${c.establishmentName}`, contractId, date: new Date().toISOString() };
     const adminFee: WalletTx = { id: crypto.randomUUID(), userId: ADMIN_ID, type: 'platform_fee', amount: c.platformFee, description: `Taxa (${c.platformFeePercentage}%)`, contractId, date: new Date().toISOString() };
     const updatedHistory = [...(c.history || []), { status: 'completed' as ContractStatus, at: new Date().toISOString() }];
@@ -913,6 +928,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     void dbUpdateContractStatus(contractId, 'completed').catch(() => {});
     void dbInsertWalletTx(flRelease).catch(() => {});
     void dbInsertWalletTx(adminFee).catch(() => {});
+
+    return { ok: true };
   }, [data, setData]);
 
   const cancelContract = useCallback((contractId: string) => {
@@ -920,8 +937,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const c = data.contracts.find(x => x.id === contractId);
     if (!c) return;
 
+    // 🛡️ TRAVA DE SEGURANÇA CRÍTICA: Proíbe o cancelamento se o contrato já passou da fase inicial
+    const isAlreadyInProgressOrDone = ['check_in_pending', 'checked_in', 'completed', 'cancelled'].includes(c.status);
+    if (isAlreadyInProgressOrDone) {
+      console.warn("⚠️ Tentativa de cancelamento bloqueada: O contrato já está em andamento ou finalizado.");
+      return;
+    }
+
     const est = data.users.find(u => u.id === c.establishmentId);
-    const wasPaid = c.status === 'paid' || c.status === 'check_in_pending' || c.status === 'checked_in';
+    const wasPaid = c.status === 'paid';
 
     const refundAmount = wasPaid ? c.total : 0;
     const newWalletBalance = (est?.walletBalance ?? 0) + refundAmount;
