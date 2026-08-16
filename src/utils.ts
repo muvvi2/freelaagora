@@ -53,18 +53,20 @@ export function emptyAddress(): Address {
 
 // --- Freelancer VIP ---
 export function getPlan(tier: Tier, plans?: VipPlan[]): VipPlan {
-  const arr = plans ?? VIP_PLANS;
-  const found = arr.find((p) => p.tier === tier) ?? arr[0];
+  const arr = plans && plans.length > 0 ? plans : VIP_PLANS;
+  const found = arr.find((p) => String(p.tier).toLowerCase() === String(tier).toLowerCase()) ?? arr[0];
   return {
     ...found,
-    discountMonthlyPercent: (found as any).discountMonthlyPercent ?? (found as any).discount_monthly_percent ?? 0,
-    discountSemestralPercent: (found as any).discountSemestralPercent ?? (found as any).discount_semestral_percent ?? 0,
-    discountAnnualPercent: (found as any).discountAnnualPercent ?? (found as any).discount_annual_percent ?? 0,
+    prices: found.prices ?? { monthly: 0, semestral: 0, annual: 0 },
+    discountMonthlyPercent: Number((found as any).discountMonthlyPercent ?? (found as any).discount_monthly_percent ?? 0),
+    discountSemestralPercent: Number((found as any).discountSemestralPercent ?? (found as any).discount_semestral_percent ?? 0),
+    discountAnnualPercent: Number((found as any).discountAnnualPercent ?? (found as any).discount_annual_percent ?? 0),
   };
 }
 
 export function planPrice(tier: Tier, period: Period, plans?: VipPlan[]): number {
-  return getPlan(tier, plans).prices[period];
+  const plan = getPlan(tier, plans);
+  return plan.prices?.[period] ?? 0;
 }
 
 export function periodLabel(p: Period): string {
@@ -78,18 +80,23 @@ export function canSelectCategories(tier: Tier, currentCount: number, plans?: Vi
 
 // --- Establishment VIP ---
 export function getEstPlan(tier: EstTier, plans?: EstVipPlan[]): EstVipPlan {
-  const arr = plans ?? EST_VIP_PLANS;
-  const found = arr.find((p) => p.tier === tier) ?? arr[0];
+  const arr = plans && plans.length > 0 ? plans : EST_VIP_PLANS;
+  const found = arr.find((p) => String(p.tier).toLowerCase() === String(tier).toLowerCase()) ?? arr[0];
+  const fee = (found as any).intermediationFee ?? (found as any).feePercent ?? (found as any).intermediation_fee_percentage ?? 15;
   return {
     ...found,
-    discountMonthlyPercent: (found as any).discountMonthlyPercent ?? (found as any).discount_monthly_percent ?? 0,
-    discountSemestralPercent: (found as any).discountSemestralPercent ?? (found as any).discount_semestral_percent ?? 0,
-    discountAnnualPercent: (found as any).discountAnnualPercent ?? (found as any).discount_annual_percent ?? 0,
+    prices: found.prices ?? { monthly: 0, semestral: 0, annual: 0 },
+    intermediationFee: Number(fee),
+    feePercent: Number(fee),
+    discountMonthlyPercent: Number((found as any).discountMonthlyPercent ?? (found as any).discount_monthly_percent ?? 0),
+    discountSemestralPercent: Number((found as any).discountSemestralPercent ?? (found as any).discount_semestral_percent ?? 0),
+    discountAnnualPercent: Number((found as any).discountAnnualPercent ?? (found as any).discount_annual_percent ?? 0),
   };
 }
 
 export function estPlanPrice(tier: EstTier, period: Period, plans?: EstVipPlan[]): number {
-  return getEstPlan(tier, plans).prices[period];
+  const plan = getEstPlan(tier, plans);
+  return plan.prices?.[period] ?? 0;
 }
 
 export function isEstablishmentOnTrial(user: User): boolean {
@@ -106,7 +113,7 @@ export function isEstablishmentOnTrial(user: User): boolean {
   return false;
 }
 
-// BUSCA A TAXA CONFIGURADA DINAMICAMENTE NO PAINEL ADMIN
+// BUSCA A TAXA CONFIGURADA DINAMICAMENTE NO PAINEL ADMIN COM SUPORTE TOTAL A DADOS DO BANCO
 export function getIntermediationFeePercent(
   user: User,
   estPlans?: EstVipPlan[],
@@ -115,47 +122,32 @@ export function getIntermediationFeePercent(
 ): number {
   if (!user || user.accountType !== 'establishment') return defaultFeePercent;
 
-  // 1. Isenção total durante o período de teste grátis (Trial)
+  // 1. Isenção total ou taxa reduzida durante o período de teste grátis (Trial)
   if (isEstablishmentOnTrial(user)) {
     const trialPlan = estPlans?.find((p) => String(p.tier).toLowerCase() === 'trial');
     if (trialPlan) {
-      const fee = trialPlan.feePercent ?? (trialPlan as any).intermediationFee;
+      const fee = (trialPlan as any).intermediationFee ?? (trialPlan as any).feePercent ?? (trialPlan as any).intermediation_fee_percentage;
       if (typeof fee === 'number') return fee;
     }
-    return 0;
+    return 7.5;
   }
 
-  // 2. Trava direta de segurança para VIP 6 / Isento
   const userTier = (user.estVipTier || user.vipTier || 'free').toString().toLowerCase();
-  if (userTier === 'vip6' || userTier.includes('isento')) return 0;
 
-  // 3. Busca no cadastro de planos do Estabelecimento no Admin
+  // 2. Busca direta no array de planos de estabelecimento (que já vem atualizado do Supabase)
   if (estPlans && estPlans.length > 0) {
-    const matchingEstPlan = estPlans.find(
-      (p) => String(p.tier).toLowerCase() === userTier || String(p.id).toLowerCase() === userTier
-    );
-    if (matchingEstPlan) {
-      const fee = matchingEstPlan.feePercent ?? (matchingEstPlan as any).intermediationFee;
-      if (typeof fee === 'number') return fee;
+    const plan = estPlans.find((p) => String(p.tier).toLowerCase() === userTier || String(p.id).toLowerCase() === userTier);
+    if (plan) {
+      const fee = (plan as any).intermediationFee ?? (plan as any).feePercent ?? (plan as any).intermediation_fee_percentage;
+      if (typeof fee === 'number' && !isNaN(fee)) return fee;
     }
   }
 
-  // 4. Busca no cadastro geral de planos VIP do Admin
-  if (vipPlans && vipPlans.length > 0) {
-    const matchingVipPlan = vipPlans.find(
-      (p) => String(p.tier).toLowerCase() === userTier || String(p.id).toLowerCase() === userTier
-    );
-    if (matchingVipPlan) {
-      const fee = matchingVipPlan.feePercent ?? (matchingVipPlan as any).intermediationFee;
-      if (typeof fee === 'number') return fee;
-    }
-  }
-
-  // 5. Fallback para getEstPlan se existir em mock
-  const plan = getEstPlan(user.estVipTier ?? 'free', estPlans);
-  if (plan) {
-    const fee = plan.feePercent ?? (plan as any).intermediationFee;
-    if (typeof fee === 'number') return fee;
+  // 3. Fallback seguro usando getEstPlan
+  const fallbackPlan = getEstPlan(user.estVipTier ?? 'free', estPlans);
+  if (fallbackPlan) {
+    const fee = (fallbackPlan as any).intermediationFee ?? (fallbackPlan as any).feePercent;
+    if (typeof fee === 'number' && !isNaN(fee)) return fee;
   }
 
   return defaultFeePercent;
