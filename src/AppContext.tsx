@@ -23,42 +23,46 @@ export { useApp };
 const ADMIN_ID = '00000000-0000-0000-0000-000000000001';
 const STORAGE_KEY = 'freelaagora_current_user';
 
-// --- MAPEADORES DE PLANOS COM SUPORTE A DESCONTO ---
+// --- MAPEADORES DE PLANOS CORRIGIDOS PARA O BANCO REAL ---
 const mapVipPlan = (raw: any): VipPlan => ({
   tier: raw.tier,
-  label: raw.label ?? '',
-  priceMonthly: Number(raw.price_monthly ?? raw.priceMonthly ?? 0),
-  priceSemestral: Number(raw.price_semestral ?? raw.priceSemestral ?? 0),
-  priceAnnual: Number(raw.price_annual ?? raw.priceAnnual ?? 0),
+  label: raw.name ?? raw.label ?? '',
   maxCategories: Number(raw.max_categories ?? raw.maxCategories ?? 1),
   prices: {
-    monthly: Number(raw.price_monthly ?? raw.priceMonthly ?? 0),
-    semestral: Number(raw.price_semestral ?? raw.priceSemestral ?? 0),
-    annual: Number(raw.price_annual ?? raw.priceAnnual ?? 0),
+    monthly: Number(raw.monthly_price ?? raw.price_monthly ?? raw.priceMonthly ?? 0),
+    semestral: Number(raw.semestral_price ?? raw.price_semestral ?? raw.priceSemestral ?? 0),
+    annual: Number(raw.annual_price ?? raw.price_annual ?? raw.priceAnnual ?? 0),
   },
   discountMonthlyPercent: Number(raw.discount_monthly_percent ?? raw.discountMonthlyPercent ?? 0),
   discountSemestralPercent: Number(raw.discount_semestral_percent ?? raw.discountSemestralPercent ?? 0),
   discountAnnualPercent: Number(raw.discount_annual_percent ?? raw.discountAnnualPercent ?? 0),
+  badge: raw.badge_type ?? raw.badge,
   features: Array.isArray(raw.features) ? raw.features : [],
 });
 
-const mapEstVipPlan = (raw: any): EstVipPlan => ({
-  tier: raw.tier,
-  label: raw.label ?? '',
-  priceMonthly: Number(raw.price_monthly ?? raw.priceMonthly ?? 0),
-  priceSemestral: Number(raw.price_semestral ?? raw.priceSemestral ?? 0),
-  priceAnnual: Number(raw.price_annual ?? raw.priceAnnual ?? 0),
-  feePercent: Number(raw.fee_percent ?? raw.feePercent ?? raw.intermediationFee ?? 15),
-  prices: {
-    monthly: Number(raw.price_monthly ?? raw.priceMonthly ?? 0),
-    semestral: Number(raw.price_semestral ?? raw.priceSemestral ?? 0),
-    annual: Number(raw.price_annual ?? raw.priceAnnual ?? 0),
-  },
-  discountMonthlyPercent: Number(raw.discount_monthly_percent ?? raw.discountMonthlyPercent ?? 0),
-  discountSemestralPercent: Number(raw.discount_semestral_percent ?? raw.discountSemestralPercent ?? 0),
-  discountAnnualPercent: Number(raw.discount_annual_percent ?? raw.discountAnnualPercent ?? 0),
-  features: Array.isArray(raw.features) ? raw.features : [],
-});
+const mapEstVipPlan = (raw: any): EstVipPlan => {
+  const fee = Number(raw.intermediation_fee_percentage ?? raw.fee_percent ?? raw.feePercent ?? raw.intermediationFee ?? 15);
+  return {
+    tier: raw.tier,
+    label: raw.name ?? raw.label ?? '',
+    intermediationFee: fee,
+    feePercent: fee,
+    prices: {
+      monthly: Number(raw.monthly_price ?? raw.price_monthly ?? raw.priceMonthly ?? 0),
+      semestral: Number(raw.semestral_price ?? raw.price_semestral ?? raw.priceSemestral ?? 0),
+      annual: Number(raw.annual_price ?? raw.price_annual ?? raw.priceAnnual ?? 0),
+    },
+    discountMonthlyPercent: Number(raw.discount_monthly_percent ?? raw.discountMonthlyPercent ?? 0),
+    discountSemestralPercent: Number(raw.discount_semestral_percent ?? raw.discountSemestralPercent ?? 0),
+    discountAnnualPercent: Number(raw.discount_annual_percent ?? raw.discountAnnualPercent ?? 0),
+    allowAds: Boolean(raw.allow_ads ?? raw.allowAds ?? false),
+    maxAds: Number(raw.max_ads ?? raw.maxAds ?? 0),
+    priceSlot1: Number(raw.price_slot_1 ?? raw.priceSlot1 ?? 30),
+    priceSlot2: Number(raw.price_slot_2 ?? raw.priceSlot2 ?? 25),
+    priceSlot3: Number(raw.price_slot_3 ?? raw.priceSlot3 ?? 20),
+    features: Array.isArray(raw.features) ? raw.features : [],
+  };
+};
 
 const mapJobRealtime = (raw: any, existingUsers: User[] = [], existingJob?: Job): Job => {
   const estId = raw.establishment_id ?? raw.establishmentId ?? '';
@@ -199,13 +203,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       try {
         const dbData = await loadAllData();
         if (!cancelled && dbData) {
-          // Garante que os planos carregados venham mapeados com os campos de desconto
-          const mappedVipPlans = (dbData.vipPlans ?? initialData.vipPlans).map(mapVipPlan);
-          const mappedEstPlans = (dbData.estVipPlans ?? initialData.estVipPlans).map(mapEstVipPlan);
           setDataState((prev) => ({ 
             ...dbData, 
-            vipPlans: mappedVipPlans,
-            estVipPlans: mappedEstPlans,
             currentUserId: prev.currentUserId ?? dbData.currentUserId 
           }));
         }
@@ -218,7 +217,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, []);
 
-  // 2. Realtime Listener Global Completo (Todas as tabelas do sistema)
+  // 2. Realtime Listener Global Completo
   useEffect(() => {
     const refetchUser = (userId: string) => {
       if (!userId) return;
@@ -242,8 +241,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const channel = supabase
       .channel('global-complete-sync')
-
-      // --- VAGAS ---
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, (payload) => {
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
           setDataState((prev) => {
@@ -260,8 +257,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (id) setDataState((prev) => ({ ...prev, jobs: prev.jobs.filter((j) => j.id !== id) }));
         }
       })
-
-      // --- CANDIDATURAS ---
       .on('postgres_changes', { event: '*', schema: 'public', table: 'job_applicants' }, (payload) => {
         const raw = (payload.new ?? payload.old) as any;
         const jobId = raw?.job_id ?? raw?.jobId;
@@ -276,8 +271,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setDataState((prev) => ({ ...prev, jobs: prev.jobs.map((j) => j.id === jobId ? { ...j, applicants: Array.from(new Set([...(j.applicants || []), freelancerId])) } : j) }));
         }
       })
-
-      // --- USUÁRIOS E PERFIS ---
       .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload) => {
         if (payload.eventType === 'DELETE') {
           const id = (payload.old as any)?.id;
@@ -303,8 +296,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const userId = (payload.new as any)?.freelancer_id ?? (payload.old as any)?.freelancer_id;
         if (userId) refetchUser(userId);
       })
-
-      // --- CONTRATOS ---
       .on('postgres_changes', { event: '*', schema: 'public', table: 'contracts' }, (payload) => {
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
           setDataState((prev) => {
@@ -333,8 +324,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           contracts: prev.contracts.map((c) => c.id === contractId ? { ...c, status, history: [...(c.history || []), event] } : c),
         }));
       })
-
-      // --- NOTIFICAÇÕES ---
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, (payload) => {
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
           const item = mapNotificationRealtime(payload.new as any);
@@ -346,8 +335,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (id) setDataState((prev) => ({ ...prev, notifications: prev.notifications.filter((n) => n.id !== id) }));
         }
       })
-
-      // --- AVALIAÇÕES ---
       .on('postgres_changes', { event: '*', schema: 'public', table: 'contract_reviews' }, (payload) => {
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
           const item = mapReviewRealtime(payload.new as any, data?.users ?? []);
@@ -359,8 +346,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (id) setDataState((prev) => ({ ...prev, reviews: prev.reviews.filter((r) => r.id !== id) }));
         }
       })
-
-      // --- CARTEIRA E TRANSAÇÕES ---
       .on('postgres_changes', { event: '*', schema: 'public', table: 'wallet_transactions' }, (payload) => {
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
           const item = mapWalletTxRealtime(payload.new as any);
@@ -372,8 +357,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (id) setDataState((prev) => ({ ...prev, walletTxs: prev.walletTxs.filter((t) => t.id !== id) }));
         }
       })
-
-      // --- CUPONS ---
       .on('postgres_changes', { event: '*', schema: 'public', table: 'discount_coupons' }, (payload) => {
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
           const item = mapCouponRealtime(payload.new as any);
@@ -385,54 +368,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (id) setDataState((prev) => ({ ...prev, coupons: prev.coupons.filter((c) => c.id !== String(id)) }));
         }
       })
-
-      // --- LOGS DE AUDITORIA ---
       .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_audit_logs' }, (payload) => {
         if (payload.eventType === 'INSERT') {
           const item = mapAuditLogRealtime(payload.new as any);
           setDataState((prev) => ({ ...prev, adminAuditLogs: [item, ...prev.adminAuditLogs] }));
         }
       })
-
-      // --- PLANOS VIP (FREELANCER) ---
       .on('postgres_changes', { event: '*', schema: 'public', table: 'vip_plans_freelancer' }, (payload) => {
         const raw = (payload.new ?? payload.old) as any;
-        const tier = raw?.tier;
-        if (!tier) return;
+        const id = raw?.id;
+        if (!id) return;
         if (payload.eventType === 'DELETE') {
-          setDataState((prev) => ({ ...prev, vipPlans: prev.vipPlans.filter((p) => p.tier !== tier) }));
+          setDataState((prev) => ({ ...prev, vipPlans: prev.vipPlans.filter((_, idx) => idx + 1 !== Number(id)) }));
           return;
         }
         const updatedPlan = mapVipPlan(raw);
-        setDataState((prev) => {
-          const exists = prev.vipPlans.some((p) => p.tier === tier);
-          if (exists) {
-            return { ...prev, vipPlans: prev.vipPlans.map((p) => p.tier === tier ? { ...p, ...updatedPlan } : p) };
-          }
-          return { ...prev, vipPlans: [...prev.vipPlans, updatedPlan] };
-        });
+        setDataState((prev) => ({
+          ...prev,
+          vipPlans: prev.vipPlans.map((p, idx) => (idx + 1 === Number(id) || p.tier === raw.tier) ? { ...p, ...updatedPlan } : p)
+        }));
       })
-
-      // --- PLANOS VIP (ESTABELECIMENTO) ---
       .on('postgres_changes', { event: '*', schema: 'public', table: 'vip_plans_establishment' }, (payload) => {
         const raw = (payload.new ?? payload.old) as any;
-        const tier = raw?.tier;
-        if (!tier) return;
+        const id = raw?.id;
+        if (!id) return;
         if (payload.eventType === 'DELETE') {
-          setDataState((prev) => ({ ...prev, estVipPlans: prev.estVipPlans.filter((p) => p.tier !== tier) }));
+          setDataState((prev) => ({ ...prev, estVipPlans: prev.estVipPlans.filter((_, idx) => idx + 3 !== Number(id)) }));
           return;
         }
         const updatedEstPlan = mapEstVipPlan(raw);
-        setDataState((prev) => {
-          const exists = prev.estVipPlans.some((p) => p.tier === tier);
-          if (exists) {
-            return { ...prev, estVipPlans: prev.estVipPlans.map((p) => p.tier === tier ? { ...p, ...updatedEstPlan } : p) };
-          }
-          return { ...prev, estVipPlans: [...prev.estVipPlans, updatedEstPlan] };
-        });
+        setDataState((prev) => ({
+          ...prev,
+          estVipPlans: prev.estVipPlans.map((p, idx) => {
+            const matchId = idx === 0 ? 3 : idx === 1 ? 4 : idx + 4;
+            return (matchId === Number(id) || p.tier === raw.tier) ? { ...p, ...updatedEstPlan } : p;
+          })
+        }));
       })
-
-      // --- CONFIGURAÇÕES GLOBAIS E DE PAGAMENTO ---
       .on('postgres_changes', { event: '*', schema: 'public', table: 'platform_config' }, (payload) => {
         if (payload.new) {
           setDataState((prev) => ({ ...prev, config: { defaultFeePercent: Number((payload.new as any).default_fee_percent ?? 15) } }));
@@ -454,7 +426,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setDataState((prev) => ({ ...prev, paymentSettings: settings }));
         }
       })
-
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
           console.log("🟢 Canal Realtime global sincronizado com sucesso!");
