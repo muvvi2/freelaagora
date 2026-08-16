@@ -620,63 +620,56 @@ export async function loadAllData(): Promise<AppData> {
     createdAt: row.created_at,
   }));
 
+  const freelancerIdMap: Record<string, number> = { 'free': 1, 'vip1': 2, 'vip2': 3, 'vip3': 4, 'vip4': 5, 'vip5': 6, 'vip6': 7 };
   const vipPlans: VipPlan[] = VIP_PLANS.map(plan => {
-    const targetId = freelancerTierToId(plan.tier);
-    const dbPlan = vipFlRes.data?.find((p: any) => 
-      String(p.id) === String(targetId) || 
-      p.name?.toLowerCase().includes(plan.label.toLowerCase()) ||
-      p.name?.toLowerCase().includes(plan.tier.toLowerCase())
-    ) || vipFlRes.data?.find((p: any) => p.id === plan.tier || p.tier === plan.tier);
+    const targetId = freelancerIdMap[plan.tier];
+    const dbPlan = vipFlRes.data?.find((p: any) => Number(p.id) === targetId);
 
-    if (dbPlan) {
-      return {
-        ...plan,
-        label: dbPlan.name || plan.label,
-        maxCategories: dbPlan.max_categories ?? plan.maxCategories,
-        prices: {
-          monthly: Number(dbPlan.monthly_price ?? plan.prices.monthly),
-          semestral: Number(dbPlan.semestral_price ?? plan.prices.semestral),
-          annual: Number(dbPlan.annual_price ?? plan.prices.annual),
-        },
-        discountMonthlyPercent: Number(dbPlan.discount_monthly_percent ?? dbPlan.discountMonthlyPercent ?? plan.discountMonthlyPercent ?? 0),
-        discountSemestralPercent: Number(dbPlan.discount_semestral_percent ?? dbPlan.discountSemestralPercent ?? plan.discountSemestralPercent ?? 0),
-        discountAnnualPercent: Number(dbPlan.discount_annual_percent ?? dbPlan.discountAnnualPercent ?? plan.discountAnnualPercent ?? 0),
-        badge: dbPlan.badge_type || plan.badge,
-        features: dbPlan.features || plan.features,
-      };
-    }
-    return plan;
+    const prices = dbPlan ? {
+      monthly: Number(dbPlan.monthly_price ?? plan.prices.monthly),
+      semestral: Number(dbPlan.semestral_price ?? plan.prices.semestral),
+      annual: Number(dbPlan.annual_price ?? plan.prices.annual),
+    } : plan.prices;
+
+    return {
+      ...plan,
+      label: dbPlan?.name || plan.label,
+      maxCategories: dbPlan?.max_categories ?? plan.maxCategories,
+      prices,
+      discountMonthlyPercent: Number(dbPlan?.discount_monthly_percent ?? 0),
+      discountSemestralPercent: Number(dbPlan?.discount_semestral_percent ?? 0),
+      discountAnnualPercent: Number(dbPlan?.discount_annual_percent ?? 0),
+      badge: dbPlan?.badge_type || plan.badge,
+      features: dbPlan?.features || plan.features,
+    };
   });
 
+  const establishmentIdMap: Record<string, number> = { 'free': 4, 'trial': 3, 'vip1': 5, 'vip2': 6, 'vip3': 7, 'vip4': 8, 'vip5': 9, 'vip6': 10 };
   const estVipPlans: EstVipPlan[] = EST_VIP_PLANS.map(plan => {
-    const dbPlan = vipEsRes.data?.find((p: any) => 
-      String(p.id) === String(establishmentTierToId(plan.tier)) || 
-      p.name?.toLowerCase().includes(plan.label.toLowerCase()) ||
-      p.name?.toLowerCase().includes(plan.tier.toLowerCase())
-    ) || vipEsRes.data?.find((p: any) => p.id === plan.tier || p.tier === plan.tier);
+    const targetId = establishmentIdMap[plan.tier];
+    const dbPlan = vipEsRes.data?.find((p: any) => Number(p.id) === targetId);
 
-    if (dbPlan) {
-      return {
-        ...plan,
-        label: dbPlan.name || plan.label,
-        intermediationFee: Number(dbPlan.intermediation_fee_percentage ?? dbPlan.intermediationFee ?? plan.intermediationFee),
-        prices: {
-          monthly: Number(dbPlan.monthly_price ?? plan.prices.monthly),
-          semestral: Number(dbPlan.semestral_price ?? plan.prices.semestral),
-          annual: Number(dbPlan.annual_price ?? plan.prices.annual),
-        },
-        discountMonthlyPercent: Number(dbPlan.discount_monthly_percent ?? dbPlan.discountMonthlyPercent ?? plan.discountMonthlyPercent ?? 0),
-        discountSemestralPercent: Number(dbPlan.discount_semestral_percent ?? dbPlan.discountSemestralPercent ?? plan.discountSemestralPercent ?? 0),
-        discountAnnualPercent: Number(dbPlan.discount_annual_percent ?? dbPlan.discountAnnualPercent ?? plan.discountAnnualPercent ?? 0),
-        allowAds: Boolean(dbPlan.allow_ads ?? plan.allowAds ?? false),
-        maxAds: Number(dbPlan.max_ads ?? plan.maxAds ?? 0),
-        priceSlot1: Number(dbPlan.price_slot_1 ?? plan.priceSlot1 ?? 30),
-        priceSlot2: Number(dbPlan.price_slot_2 ?? plan.priceSlot2 ?? 25),
-        priceSlot3: Number(dbPlan.price_slot_3 ?? plan.priceSlot3 ?? 20),
-        features: dbPlan.features || plan.features,
-      };
-    }
-    return plan;
+    const prices = dbPlan ? {
+      monthly: Number(dbPlan.monthly_price ?? plan.prices.monthly),
+      semestral: Number(dbPlan.semestral_price ?? plan.prices.semestral),
+      annual: Number(dbPlan.annual_price ?? plan.prices.annual),
+    } : plan.prices;
+
+    return {
+      ...plan,
+      label: dbPlan?.name || plan.label,
+      intermediationFee: Number(dbPlan?.intermediation_fee_percentage ?? plan.intermediationFee),
+      prices,
+      discountMonthlyPercent: Number(dbPlan?.discount_monthly_percent ?? 0),
+      discountSemestralPercent: Number(dbPlan?.discount_semestral_percent ?? 0),
+      discountAnnualPercent: Number(dbPlan?.discount_annual_percent ?? 0),
+      allowAds: Boolean(dbPlan?.allow_ads ?? plan.allowAds ?? false),
+      maxAds: Number(dbPlan?.max_ads ?? plan.maxAds ?? 0),
+      priceSlot1: Number(dbPlan?.price_slot_1 ?? plan.priceSlot1 ?? 30),
+      priceSlot2: Number(dbPlan?.price_slot_2 ?? plan.priceSlot2 ?? 25),
+      priceSlot3: Number(dbPlan?.price_slot_3 ?? plan.priceSlot3 ?? 20),
+      features: dbPlan?.features || plan.features,
+    };
   });
 
   let paymentSettings: PaymentSettings = { activeProvider: 'asaas', configs: {} };
