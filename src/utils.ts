@@ -165,6 +165,24 @@ export function calculateFees(freelancerFee: number, feePercent: number): { fee:
   return { fee, total };
 }
 
+// 🛠️ Cálculo correto de diária + horas extras (> 8h: (Diária / 8) * 1.25 por hora extra)
+export function calculateShiftCost(dailyRate: number, totalHours: number) {
+  if (totalHours <= 8) {
+    const hourlyBase = dailyRate / 8;
+    const subtotal = Math.round(hourlyBase * totalHours * 100) / 100;
+    return { subtotal, extraHours: 0, extraCost: 0, extraHourValue: hourlyBase * 1.25 };
+  }
+
+  const extraHours = totalHours - 8;
+  const normalHourValue = dailyRate / 8;
+  const extraHourValue = normalHourValue * 1.25; // +25%
+  
+  const extraCost = Math.round(extraHours * extraHourValue * 100) / 100;
+  const subtotal = Math.round((dailyRate + extraCost) * 100) / 100;
+
+  return { subtotal, extraHours, extraCost, extraHourValue };
+}
+
 // 🛠️ Inclui o estado intermediário do check-in duplo
 export const CONTRACT_STATUS_FLOW: ContractStatus[] = ['requested', 'confirmed', 'paid', 'check_in_pending', 'checked_in', 'completed'];
 
