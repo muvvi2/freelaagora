@@ -171,7 +171,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, []);
 
-  // 2. Realtime Listener Global — com correção do stale closure no review
+  // 2. Realtime Listener Global cobrindo perfeitamente as 21 tabelas do banco
   useEffect(() => {
     const refetchUser = (userId: string) => {
       if (!userId) return;
@@ -196,50 +196,59 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const channel = supabase
       .channel('realtime-global-updates')
 
-      // --- VAGAS (JOBS) ---
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, (payload) => {
+      // 1. admin_audit_logs
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_audit_logs' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const item = mapAuditLogRealtime(payload.new as any);
+          setDataState((prev) => ({ ...prev, adminAuditLogs: [item, ...prev.adminAuditLogs] }));
+        }
+      })
+
+      // 2. advertisements
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'advertisements' }, () => {
+        loadAllData().then((dbData) => {
+          if (dbData) setDataState((prev) => ({ ...prev }));
+        }).catch(() => {});
+      })
+
+      // 3. categories
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
+        loadAllData().then((dbData) => {
+          if (dbData) setDataState((prev) => ({ ...prev }));
+        }).catch(() => {});
+      })
+
+      // 4. contract_events
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'contract_events' }, (payload) => {
+        const raw = payload.new as any;
+        if (!raw || typeof raw !== 'object') return;
+        const contractId = raw.contract_id;
+        if (!contractId) return;
+        const dbStatus = raw?.status ?? 'pending_admin_check';
+        const appStatus = (STATUS_FROM_DB[dbStatus] ?? 'requested') as ContractStatus;
+        const event = { status: appStatus, at: raw?.created_at ?? new Date().toISOString(), note: raw?.note ?? undefined };
+        setDataState((prev) => ({
+          ...prev,
+          contracts: prev.contracts.map((c) => c.id === contractId ? { ...c, status: appStatus, history: [...(c.history || []), event] } : c),
+        }));
+      })
+
+      // 5. contract_reviews
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'contract_reviews' }, (payload) => {
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
           setDataState((prev) => {
-            const newRow = payload.new as any;
-            const existing = prev.jobs.find((j) => j.id === newRow.id);
-            const item = mapJobRealtime(newRow, prev.users, existing);
-            if (existing) return { ...prev, jobs: prev.jobs.map((j) => (j.id === item.id ? { ...existing, ...item, applicants: existing.applicants } : j)) };
-            return { ...prev, jobs: [item, ...prev.jobs] };
+            const item = mapReviewRealtime(payload.new as any, prev.users);
+            return prev.reviews.some((r) => r.id === item.id)
+              ? { ...prev, reviews: prev.reviews.map((r) => (r.id === item.id ? { ...r, ...item } : r)) }
+              : { ...prev, reviews: [item, ...prev.reviews] };
           });
         } else if (payload.eventType === 'DELETE') {
           const id = (payload.old as any)?.id;
-          if (id) setDataState((prev) => ({ ...prev, jobs: prev.jobs.filter((j) => j.id !== id) }));
+          if (id) setDataState((prev) => ({ ...prev, reviews: prev.reviews.filter((r) => r.id !== id) }));
         }
       })
 
-      // --- CANDIDATURAS (JOB_APPLICANTS) ---
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'job_applicants' }, (payload) => {
-        const raw = (payload.new ?? payload.old) as any;
-        const jobId = raw?.job_id;
-        const freelancerId = raw?.freelancer_id;
-        if (payload.eventType === 'DELETE') {
-          if (jobId && freelancerId) {
-            setDataState((prev) => ({ ...prev, jobs: prev.jobs.map((j) => j.id === jobId ? { ...j, applicants: j.applicants.filter((a) => a !== freelancerId) } : j) }));
-          }
-          return;
-        }
-        if (jobId && freelancerId) {
-          setDataState((prev) => ({ ...prev, jobs: prev.jobs.map((j) => j.id === jobId ? { ...j, applicants: Array.from(new Set([...(j.applicants || []), freelancerId])) } : j) }));
-        }
-      })
-
-      // --- USUÁRIOS (USERS) ---
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload) => {
-        if (payload.eventType === 'DELETE') {
-          const id = (payload.old as any)?.id;
-          if (id) setDataState((prev) => ({ ...prev, users: prev.users.filter((u) => u.id !== id) }));
-          return;
-        }
-        const userId = (payload.new as any)?.id;
-        if (userId) refetchUser(userId);
-      })
-
-      // --- CONTRATOS (CONTRACTS) ---
+      // 6. contracts
       .on('postgres_changes', { event: '*', schema: 'public', table: 'contracts' }, (payload) => {
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
           setDataState((prev) => {
@@ -255,62 +264,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       })
 
-      // --- EVENTOS DE CONTRATO (CONTRACT_EVENTS) ---
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'contract_events' }, (payload) => {
-        const raw = payload.new as any;
-        const contractId = raw?.contract_id;
-        if (!contractId) return;
-        const dbStatus = raw?.status ?? 'pending_admin_check';
-        const appStatus = (STATUS_FROM_DB[dbStatus] ?? 'requested') as ContractStatus;
-        const event = { status: appStatus, at: raw?.created_at ?? new Date().toISOString(), note: raw?.note ?? undefined };
-        setDataState((prev) => ({
-          ...prev,
-          contracts: prev.contracts.map((c) => c.id === contractId ? { ...c, status: appStatus, history: [...(c.history || []), event] } : c),
-        }));
-      })
-
-      // --- NOTIFICAÇÕES (NOTIFICATIONS) ---
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, (payload) => {
-        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-          const item = mapNotificationRealtime(payload.new as any);
-          setDataState((prev) => (prev.notifications.some((n) => n.id === item.id)
-            ? { ...prev, notifications: prev.notifications.map((n) => (n.id === item.id ? { ...n, ...item } : n)) }
-            : { ...prev, notifications: [item, ...prev.notifications] }));
-        } else if (payload.eventType === 'DELETE') {
-          const id = (payload.old as any)?.id;
-          if (id) setDataState((prev) => ({ ...prev, notifications: prev.notifications.filter((n) => n.id !== id) }));
-        }
-      })
-
-      // --- AVALIAÇÕES (CONTRACT_REVIEWS) corrigido com prev.users ---
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'contract_reviews' }, (payload) => {
-        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-          setDataState((prev) => {
-            const item = mapReviewRealtime(payload.new as any, prev.users);
-            return prev.reviews.some((r) => r.id === item.id)
-              ? { ...prev, reviews: prev.reviews.map((r) => (r.id === item.id ? { ...r, ...item } : r)) }
-              : { ...prev, reviews: [item, ...prev.reviews] };
-          });
-        } else if (payload.eventType === 'DELETE') {
-          const id = (payload.old as any)?.id;
-          if (id) setDataState((prev) => ({ ...prev, reviews: prev.reviews.filter((r) => r.id !== id) }));
-        }
-      })
-
-      // --- TRANSAÇÕES (WALLET_TRANSACTIONS) ---
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'wallet_transactions' }, (payload) => {
-        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-          const item = mapWalletTxRealtime(payload.new as any);
-          setDataState((prev) => (prev.walletTxs.some((t) => t.id === item.id)
-            ? { ...prev, walletTxs: prev.walletTxs.map((t) => (t.id === item.id ? { ...t, ...item } : t)) }
-            : { ...prev, walletTxs: [item, ...prev.walletTxs] }));
-        } else if (payload.eventType === 'DELETE') {
-          const id = (payload.old as any)?.id;
-          if (id) setDataState((prev) => ({ ...prev, walletTxs: prev.walletTxs.filter((t) => t.id !== id) }));
-        }
-      })
-
-      // --- CUPONS (DISCOUNT_COUPONS) ---
+      // 7. discount_coupons
       .on('postgres_changes', { event: '*', schema: 'public', table: 'discount_coupons' }, (payload) => {
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
           const item = mapCouponRealtime(payload.new as any);
@@ -323,52 +277,74 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       })
 
-      // --- LOGS (ADMIN_AUDIT_LOGS) ---
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_audit_logs' }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          const item = mapAuditLogRealtime(payload.new as any);
-          setDataState((prev) => ({ ...prev, adminAuditLogs: [item, ...prev.adminAuditLogs] }));
-        }
-      })
-
-      // --- PERFIS E AUXILIARES ---
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'freelancer_profiles' }, (payload) => {
-        const userId = (payload.new as any)?.user_id ?? (payload.old as any)?.user_id;
-        if (userId) refetchUser(userId);
-      })
+      // 8. establishment_profiles
       .on('postgres_changes', { event: '*', schema: 'public', table: 'establishment_profiles' }, (payload) => {
         const userId = (payload.new as any)?.user_id ?? (payload.old as any)?.user_id;
         if (userId) refetchUser(userId);
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'freelancer_categories' }, (payload) => {
-        const userId = (payload.new as any)?.freelancer_id ?? (payload.old as any)?.freelancer_id;
-        if (userId) refetchUser(userId);
-      })
+
+      // 9. freelancer_availability
       .on('postgres_changes', { event: '*', schema: 'public', table: 'freelancer_availability' }, (payload) => {
         const userId = (payload.new as any)?.freelancer_id ?? (payload.old as any)?.freelancer_id;
         if (userId) refetchUser(userId);
       })
 
-      // --- PLANOS VIP FREELANCER ---
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'vip_plans_freelancer' }, () => {
-        loadAllData().then((dbData) => {
-          if (dbData) setDataState((prev) => ({ ...prev, vipPlans: dbData.vipPlans }));
-        }).catch(() => {});
+      // 10. freelancer_categories
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'freelancer_categories' }, (payload) => {
+        const userId = (payload.new as any)?.freelancer_id ?? (payload.old as any)?.freelancer_id;
+        if (userId) refetchUser(userId);
       })
 
-      // --- PLANOS VIP ESTABELECIMENTO ---
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'vip_plans_establishment' }, () => {
-        loadAllData().then((dbData) => {
-          if (dbData) setDataState((prev) => ({ ...prev, estVipPlans: dbData.estVipPlans }));
-        }).catch(() => {});
+      // 11. freelancer_profiles
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'freelancer_profiles' }, (payload) => {
+        const userId = (payload.new as any)?.user_id ?? (payload.old as any)?.user_id;
+        if (userId) refetchUser(userId);
       })
 
-      // --- CONFIG ---
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'platform_config' }, (payload) => {
-        if (payload.new) {
-          setDataState((prev) => ({ ...prev, config: { defaultFeePercent: Number((payload.new as any).default_fee_percent ?? 15) } }));
+      // 12. job_applicants
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'job_applicants' }, (payload) => {
+        const raw = (payload.new ?? payload.old) as any;
+        if (!raw || typeof raw !== 'object') return;
+        const jobId = raw.job_id;
+        const freelancerId = raw.freelancer_id;
+        if (!jobId || !freelancerId) return;
+        if (payload.eventType === 'DELETE') {
+          setDataState((prev) => ({ ...prev, jobs: prev.jobs.map((j) => j.id === jobId ? { ...j, applicants: j.applicants.filter((a) => a !== freelancerId) } : j) }));
+          return;
+        }
+        setDataState((prev) => ({ ...prev, jobs: prev.jobs.map((j) => j.id === jobId ? { ...j, applicants: Array.from(new Set([...(j.applicants || []), freelancerId])) } : j) }));
+      })
+
+      // 13. jobs
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, (payload) => {
+        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          setDataState((prev) => {
+            const newRow = payload.new as any;
+            const existing = prev.jobs.find((j) => j.id === newRow.id);
+            const item = mapJobRealtime(newRow, prev.users, existing);
+            if (existing) return { ...prev, jobs: prev.jobs.map((j) => (j.id === item.id ? { ...existing, ...item, applicants: existing.applicants } : j)) };
+            return { ...prev, jobs: [item, ...prev.jobs] };
+          });
+        } else if (payload.eventType === 'DELETE') {
+          const id = (payload.old as any)?.id;
+          if (id) setDataState((prev) => ({ ...prev, jobs: prev.jobs.filter((j) => j.id !== id) }));
         }
       })
+
+      // 14. notifications
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, (payload) => {
+        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          const item = mapNotificationRealtime(payload.new as any);
+          setDataState((prev) => (prev.notifications.some((n) => n.id === item.id)
+            ? { ...prev, notifications: prev.notifications.map((n) => (n.id === item.id ? { ...n, ...item } : n)) }
+            : { ...prev, notifications: [item, ...prev.notifications] }));
+        } else if (payload.eventType === 'DELETE') {
+          const id = (payload.old as any)?.id;
+          if (id) setDataState((prev) => ({ ...prev, notifications: prev.notifications.filter((n) => n.id !== id) }));
+        }
+      })
+
+      // 15. payment_settings
       .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_settings' }, (payload) => {
         if (payload.new) {
           const ps = payload.new as any;
@@ -386,9 +362,69 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       })
 
+      // 16. platform_config
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'platform_config' }, (payload) => {
+        if (payload.new) {
+          setDataState((prev) => ({ ...prev, config: { defaultFeePercent: Number((payload.new as any).default_fee_percent ?? 15) } }));
+        }
+      })
+
+      // 17. reviews (segunda tabela de avaliações do banco)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, (payload) => {
+        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          setDataState((prev) => {
+            const item = mapReviewRealtime(payload.new as any, prev.users);
+            return prev.reviews.some((r) => r.id === item.id)
+              ? { ...prev, reviews: prev.reviews.map((r) => (r.id === item.id ? { ...r, ...item } : r)) }
+              : { ...prev, reviews: [item, ...prev.reviews] };
+          });
+        } else if (payload.eventType === 'DELETE') {
+          const id = (payload.old as any)?.id;
+          if (id) setDataState((prev) => ({ ...prev, reviews: prev.reviews.filter((r) => r.id !== id) }));
+        }
+      })
+
+      // 18. users
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload) => {
+        if (payload.eventType === 'DELETE') {
+          const id = (payload.old as any)?.id;
+          if (id) setDataState((prev) => ({ ...prev, users: prev.users.filter((u) => u.id !== id) }));
+          return;
+        }
+        const userId = (payload.new as any)?.id;
+        if (userId) refetchUser(userId);
+      })
+
+      // 19. vip_plans_establishment
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'vip_plans_establishment' }, () => {
+        loadAllData().then((dbData) => {
+          if (dbData) setDataState((prev) => ({ ...prev, estVipPlans: dbData.estVipPlans }));
+        }).catch(() => {});
+      })
+
+      // 20. vip_plans_freelancer
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'vip_plans_freelancer' }, () => {
+        loadAllData().then((dbData) => {
+          if (dbData) setDataState((prev) => ({ ...prev, vipPlans: dbData.vipPlans }));
+        }).catch(() => {});
+      })
+
+      // 21. wallet_transactions
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'wallet_transactions' }, (payload) => {
+        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          const item = mapWalletTxRealtime(payload.new as any);
+          setDataState((prev) => (prev.walletTxs.some((t) => t.id === item.id)
+            ? { ...prev, walletTxs: prev.walletTxs.map((t) => (t.id === item.id ? { ...t, ...item } : t)) }
+            : { ...prev, walletTxs: [item, ...prev.walletTxs] }));
+        } else if (payload.eventType === 'DELETE') {
+          const id = (payload.old as any)?.id;
+          if (id) setDataState((prev) => ({ ...prev, walletTxs: prev.walletTxs.filter((t) => t.id !== id) }));
+        }
+      })
+
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log("🟢 Canal Realtime global sincronizado com sucesso!");
+          console.log("🟢 Canal Realtime global sincronizado com sucesso para as 21 tabelas!");
         }
       });
 
@@ -729,7 +765,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const est = data?.users.find((u) => u.id === establishmentId);
     const fl = data?.users.find((u) => u.id === freelancerId);
 
-    // BLINDAGEM DO VALOR DA VAGA (R$ 200,00)
     let exactFee = freelancerFee;
     if (jobId && data?.jobs) {
       const targetJob = data.jobs.find(j => j.id === jobId);
