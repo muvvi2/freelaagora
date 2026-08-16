@@ -98,23 +98,20 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
 
   const getPlanDetails = (planObj: any) => {
     const prices = planObj.prices ?? { monthly: 0, semestral: 0, annual: 0 };
-    const rawPrice = prices[period] ?? planObj.prices?.[period] ?? 0;
+    const rawPrice = Number(prices[period] ?? 0);
     
-    // Leitura blindada das propriedades de desconto (suporta camelCase e snake_case)
     let discountPercent = 0;
     if (period === 'monthly') {
-      discountPercent = planObj.discountMonthlyPercent ?? planObj.discount_monthly_percent ?? 0;
+      discountPercent = Number(planObj.discountMonthlyPercent ?? planObj.discount_monthly_percent ?? 0);
     } else if (period === 'semestral') {
-      discountPercent = planObj.discountSemestralPercent ?? planObj.discount_semestral_percent ?? 0;
+      discountPercent = Number(planObj.discountSemestralPercent ?? planObj.discount_semestral_percent ?? 0);
     } else if (period === 'annual') {
-      discountPercent = planObj.discountAnnualPercent ?? planObj.discount_annual_percent ?? 0;
+      discountPercent = Number(planObj.discountAnnualPercent ?? planObj.discount_annual_percent ?? 0);
     }
 
-    let originalPrice = Number(rawPrice);
-    let finalPrice = Number(rawPrice);
-
+    let finalPrice = rawPrice;
     if (discountPercent > 0) {
-      originalPrice = rawPrice / (1 - (discountPercent / 100));
+      finalPrice = rawPrice * (1 - (discountPercent / 100));
     }
 
     if (appliedCoupon) {
@@ -122,7 +119,7 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
     }
 
     return {
-      originalPrice: Math.round(originalPrice * 100) / 100,
+      originalPrice: Math.round(rawPrice * 100) / 100,
       finalPrice: Math.round(finalPrice * 100) / 100,
       discountPercent: Number(discountPercent)
     };
@@ -310,11 +307,11 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
                       </div>
                     </div>
                     <div className="my-5">
-                      <span className="font-display text-4xl font-extrabold text-white">
+                      <span className="font-display text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
                         {details.finalPrice === 0 ? 'Grátis' : (
                           <>
                             {details.discountPercent > 0 && details.finalPrice !== details.originalPrice ? (
-                              <span className="mr-2 text-base text-neutral-500 line-through">{formatCurrency(details.originalPrice)}</span>
+                              <span className="mr-2 text-xs sm:text-sm text-neutral-500 line-through">{formatCurrency(details.originalPrice)}</span>
                             ) : null}
                             {formatCurrency(details.finalPrice)}
                           </>
@@ -379,11 +376,11 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
                       </div>
 
                       <div className="my-5">
-                        <span className="font-display text-4xl font-extrabold text-white">
+                        <span className="font-display text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
                           {details.finalPrice === 0 ? 'Grátis' : (
                             <>
                               {details.discountPercent > 0 && details.finalPrice !== details.originalPrice ? (
-                                <span className="mr-2 text-base text-neutral-500 line-through">{formatCurrency(details.originalPrice)}</span>
+                                <span className="mr-2 text-xs sm:text-sm text-neutral-500 line-through">{formatCurrency(details.originalPrice)}</span>
                               ) : null}
                               {formatCurrency(details.finalPrice)}
                             </>
