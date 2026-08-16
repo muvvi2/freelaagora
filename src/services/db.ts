@@ -620,6 +620,7 @@ export async function loadAllData(): Promise<AppData> {
     createdAt: row.created_at,
   }));
 
+  // Mapeamento corrigido garantindo a leitura exata do Supabase
   const freelancerIdMap: Record<string, number> = { 'free': 1, 'vip1': 2, 'vip2': 3, 'vip3': 4, 'vip4': 5, 'vip5': 6, 'vip6': 7 };
   const vipPlans: VipPlan[] = VIP_PLANS.map(plan => {
     const targetId = freelancerIdMap[plan.tier];
@@ -634,7 +635,7 @@ export async function loadAllData(): Promise<AppData> {
     return {
       ...plan,
       label: dbPlan?.name || plan.label,
-      maxCategories: dbPlan?.max_categories ?? plan.maxCategories,
+      maxCategories: Number(dbPlan?.max_categories ?? plan.maxCategories),
       prices,
       discountMonthlyPercent: Number(dbPlan?.discount_monthly_percent ?? 0),
       discountSemestralPercent: Number(dbPlan?.discount_semestral_percent ?? 0),
