@@ -97,9 +97,10 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
   };
 
   const getPlanDetails = (planObj: any) => {
-    const rawPrice = planObj.prices?.[period] ?? 0;
+    const prices = planObj.prices ?? { monthly: 0, semestral: 0, annual: 0 };
+    const rawPrice = prices[period] ?? planObj.prices?.[period] ?? 0;
     
-    // Lê as propriedades de desconto considerando múltiplos padrões possíveis vindos do banco/admin
+    // Leitura blindada das propriedades de desconto (suporta camelCase e snake_case)
     let discountPercent = 0;
     if (period === 'monthly') {
       discountPercent = planObj.discountMonthlyPercent ?? planObj.discount_monthly_percent ?? 0;
@@ -109,8 +110,8 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
       discountPercent = planObj.discountAnnualPercent ?? planObj.discount_annual_percent ?? 0;
     }
 
-    let originalPrice = rawPrice;
-    let finalPrice = rawPrice;
+    let originalPrice = Number(rawPrice);
+    let finalPrice = Number(rawPrice);
 
     if (discountPercent > 0) {
       originalPrice = rawPrice / (1 - (discountPercent / 100));
