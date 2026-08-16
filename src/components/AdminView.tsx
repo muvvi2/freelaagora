@@ -59,7 +59,6 @@ export function AdminView() {
     const flSubRevenue = data.walletTxs.filter((t) => t.type === 'vip_charge').reduce((a, t) => a + Math.abs(t.amount), 0);
     const esSubRevenue = data.walletTxs.filter((t) => t.type === 'vip_charge_est').reduce((a, t) => a + Math.abs(t.amount), 0);
 
-    // Agrupamento dinâmico baseado nos percentuais reais salvos nos contratos (vinculados aos planos VIP do admin)
     const completedContracts = data.contracts.filter((c) => c.status === 'completed');
     const feeBreakdownMap: Record<number, { totalFee: number; count: number }> = {};
     
@@ -923,6 +922,19 @@ function VipPlanEditor({ plan, onUpdate, onRemove, isEst }: {
   const [expanded, setExpanded] = useState(false);
   const canDelete = plan.tier !== 'free' && plan.tier !== 'trial';
 
+  // Blindagem robusta para ler os preços e taxas independentemente do formato vindo do estado/banco
+  const prices = plan.prices ?? { monthly: 0, semestral: 0, annual: 0 };
+  const monthlyPrice = prices.monthly ?? (plan as any).monthly_price ?? 0;
+  const semestralPrice = prices.semestral ?? (plan as any).semestral_price ?? 0;
+  const annualPrice = prices.annual ?? (plan as any).annual_price ?? 0;
+
+  const fee = (plan as EstVipPlan).intermediationFee ?? (plan as any).intermediation_fee_percentage ?? 15;
+  const maxJobs = (plan as EstVipPlan).maxActiveJobs ?? (plan as any).max_active_jobs ?? 2;
+
+  const discountMonthly = (plan as any).discountMonthlyPercent ?? (plan as any).discount_monthly_percent ?? 0;
+  const discountSemestral = (plan as any).discountSemestralPercent ?? (plan as any).discount_semestral_percent ?? 0;
+  const discountAnnual = (plan as any).discountAnnualPercent ?? (plan as any).discount_annual_percent ?? 0;
+
   return (
     <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
       <div className="flex items-center justify-between gap-2">
@@ -941,40 +953,40 @@ function VipPlanEditor({ plan, onUpdate, onRemove, isEst }: {
         <div className="mt-4 space-y-3 border-t border-neutral-100 pt-4 dark:border-neutral-800">
           <div className="grid gap-3 sm:grid-cols-2">
             <Input label="Nome do plano" value={plan.label} onChange={(e) => onUpdate({ label: e.target.value })} />
-            {!isEst && <Input label="Máx. categorias (999 = ilimitado)" type="number" value={String((plan as VipPlan).maxCategories)} onChange={(e) => onUpdate({ maxCategories: Number(e.target.value) || 0 } as Partial<VipPlan>)} />}
+            {!isEst && <Input label="Máx. categorias (999 = ilimitado)" type="number" value={String((plan as VipPlan).maxCategories ?? 5)} onChange={(e) => onUpdate({ maxCategories: Number(e.target.value) || 0 } as Partial<VipPlan>)} />}
             {isEst && (
               <>
-                <Input label="Taxa de intermediação (%)" type="number" step="0.5" value={String((plan as EstVipPlan).intermediationFee)} onChange={(e) => onUpdate({ intermediationFee: Number(e.target.value) || 0 } as Partial<EstVipPlan>)} />
-                <Input label="Máx. vagas semanais (999 = ilimitado)" type="number" value={String((plan as EstVipPlan).maxActiveJobs ?? 2)} onChange={(e) => onUpdate({ maxActiveJobs: Number(e.target.value) || 0 } as Partial<EstVipPlan>)} />
+                <Input label="Taxa de intermediação (%)" type="number" step="0.5" value={String(fee)} onChange={(e) => onUpdate({ intermediationFee: Number(e.target.value) || 0 } as Partial<EstVipPlan>)} />
+                <Input label="Máx. vagas semanais (999 = ilimitado)" type="number" value={String(maxJobs)} onChange={(e) => onUpdate({ maxActiveJobs: Number(e.target.value) || 0 } as Partial<EstVipPlan>)} />
               </>
             )}
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
-            <Input label="Preço mensal (R$)" type="number" value={String(plan.prices.monthly)} onChange={(e) => onUpdate({ prices: { ...plan.prices, monthly: Number(e.target.value) || 0 } })} />
-            <Input label="Preço semestral (R$)" type="number" value={String(plan.prices.semestral)} onChange={(e) => onUpdate({ prices: { ...plan.prices, semestral: Number(e.target.value) || 0 } })} />
-            <Input label="Preço anual (R$)" type="number" value={String(plan.prices.annual)} onChange={(e) => onUpdate({ prices: { ...plan.prices, annual: Number(e.target.value) || 0 } })} />
+            <Input label="Preço mensal (R$)" type="number" value={String(monthlyPrice)} onChange={(e) => onUpdate({ prices: { ...prices, monthly: Number(e.target.value) || 0 } })} />
+            <Input label="Preço semestral (R$)" type="number" value={String(semestralPrice)} onChange={(e) => onUpdate({ prices: { ...prices, semestral: Number(e.target.value) || 0 } })} />
+            <Input label="Preço anual (R$)" type="number" value={String(annualPrice)} onChange={(e) => onUpdate({ prices: { ...prices, annual: Number(e.target.value) || 0 } })} />
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3 bg-neutral-50 dark:bg-neutral-800/40 p-3 rounded-xl border border-neutral-200 dark:border-neutral-700">
             <Input 
               label="Desconto Mensal (%)" 
               type="number" 
-              value={String((plan as any).discountMonthlyPercent ?? 0)} 
+              value={String(discountMonthly)} 
               onChange={(e) => onUpdate({ discountMonthlyPercent: Number(e.target.value) || 0 } as any)} 
               placeholder="Ex: 5"
             />
             <Input 
               label="Desconto Semestral (%)" 
               type="number" 
-              value={String((plan as any).discountSemestralPercent ?? 0)} 
+              value={String(discountSemestral)} 
               onChange={(e) => onUpdate({ discountSemestralPercent: Number(e.target.value) || 0 } as any)} 
               placeholder="Ex: 10"
             />
             <Input 
               label="Desconto Anual (%)" 
               type="number" 
-              value={String((plan as any).discountAnnualPercent ?? 0)} 
+              value={String(discountAnnual)} 
               onChange={(e) => onUpdate({ discountAnnualPercent: Number(e.target.value) || 0 } as any)} 
               placeholder="Ex: 20"
             />
@@ -982,7 +994,7 @@ function VipPlanEditor({ plan, onUpdate, onRemove, isEst }: {
 
           <div>
             <label className="mb-1 block text-xs font-semibold text-neutral-500">Benefícios (um por linha)</label>
-            <textarea value={plan.features.join('\n')} onChange={(e) => onUpdate({ features: e.target.value.split('\n').filter(Boolean) })} rows={4} className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100" />
+            <textarea value={(plan.features ?? []).join('\n')} onChange={(e) => onUpdate({ features: e.target.value.split('\n').filter(Boolean) })} rows={4} className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100" />
           </div>
         </div>
       )}
