@@ -769,9 +769,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const est = data?.users.find((u) => u.id === establishmentId);
     const fl = data?.users.find((u) => u.id === freelancerId);
 
+    // BLINDAGEM CORRIGIDA: Se houver um jobId, usa o valor da vaga. Se não houver vaga (contratação direta), usa a diária enviada, sem multiplicar por horas ou duplicar.
+    let exactFee = freelancerFee;
+    if (jobId && data?.jobs) {
+      const targetJob = data.jobs.find(j => j.id === jobId);
+      if (targetJob && typeof targetJob.value === 'number' && targetJob.value > 0) {
+        exactFee = targetJob.value;
+      }
+    }
+
     const defaultFee = data?.config?.defaultFeePercent ?? 15;
     const feePercent = est ? getIntermediationFeePercent(est, data.estVipPlans, data.vipPlans, defaultFee) : defaultFee;
-    const { fee, total } = calculateFees(freelancerFee, feePercent);
+    const { fee, total } = calculateFees(exactFee, feePercent);
 
     const contract: Contract = {
       id: crypto.randomUUID(), 
@@ -786,7 +795,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       category: fl?.categories?.[0] ?? 'geral', 
       date: new Date().toISOString(), 
       hours,
-      freelancerFee, 
+      freelancerFee: exactFee, 
       platformFeePercentage: feePercent, 
       platformFee: fee, 
       total,
