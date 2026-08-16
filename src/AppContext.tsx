@@ -171,7 +171,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, []);
 
-  // 2. Realtime Listener Global Robusto (À prova de falhas com recarga inteligente)
+  // 2. Realtime Listener Global (Sua base original 100% funcional)
   useEffect(() => {
     const refetchUser = (userId: string) => {
       if (!userId) return;
@@ -347,20 +347,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (userId) refetchUser(userId);
       })
 
-      // --- PLANOS VIP E CONFIGS (RELOAD TOTAL GARANTIDO) ---
+      // --- PLANOS VIP FREELANCER ---
       .on('postgres_changes', { event: '*', schema: 'public', table: 'vip_plans_freelancer' }, () => {
-        loadAllData().then((dbData) => { if (dbData) setDataState((prev) => ({ ...prev, vipPlans: dbData.vipPlans })); }).catch(() => {});
+        loadAllData().then((dbData) => {
+          if (dbData) setDataState((prev) => ({ ...prev, vipPlans: dbData.vipPlans }));
+        }).catch(() => {});
       })
+
+      // --- PLANOS VIP ESTABELECIMENTO ---
       .on('postgres_changes', { event: '*', schema: 'public', table: 'vip_plans_establishment' }, () => {
-        loadAllData().then((dbData) => { if (dbData) setDataState((prev) => ({ ...prev, estVipPlans: dbData.estVipPlans })); }).catch(() => {});
+        loadAllData().then((dbData) => {
+          if (dbData) setDataState((prev) => ({ ...prev, estVipPlans: dbData.estVipPlans }));
+        }).catch(() => {});
       })
+
+      // --- CONFIG ---
       .on('postgres_changes', { event: '*', schema: 'public', table: 'platform_config' }, (payload) => {
         if (payload.new) {
           setDataState((prev) => ({ ...prev, config: { defaultFeePercent: Number((payload.new as any).default_fee_percent ?? 15) } }));
         }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_settings' }, () => {
-        loadAllData().then((dbData) => { if (dbData) setDataState((prev) => ({ ...prev, paymentSettings: dbData.paymentSettings })); }).catch(() => {});
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_settings' }, (payload) => {
+        if (payload.new) {
+          const ps = payload.new as any;
+          const configs: Partial<Record<string, PaymentProviderConfig>> = {};
+          if (ps.configs) {
+            for (const [key, val] of Object.entries(ps.configs)) {
+              if (val && typeof val === 'object') {
+                const v = val as { apiKey?: string; env?: string };
+                configs[key as PaymentProviderId] = { apiKey: v.apiKey ?? '', env: (v.env as 'sandbox' | 'production') ?? 'sandbox' };
+              }
+            }
+          }
+          const settings: PaymentSettings = { activeProvider: ps.active_provider ?? 'asaas', configs };
+          setDataState((prev) => ({ ...prev, paymentSettings: settings }));
+        }
       })
 
       .subscribe((status) => {
@@ -706,6 +727,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const est = data?.users.find((u) => u.id === establishmentId);
     const fl = data?.users.find((u) => u.id === freelancerId);
 
+    // CORREÇÃO ESSENCIAL: Garante estritamente o valor da vaga se houver jobId, evitando cobrar diária errada
     let exactFee = freelancerFee;
     if (jobId && data?.jobs) {
       const targetJob = data.jobs.find(j => j.id === jobId);
