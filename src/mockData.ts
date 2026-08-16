@@ -89,28 +89,28 @@ export const CATEGORIES: Category[] = [
 ];
 
 // ============================================================
-// FREELANCER VIP PLANS
+// FREELANCER VIP PLANS (Valores cheios calculados: Semestral = Mensal x 6, Anual = Mensal x 12)
 // ============================================================
 export const VIP_PLANS: VipPlan[] = [
   { tier: 'free', label: 'Free', maxCategories: 2, features: ['Até 2 categorias ativas', 'Aparição padrão nas buscas'], prices: { monthly: 0, semestral: 0, annual: 0 } },
-  { tier: 'vip1', label: 'VIP 1', maxCategories: 4, features: ['Até 4 categorias ativas', 'Impulso leve nas buscas'], prices: { monthly: 14.90, semestral: 59.90, annual: 99.90 }, boost: 'light' },
-  { tier: 'vip2', label: 'VIP 2', maxCategories: 5, features: ['Até 5 categorias ativas', 'Selo verificado', 'Ranking superior nas buscas'], prices: { monthly: 24.90, semestral: 99.90, annual: 169.90 }, badge: 'verified', boost: 'top' },
-  { tier: 'vip3', label: 'VIP 3', maxCategories: 999, features: ['Categorias ilimitadas', 'Destaque visual máximo', 'Suporte prioritário', 'Ranking máximo'], prices: { monthly: 39.90, semestral: 159.90, annual: 279.90 }, badge: 'diamond', boost: 'max' },
-  { tier: 'vip4', label: 'VIP 4', maxCategories: 999, features: ['Categorias ilimitadas', 'Destaque total', 'Prioridade máxima'], prices: { monthly: 59.90, semestral: 229.90, annual: 399.90 }, badge: 'diamond', boost: 'max' },
+  { tier: 'vip1', label: 'VIP 1', maxCategories: 4, features: ['Até 4 categorias ativas', 'Impulso leve nas buscas'], prices: { monthly: 14.90, semestral: 89.40, annual: 178.80 }, boost: 'light' },
+  { tier: 'vip2', label: 'VIP 2', maxCategories: 5, features: ['Até 5 categorias ativas', 'Selo verificado', 'Ranking superior nas buscas'], prices: { monthly: 24.90, semestral: 149.40, annual: 298.80 }, badge: 'verified', boost: 'top' },
+  { tier: 'vip3', label: 'VIP 3', maxCategories: 999, features: ['Categorias ilimitadas', 'Destaque visual máximo', 'Suporte prioritário', 'Ranking máximo'], prices: { monthly: 39.90, semestral: 239.40, annual: 478.80 }, badge: 'diamond', boost: 'max' },
+  { tier: 'vip4', label: 'VIP 4', maxCategories: 999, features: ['Categorias ilimitadas', 'Destaque total', 'Prioridade máxima'], prices: { monthly: 59.90, semestral: 359.40, annual: 718.80 }, badge: 'diamond', boost: 'max' },
 ];
 
 // ============================================================
-// ESTABLISHMENT VIP PLANS (Com recursos de anúncios e proibição de vagas na vitrine)
+// ESTABLISHMENT VIP PLANS (Valores cheios: Semestral = Mensal x 6, Anual = Mensal x 12)
 // ============================================================
 export const EST_VIP_PLANS: EstVipPlan[] = [
   { tier: 'free', label: 'Plano Gratuito', intermediationFee: 15.0, maxActiveJobs: 2, allowAds: false, maxAds: 0, features: ['Até 2 vagas por semana', 'Taxa de intermediação de 15,0%', 'Proibido anunciar vagas na vitrine (somente marca/produtos)'], prices: { monthly: 0, semestral: 0, annual: 0 } },
   { tier: 'trial', label: 'Teste Gratuito (15 dias)', intermediationFee: 7.5, maxActiveJobs: 10, allowAds: false, maxAds: 0, features: ['Até 10 vagas por semana durante o teste', 'Taxa reduzida de 7,5%', 'Proibido anunciar vagas na vitrine'], prices: { monthly: 0, semestral: 0, annual: 0 } },
-  { tier: 'vip1', label: 'Plano VIP 1', intermediationFee: 7.5, maxActiveJobs: 5, allowAds: false, maxAds: 0, features: ['Até 5 vagas por semana', 'Taxa reduzida de 7,5%', 'Prioridade no suporte', 'Proibido anunciar vagas na vitrine'], prices: { monthly: 29.90, semestral: 149.90, annual: 249.90 } },
-  { tier: 'vip2', label: 'Plano VIP 2', intermediationFee: 5.0, maxActiveJobs: 20, allowAds: false, maxAds: 0, features: ['Até 20 vagas por semana', 'Taxa reduzida de 5,0%', 'Prioridade no suporte', 'Proibido anunciar vagas na vitrine'], prices: { monthly: 59.90, semestral: 299.90, annual: 499.90 } },
-  { tier: 'vip3', label: 'Plano VIP 3', intermediationFee: 0.0, maxActiveJobs: 999, allowAds: false, maxAds: 0, features: ['Vagas ilimitadas por semana', 'Isenção total (0%) de taxas', 'Proibido anunciar vagas na vitrine'], prices: { monthly: 119.90, semestral: 549.00, annual: 949.00 } },
-  { tier: 'vip4', label: 'Plano VIP 4', intermediationFee: 0.0, maxActiveJobs: 999, allowAds: true, maxAds: 1, features: ['Vagas ilimitadas', 'Isenção total de taxas', '1 Anúncio na Vitrine (Proibido vagas, apenas marca/produtos)'], prices: { monthly: 149.90, semestral: 699.00, annual: 1199.00 } },
-  { tier: 'vip5', label: 'Plano VIP 5', intermediationFee: 0.0, maxActiveJobs: 999, allowAds: true, maxAds: 3, features: ['Vagas ilimitadas', 'Isenção total', 'Até 3 Anúncios na Vitrine (Proibido vagas)'], prices: { monthly: 199.90, semestral: 899.00, annual: 1499.00 } },
-  { tier: 'vip6', label: 'Plano VIP 6', intermediationFee: 0.0, maxActiveJobs: 999, allowAds: true, maxAds: 5, features: ['Vagas ilimitadas', 'Isenção total', 'Até 5 Anúncios na Vitrine (Proibido vagas)'], prices: { monthly: 249.90, semestral: 1099.00, annual: 1899.00 } },
+  { tier: 'vip1', label: 'Plano VIP 1', intermediationFee: 7.5, maxActiveJobs: 5, allowAds: false, maxAds: 0, features: ['Até 5 vagas por semana', 'Taxa reduzida de 7,5%', 'Prioridade no suporte', 'Proibido anunciar vagas na vitrine'], prices: { monthly: 29.90, semestral: 179.40, annual: 358.80 } },
+  { tier: 'vip2', label: 'Plano VIP 2', intermediationFee: 5.0, maxActiveJobs: 20, allowAds: false, maxAds: 0, features: ['Até 20 vagas por semana', 'Taxa reduzida de 5,0%', 'Prioridade no suporte', 'Proibido anunciar vagas na vitrine'], prices: { monthly: 59.90, semestral: 359.40, annual: 718.80 } },
+  { tier: 'vip3', label: 'Plano VIP 3', intermediationFee: 0.0, maxActiveJobs: 999, allowAds: false, maxAds: 0, features: ['Vagas ilimitadas por semana', 'Isenção total (0%) de taxas', 'Proibido anunciar vagas na vitrine'], prices: { monthly: 119.90, semestral: 719.40, annual: 1438.80 } },
+  { tier: 'vip4', label: 'Plano VIP 4', intermediationFee: 0.0, maxActiveJobs: 999, allowAds: true, maxAds: 1, features: ['Vagas ilimitadas', 'Isenção total de taxas', '1 Anúncio na Vitrine (Proibido vagas, apenas marca/produtos)'], prices: { monthly: 149.90, semestral: 899.40, annual: 1798.80 } },
+  { tier: 'vip5', label: 'Plano VIP 5', intermediationFee: 0.0, maxActiveJobs: 999, allowAds: true, maxAds: 3, features: ['Vagas ilimitadas', 'Isenção total', 'Até 3 Anúncios na Vitrine (Proibido vagas)'], prices: { monthly: 199.90, semestral: 1199.40, annual: 2398.80 } },
+  { tier: 'vip6', label: 'Plano VIP 6', intermediationFee: 0.0, maxActiveJobs: 999, allowAds: true, maxAds: 5, features: ['Vagas ilimitadas', 'Isenção total', 'Até 5 Anúncios na Vitrine (Proibido vagas)'], prices: { monthly: 249.90, semestral: 1499.40, annual: 2998.80 } },
 ];
 
 export const LEGAL_VERSION = 'v1.9';
