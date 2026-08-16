@@ -141,7 +141,16 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
 
   const handleFinish = () => {
     setProcessing(true);
-    setTimeout(() => { finishService(contract.id); setProcessing(false); notify('Serviço concluído! Repasse realizado via split payment.'); }, 1400);
+    setTimeout(() => {
+      const res = finishService(contract.id);
+      setProcessing(false);
+      
+      if (res && !res.ok) {
+        notify(res.error || 'Não é possível finalizar o serviço ainda.', 'error');
+      } else {
+        notify('Serviço concluído com sucesso! Repasse realizado via split payment.');
+      }
+    }, 1000);
   };
 
   return (
@@ -360,7 +369,8 @@ export function EscrowFlowModal({ contract, open, onClose }: { contract: Contrac
             </Button>
           )}
 
-          {contract.status !== 'completed' && contract.status !== 'cancelled' && (
+          {/* Botão de Cancelamento: Desaparece automaticamente se o contrato já estiver em progresso ou finalizado */}
+          {contract.status !== 'completed' && contract.status !== 'cancelled' && !['check_in_pending', 'checked_in'].includes(contract.status) && (
             <button onClick={() => { cancelContract(contract.id); notify('Contrato cancelado', 'warning'); }} className="mt-3 w-full text-center text-xs font-semibold text-error-500 hover:underline">
               Cancelar contratação
             </button>
