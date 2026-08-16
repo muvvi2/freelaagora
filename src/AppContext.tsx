@@ -171,7 +171,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, []);
 
-  // 2. Realtime Listener Global (Sua base original 100% funcional)
+  // 2. Realtime Listener Global — com correção do stale closure no review
   useEffect(() => {
     const refetchUser = (userId: string) => {
       if (!userId) return;
@@ -282,13 +282,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       })
 
-      // --- AVALIAÇÕES (CONTRACT_REVIEWS) ---
+      // --- AVALIAÇÕES (CONTRACT_REVIEWS) corrigido com prev.users ---
       .on('postgres_changes', { event: '*', schema: 'public', table: 'contract_reviews' }, (payload) => {
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-          const item = mapReviewRealtime(payload.new as any, data?.users ?? []);
-          setDataState((prev) => (prev.reviews.some((r) => r.id === item.id)
-            ? { ...prev, reviews: prev.reviews.map((r) => (r.id === item.id ? { ...r, ...item } : r)) }
-            : { ...prev, reviews: [item, ...prev.reviews] }));
+          setDataState((prev) => {
+            const item = mapReviewRealtime(payload.new as any, prev.users);
+            return prev.reviews.some((r) => r.id === item.id)
+              ? { ...prev, reviews: prev.reviews.map((r) => (r.id === item.id ? { ...r, ...item } : r)) }
+              : { ...prev, reviews: [item, ...prev.reviews] };
+          });
         } else if (payload.eventType === 'DELETE') {
           const id = (payload.old as any)?.id;
           if (id) setDataState((prev) => ({ ...prev, reviews: prev.reviews.filter((r) => r.id !== id) }));
@@ -727,7 +729,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const est = data?.users.find((u) => u.id === establishmentId);
     const fl = data?.users.find((u) => u.id === freelancerId);
 
-    // CORREÇÃO ESSENCIAL: Garante estritamente o valor da vaga se houver jobId, evitando cobrar diária errada
+    // BLINDAGEM DO VALOR DA VAGA (R$ 200,00)
     let exactFee = freelancerFee;
     if (jobId && data?.jobs) {
       const targetJob = data.jobs.find(j => j.id === jobId);
