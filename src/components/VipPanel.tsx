@@ -289,26 +289,26 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
               return (
                 <div key={plan.tier} className={`relative flex flex-col justify-between rounded-2xl border-2 bg-neutral-900 p-6 transition shadow-xl ${tierTone[plan.tier]} ${active ? 'ring-2 ring-primary-500 bg-neutral-900/90' : 'hover:border-neutral-700'}`}>
                   {active && <div className="absolute -top-3.5 left-5"><Badge tone="primary">Plano Ativo</Badge></div>}
-                  {details.discountPercent > 0 && (
-                    <div className="absolute -top-3.5 right-5">
-                      <span className="inline-flex items-center rounded-full bg-success-500 px-2.5 py-0.5 text-[10px] font-extrabold text-white shadow-sm">
-                        -{details.discountPercent}% OFF
-                      </span>
-                    </div>
-                  )}
                   <div>
-                    <div className="mb-4 flex items-center gap-3">
-                      <div className="p-2.5 rounded-xl bg-neutral-800 border border-neutral-700">
-                        <Icon className={`h-6 w-6 ${getTierColor(plan.tier)}`} />
-                      </div>
-                      <div>
-                        <span className="font-display text-lg font-bold text-white">{plan.label}</span>
-                        <p className="text-xs uppercase tracking-wider text-neutral-400">{plan.tier}</p>
+                    <div className="mb-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-xl bg-neutral-800 border border-neutral-700">
+                          <Icon className={`h-6 w-6 ${getTierColor(plan.tier)}`} />
+                        </div>
+                        <div>
+                          <span className="font-display text-lg font-bold text-white">{plan.label}</span>
+                          <p className="text-xs uppercase tracking-wider text-neutral-400">{plan.tier}</p>
+                        </div>
                       </div>
                     </div>
                     <div className="my-5 flex flex-col gap-1">
                       {details.discountPercent > 0 && details.finalPrice !== details.originalPrice ? (
-                        <span className="text-xs sm:text-sm text-neutral-300 line-through font-semibold">{formatCurrency(details.originalPrice)}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs sm:text-sm text-neutral-300 line-through font-semibold">{formatCurrency(details.originalPrice)}</span>
+                          <span className="inline-flex items-center rounded-full bg-success-500 px-2 py-0.5 text-[10px] font-extrabold text-white shadow-sm">
+                            -{details.discountPercent}% OFF
+                          </span>
+                        </div>
                       ) : null}
                       <span className="font-display text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
                         {details.finalPrice === 0 ? 'Grátis' : formatCurrency(details.finalPrice)}
@@ -352,13 +352,6 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
                 return (
                   <div key={plan.tier} className={`relative flex flex-col justify-between rounded-2xl border-2 bg-neutral-900 p-6 transition shadow-xl ${estTierTone[plan.tier]} ${active ? 'ring-2 ring-primary-500 bg-neutral-900/90' : 'hover:border-neutral-700'}`}>
                     {active && <div className="absolute -top-3.5 left-5"><Badge tone="primary">Plano Ativo</Badge></div>}
-                    {details.discountPercent > 0 && (
-                      <div className="absolute -top-3.5 right-5">
-                        <span className="inline-flex items-center rounded-full bg-success-500 px-2.5 py-0.5 text-[10px] font-extrabold text-white shadow-sm">
-                          -{details.discountPercent}% OFF
-                        </span>
-                      </div>
-                    )}
                     <div>
                       <div className="mb-4 flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
@@ -372,7 +365,12 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
 
                       <div className="my-5 flex flex-col gap-1">
                         {details.discountPercent > 0 && details.finalPrice !== details.originalPrice ? (
-                          <span className="text-xs sm:text-sm text-neutral-300 line-through font-semibold">{formatCurrency(details.originalPrice)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs sm:text-sm text-neutral-300 line-through font-semibold">{formatCurrency(details.originalPrice)}</span>
+                            <span className="inline-flex items-center rounded-full bg-success-500 px-2 py-0.5 text-[10px] font-extrabold text-white shadow-sm">
+                              -{details.discountPercent}% OFF
+                            </span>
+                          </div>
                         ) : null}
                         <span className="font-display text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
                           {details.finalPrice === 0 ? 'Grátis' : formatCurrency(details.finalPrice)}
@@ -457,7 +455,7 @@ export function VipPanel({ userId, accountType, onBack }: { userId: string; acco
 }
 
 function BillingTypeSelector({ billingType, setBillingType, paymentReady, providerLabel }: { billingType: BillingType; setBillingType: (b: BillingType) => void; paymentReady: boolean; providerLabel: string }) {
-  const finalOptions = paymentReady ? BILLOS_OPTIONS ?? BILLING_OPTIONS : BILLING_OPTIONS.filter((o) => o.id === 'WALLET');
+  const finalOptions = paymentReady ? BILLING_OPTIONS : BILLING_OPTIONS.filter((o) => o.id === 'WALLET');
   return (
     <div>
       <label className="mb-1.5 block text-xs font-semibold text-neutral-500">Forma de pagamento</label>
